@@ -117,6 +117,7 @@ WOLFSSL_API int wolfSSL_OPENSSL_init_crypto(word64 opts, const WOLFSSL_INIT_SETT
 #define OPENSSL_malloc wolfSSL_OPENSSL_malloc
 #define OPENSSL_hexchar2int wolfSSL_OPENSSL_hexchar2int
 #define OPENSSL_hexstr2buf wolfSSL_OPENSSL_hexstr2buf
+void OPENSSL_cleanse(void *ptr, size_t len);
 
 #define OPENSSL_INIT_ENGINE_ALL_BUILTIN 0x00000001L
 #define OPENSSL_INIT_ADD_ALL_CIPHERS    0x00000004L

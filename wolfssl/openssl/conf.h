@@ -24,9 +24,6 @@
 #ifndef WOLFSSL_conf_H_
 #define WOLFSSL_conf_H_
 
-#ifdef __cplusplus
-    extern "C" {
-#endif
 
 #include <wolfssl/wolfcrypt/settings.h>
 #include <wolfssl/version.h>
@@ -50,6 +47,9 @@ typedef WOLFSSL_CONF CONF;
 typedef WOLFSSL_CONF_VALUE CONF_VALUE;
 #endif
 
+#ifdef __cplusplus
+    extern "C" {
+#endif
 #ifdef OPENSSL_EXTRA
 
 WOLFSSL_API WOLFSSL_CONF_VALUE *wolfSSL_CONF_VALUE_new(void);

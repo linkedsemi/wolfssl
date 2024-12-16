@@ -29,10 +29,6 @@
 #include <wolfssl/wolfcrypt/settings.h>
 #include <wolfssl/wolfcrypt/visibility.h>
 
-#ifdef __cplusplus
-    extern "C" {
-#endif
-
 /* Detect if compiler supports C99. "NO_WOLF_C99" can be defined in
  * user_settings.h to disable checking for C99 support. */
 #if !defined(WOLF_C99) && defined(__STDC_VERSION__) && \
@@ -425,6 +421,10 @@
     #define WOLFSSL_ATOMIC_OPS
 #endif
 #endif /* WOLFSSL_NO_ATOMICS */
+
+#ifdef __cplusplus
+    extern "C" {
+#endif
 
 #if defined(WOLFSSL_ATOMIC_OPS) && !defined(SINGLE_THREADED)
     WOLFSSL_API void wolfSSL_Atomic_Int_Init(wolfSSL_Atomic_Int* c, int i);

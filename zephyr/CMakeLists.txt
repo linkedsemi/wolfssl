@@ -162,7 +162,7 @@ if(CONFIG_WOLFSSL)
       set(TOOLCHAIN_C_FLAGS "-march=native -maes -msse4 -mpclmul ")
     endif()
 
-    zephyr_library_link_libraries(wolfSSL)
+    zephyr_link_libraries(wolfSSL)
 
         target_compile_definitions(wolfSSL INTERFACE WOLFSSL_ZEPHYR)
         target_compile_definitions(wolfSSL INTERFACE WOLFSSL_USER_SETTINGS)

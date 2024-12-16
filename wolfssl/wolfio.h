@@ -28,9 +28,9 @@
 
 #include <wolfssl/ssl.h>
 
-#ifdef __cplusplus
-    extern "C" {
-#endif
+// #ifdef __cplusplus
+//     extern "C" {
+// #endif
 
 /* Micrium uses NetSock I/O callbacks in wolfio.c */
 #if !defined(WOLFSSL_USER_IO)
@@ -885,8 +885,8 @@ WOLFSSL_API void wolfSSL_SetIOWriteFlags(WOLFSSL* ssl, int flags);
 #endif
 
 
-#ifdef __cplusplus
-    }  /* extern "C" */
-#endif
+// #ifdef __cplusplus
+//     }  /* extern "C" */
+// #endif
 
 #endif /* WOLFSSL_IO_H */

@@ -196,9 +196,6 @@
     #endif
 #endif
 
-#ifdef __cplusplus
-    extern "C" {
-#endif
 
 
 #if defined(OPENSSL_EXTRA) || defined(HAVE_WEBSERVER) || defined(WOLFSSL_WPAS_SMALL)
@@ -1015,6 +1012,10 @@ enum Tls13Secret {
 #endif
 
 typedef WOLFSSL_METHOD* (*wolfSSL_method_func)(void* heap);
+
+#ifdef __cplusplus
+    extern "C" {
+#endif
 
 /* CTX Method Constructor Functions */
 

@@ -1618,7 +1618,9 @@ void wc_ERR_print_errors_cb(int (*cb)(const char *str, size_t len, void *u),
 static int wc_ERR_dump_to_file (const char *str, size_t len, void *u)
 {
     XFILE fp = (XFILE ) u;
-    if (fprintf(fp, "%-*.*s\n", (int)len, (int)len, str) < 0)
+    // if (fprintf(fp, "%-*.*s\n", (int)len, (int)len, str) < 0)
+    if (XFPRINTF(fp, "%-*.*s\n", (int)len, (int)len, str) < 0)
+        printk("[wangying] wolfssl logging.c XFPRINTF [Rewriting]\n");
         return IO_FAILED_E;
     return 0;
 }

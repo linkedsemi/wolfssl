@@ -24,6 +24,7 @@
 #endif
 
 #include <wolfssl/wolfcrypt/settings.h>
+#include <zephyr/kernel.h>
 #if defined(OPENSSL_EXTRA) && !defined(_WIN32) && !defined(_GNU_SOURCE)
     /* turn on GNU extensions for XVASPRINTF with wolfSSL_BIO_printf */
     #define _GNU_SOURCE 1
@@ -3010,7 +3011,8 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
             #if !defined(USE_WINDOWS_API) && !defined(NO_WOLFSSL_DIR)\
                 && !defined(WOLFSSL_NUCLEUS) && !defined(WOLFSSL_NUCLEUS_1_2)
                 else if (bio->num.fd != SOCKET_INVALID) {
-                    XCLOSE(bio->num.fd);
+                    // XCLOSE(bio->num.fd);
+                    printk("[wangying] wolfssl src/bio.c XCLOSE [Not declared, temporarily comment]\n");
                 }
             #endif
             }

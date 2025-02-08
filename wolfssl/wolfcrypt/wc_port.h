@@ -757,6 +757,8 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
      * make the API more POSIX like. */
     XFILE z_fs_open(const char* filename, const char* mode);
     int z_fs_close(XFILE file);
+    int zvfprintf(struct fs_file_t *, const char *__restrict, va_list arg);
+    int zfprintf(struct fs_file_t *, const char *__restrict, ...);
 
     #define XFOPEN              z_fs_open
     #define XFCLOSE             z_fs_close
@@ -768,6 +770,9 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
     #define XFWRITE(P,S,N,F)    fs_write(F, P, S*N)
     #define XSEEK_SET           FS_SEEK_SET
     #define XSEEK_END           FS_SEEK_END
+//todo 需要后续实现
+    #define XVFPRINTF           zvfprintf
+    #define XFPRINTF            zfprintf
     #define XBADFILE            NULL
     #define XFGETS(b,s,f)       -2 /* Not ported yet */
 

@@ -25,7 +25,6 @@
  *
  */
 
-
 #ifndef WOLFSSL_OPENSSL_H_
 #define WOLFSSL_OPENSSL_H_
 
@@ -37,6 +36,7 @@
 #ifndef OPENSSL_EXTRA_SSL_GUARD
 #define OPENSSL_EXTRA_SSL_GUARD
 #include <wolfssl/ssl.h>
+#include <wolfssl/openssl/ssl.h>
 #endif /* OPENSSL_EXTRA_SSL_GUARD */
 
 #include <wolfssl/openssl/tls1.h>

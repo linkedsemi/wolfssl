@@ -106,6 +106,7 @@ noinst_HEADERS+= \
                          wolfssl/wolfcrypt/port/silabs/silabs_hash.h \
                          wolfssl/wolfcrypt/port/silabs/silabs_random.h \
                          wolfssl/wolfcrypt/port/st/stm32.h \
+                         wolfssl/wolfcrypt/port/st/ls-hash.h\
                          wolfssl/wolfcrypt/port/st/stsafe.h \
                          wolfssl/wolfcrypt/port/Espressif/esp32-crypt.h \
                          wolfssl/wolfcrypt/port/Espressif/esp-sdk-lib.h \

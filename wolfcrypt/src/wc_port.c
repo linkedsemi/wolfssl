@@ -29,6 +29,10 @@
 #include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/logging.h>
 #include <wolfssl/wolfcrypt/wc_port.h>
+#ifdef LS_HASH
+    #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
+#endif
+
 #ifdef HAVE_ECC
     #include <wolfssl/wolfcrypt/ecc.h>
 #endif
@@ -144,6 +148,10 @@ int wolfCrypt_Init(void)
     int ret = 0;
     if (initRefCount == 0) {
         WOLFSSL_ENTER("wolfCrypt_Init");
+    
+    #ifdef LS_HASH
+        wc_LS_Hash_Init();
+    #endif
 
     #ifdef WOLFSSL_CHECK_MEM_ZERO
         /* Initialize the mutex for access to the list of memory locations that

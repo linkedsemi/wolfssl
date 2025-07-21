@@ -230,7 +230,7 @@ on the specific device platform.
       !defined(WOLFSSL_RENESAS_RSIP)) \
       || defined(NO_WOLFSSL_RENESAS_FSPSM_HASH)) && \
     (!defined(WOLFSSL_HAVE_PSA) || defined(WOLFSSL_PSA_NO_HASH)) && \
-    !defined(WOLFSSL_RENESAS_RX64_HASH)
+    !defined(WOLFSSL_RENESAS_RX64_HASH) && !defined(LS_HASH)
 
 #if defined(WOLFSSL_X86_64_BUILD) && defined(USE_INTEL_SPEEDUP) && \
     (defined(HAVE_INTEL_AVX1) || defined(HAVE_INTEL_AVX2))
@@ -1072,6 +1072,51 @@ static int InitSha256(wc_Sha256* sha256)
 #elif defined(WOLFSSL_RENESAS_RX64_HASH)
 
     /* implemented in wolfcrypt/src/port/Renesas/renesas_rx64_hw_sha.c */
+#elif defined(LS_HASH)
+int wc_InitSha256_ex(wc_Sha256* sha256, void* heap, int devId)
+    {
+        if (sha256 == NULL)
+            return BAD_FUNC_ARG;
+        (void)devId;
+        (void)heap; 
+
+        XMEMSET(sha256, 0, sizeof(wc_Sha256));
+        wc_LSSHA_SHA256_Init(&sha256->lsCtx);
+        return 0;
+    }
+
+    int wc_Sha256Update(wc_Sha256* sha256, const byte* data, word32 len)
+    {
+        int ret = 0;
+
+        if (sha256 == NULL || (data == NULL && len > 0)) {
+            return BAD_FUNC_ARG;
+        }
+
+        ret = wolfSSL_CryptHwMutexLock();
+        if (ret == 0) {
+            ret = wc_LS_Hash_Update(&sha256->lsCtx, data, len);
+            wolfSSL_CryptHwMutexUnLock();
+        }
+        return ret;
+    }
+
+    int wc_Sha256Final(wc_Sha256* sha256, byte* hash)
+    {
+        int ret = 0;
+
+        if (sha256 == NULL || hash == NULL) {
+            return BAD_FUNC_ARG;
+        }
+
+        ret = wolfSSL_CryptHwMutexLock();
+        if (ret == 0) {
+            ret = wc_LS_Hash_Final(&sha256->lsCtx, hash);
+            wolfSSL_CryptHwMutexUnLock();
+        }
+
+        return ret;
+    }
 
 #else
     #define NEED_SOFT_SHA256
@@ -1954,6 +1999,51 @@ static int InitSha256(wc_Sha256* sha256)
 
     /* implemented in wolfcrypt/src/port/Renesas/renesas_fspsm_sha.c */
 
+#elif defined(LS_HASH)
+    int wc_InitSha224_ex(wc_Sha224* sha224, void* heap, int devId)
+    {
+        if (sha224 == NULL)
+            return BAD_FUNC_ARG;
+        (void)devId;
+        (void)heap;
+
+        XMEMSET(sha224, 0, sizeof(wc_Sha224));
+        wc_LSSHA_SHA224_Init(&sha224->lsCtx);
+        return 0;
+    }
+
+    int wc_Sha224Update(wc_Sha224* sha224, const byte* data, word32 len)
+    {
+        int ret = 0;
+
+        if (sha224 == NULL || (data == NULL && len > 0)) {
+            return BAD_FUNC_ARG;
+        }
+
+        ret = wolfSSL_CryptHwMutexLock();
+        if (ret == 0) {
+            ret = wc_LS_Hash_Update(&sha224->lsCtx, data, len);
+            wolfSSL_CryptHwMutexUnLock();
+        }
+        return ret;
+    }
+
+    int wc_Sha224Final(wc_Sha224* sha224, byte* hash)
+    {
+        int ret = 0;
+
+        if (sha224 == NULL || hash == NULL) {
+            return BAD_FUNC_ARG;
+        }
+
+        ret = wolfSSL_CryptHwMutexLock();
+        if (ret == 0) {
+            ret = wc_LS_Hash_Final(&sha224->lsCtx, hash);
+            wolfSSL_CryptHwMutexUnLock();
+        }
+
+        return ret;
+    }
 #else
 
     #define NEED_SOFT_SHA224

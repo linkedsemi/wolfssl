@@ -2066,6 +2066,9 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #if defined(HAVE_ECC)
+#ifdef LS_ECC
+
+#else
     PRIVATE_KEY_UNLOCK();
     if ( (ret = ecc_test()) != 0)
         TEST_FAIL("ECC      test failed!\n", ret);
@@ -2089,6 +2092,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         else
             TEST_PASS("ECC buffer test passed!\n");
     #endif
+#endif /* LS_ECC */
 #endif
 
 #if !defined(NO_ASN_TIME) && !defined(NO_RSA) && defined(WOLFSSL_TEST_CERT) && \
@@ -3545,6 +3549,65 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t blake2s_test(void)
 
 
 #ifdef WOLFSSL_SHA224
+#ifdef LS_HASH
+WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha224_test(void)
+{
+    wc_Sha224 sha[3];
+    byte      hash[WC_SHA224_DIGEST_SIZE];
+    wc_test_ret_t ret = 0;
+
+    testVector a, b, c;
+    testVector test_sha[3];
+    int times = sizeof(test_sha) / sizeof(struct testVector), i, j;
+    WOLFSSL_ENTER("sha224_test");
+
+    a.input  = "";
+    a.output = "\xd1\x4a\x02\x8c\x2a\x3a\x2b\xc9\x47\x61\x02\xbb\x28\x82\x34"
+               "\xc4\x15\xa2\xb0\x1f\x82\x8e\xa6\x2a\xc5\xb3\xe4\x2f";
+    a.inLen  = XSTRLEN(a.input);
+    a.outLen = WC_SHA224_DIGEST_SIZE;
+
+    b.input  = "abc";
+    b.output = "\x23\x09\x7d\x22\x34\x05\xd8\x22\x86\x42\xa4\x77\xbd\xa2\x55"
+               "\xb3\x2a\xad\xbc\xe4\xbd\xa0\xb3\xf7\xe3\x6c\x9d\xa7";
+    b.inLen  = XSTRLEN(b.input);
+    b.outLen = WC_SHA224_DIGEST_SIZE;
+
+    c.input  = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
+    c.output = "\x75\x38\x8b\x16\x51\x27\x76\xcc\x5d\xba\x5d\xa1\xfd\x89\x01"
+               "\x50\xb0\xc6\x45\x5c\xb4\xf5\x8b\x19\x52\x52\x25\x25";
+    c.inLen  = XSTRLEN(c.input);
+    c.outLen = WC_SHA224_DIGEST_SIZE;
+
+    test_sha[0] = a;
+    test_sha[1] = b;
+    test_sha[2] = c;
+
+    for (i = 0; i < times; ++i) {
+        ret = wc_InitSha224_ex(&sha[i], HEAP_HINT, devId);
+        if (ret != 0)
+            return WC_TEST_RET_ENC_EC(ret);
+        ret = wc_Sha224Update(&sha[i], (byte*)test_sha[i].input,
+            (word32)test_sha[i].inLen);
+        if (ret != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+        ret = wc_Sha224Final(&sha[i], hash);
+        if (ret != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+
+        if (XMEMCMP(hash, test_sha[i].output, WC_SHA224_DIGEST_SIZE) != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+        
+    }
+
+exit:
+    for(j = 0; j < i; ++j)
+    {
+        wc_Sha224Free(&sha[j]);
+    }
+    return ret;
+}
+#else
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha224_test(void)
 {
     wc_Sha224 sha, shaCopy;
@@ -3616,10 +3679,91 @@ exit:
 
     return ret;
 }
+#endif /* LS_HASH */
 #endif
 
 
 #ifndef NO_SHA256
+#ifdef LS_HASH
+WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha256_test(void)
+{
+    wc_Sha256 sha[4];
+    byte      hash[WC_SHA256_DIGEST_SIZE];
+    wc_test_ret_t ret = 0;
+
+    testVector a, b, c, d;
+    testVector test_sha[4];
+
+#ifndef NO_LARGE_HASH_TEST
+#define LARGE_HASH_TEST_INPUT_SZ 1024
+#endif
+
+    int times = sizeof(test_sha) / sizeof(struct testVector), i, j;
+    WOLFSSL_ENTER("sha256_test");
+
+    a.input  = "";
+    a.output = "\xe3\xb0\xc4\x42\x98\xfc\x1c\x14\x9a\xfb\xf4\xc8\x99\x6f\xb9"
+               "\x24\x27\xae\x41\xe4\x64\x9b\x93\x4c\xa4\x95\x99\x1b\x78\x52"
+               "\xb8\x55";
+    a.inLen  = XSTRLEN(a.input);
+    a.outLen = WC_SHA256_DIGEST_SIZE;
+
+    b.input  = "abc";
+    b.output = "\xBA\x78\x16\xBF\x8F\x01\xCF\xEA\x41\x41\x40\xDE\x5D\xAE\x22"
+               "\x23\xB0\x03\x61\xA3\x96\x17\x7A\x9C\xB4\x10\xFF\x61\xF2\x00"
+               "\x15\xAD";
+    b.inLen  = XSTRLEN(b.input);
+    b.outLen = WC_SHA256_DIGEST_SIZE;
+
+    c.input  = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
+    c.output = "\x24\x8D\x6A\x61\xD2\x06\x38\xB8\xE5\xC0\x26\x93\x0C\x3E\x60"
+               "\x39\xA3\x3C\xE4\x59\x64\xFF\x21\x67\xF6\xEC\xED\xD4\x19\xDB"
+               "\x06\xC1";
+    c.inLen  = XSTRLEN(c.input);
+    c.outLen = WC_SHA256_DIGEST_SIZE;
+
+    d.input  = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+               "aaaaaa"; /* this is BLOCKSIZE length */
+    d.output = "\xFF\xE0\x54\xFE\x7A\xE0\xCB\x6D\xC6\x5C\x3A\xF9\xB6\x1D\x52"
+               "\x09\xF4\x39\x85\x1D\xB4\x3D\x0B\xA5\x99\x73\x37\xDF\x15\x46"
+               "\x68\xEB";
+    d.inLen  = XSTRLEN(d.input);
+    d.outLen = WC_SHA256_DIGEST_SIZE;
+
+    test_sha[0] = a;
+    test_sha[1] = b;
+    test_sha[2] = c;
+    test_sha[3] = d;
+
+    for (i = 0; i < times; ++i) {
+        
+        ret = wc_InitSha256_ex(&sha[i], HEAP_HINT, devId);
+        if (ret != 0)
+            return WC_TEST_RET_ENC_EC(ret);
+
+        ret = wc_Sha256Update(&sha[i], (byte*)test_sha[i].input,
+            (word32)test_sha[i].inLen);
+        if (ret != 0) {
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+        }
+
+        ret = wc_Sha256Final(&sha[i], hash);
+        if (ret != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+
+        if (XMEMCMP(hash, test_sha[i].output, WC_SHA256_DIGEST_SIZE) != 0) {
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+        }
+    }
+
+exit:
+    for(j = 0; j < i; ++j)
+    {
+        wc_Sha256Free(&sha[j]);
+    }
+    return ret;
+}
+#else
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha256_test(void)
 {
     wc_Sha256 sha, shaCopy;
@@ -3862,6 +4006,7 @@ exit:
 #endif
     return ret;
 }
+#endif /* LS_HASH */
 #endif
 
 

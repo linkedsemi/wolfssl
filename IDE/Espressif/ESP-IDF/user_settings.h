@@ -1,12 +1,12 @@
 /* user_settings.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -331,7 +331,7 @@
     #define NO_WOLFSSL_ESP32_CRYPT_RSA_PRI
     /***** END CONFIG_IDF_TARGET_ESP266 *****/
 #else
-    /* Anything else encountered, disable HW accleration */
+    /* Anything else encountered, disable HW acceleration */
     #define NO_ESP32_CRYPT
     #define NO_WOLFSSL_ESP32_CRYPT_HASH
     #define NO_WOLFSSL_ESP32_CRYPT_AES
@@ -359,7 +359,7 @@
 
 /* #define HASH_SIZE_LIMIT */ /* for test.c */
 
-/* #define NO_HW_MATH_TEST */ /* Optionall turn off HW math checks */
+/* #define NO_HW_MATH_TEST */ /* Optionally turn off HW math checks */
 
 /* Optionally include alternate HW test library: alt_hw_test.h */
 /* When enabling, the ./components/wolfssl/CMakeLists.txt file

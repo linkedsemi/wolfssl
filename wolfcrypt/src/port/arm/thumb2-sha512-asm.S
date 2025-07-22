@@ -1,12 +1,12 @@
 /* thumb2-sha512-asm
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -21,20 +21,18 @@
 
 /* Generated using (from wolfssl):
  *   cd ../scripts
- *   ruby ./sha2/sha512.rb thumb2 ../wolfssl/wolfcrypt/src/port/arm/thumb2-sha512-asm.S
+ *   ruby ./sha2/sha512.rb \
+ *       thumb2 ../wolfssl/wolfcrypt/src/port/arm/thumb2-sha512-asm.S
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif /* HAVE_CONFIG_H */
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources_asm.h>
 
 #ifdef WOLFSSL_ARMASM
-#if !defined(__aarch64__) && defined(__thumb__)
+#ifdef WOLFSSL_ARMASM_THUMB2
 #ifndef WOLFSSL_ARMASM_INLINE
 	.thumb
 	.syntax unified
-#ifdef WOLFSSL_SHA512
+#if defined(WOLFSSL_SHA512) || defined(WOLFSSL_SHA384)
 #ifdef WOLFSSL_ARMASM_NO_NEON
 	.text
 	.type	L_SHA512_transform_len_k, %object
@@ -2319,7 +2317,7 @@ L_SHA512_transform_len_start:
 	STRD	r4, r5, [sp, #120]
 	ADD	r3, r3, #0x80
 	SUBS	r12, r12, #0x1
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__ICCARM__) || defined(__IAR_SYSTEMS_ICC__)
 	BNE	L_SHA512_transform_len_start
 #else
 	BNE.W	L_SHA512_transform_len_start
@@ -3656,7 +3654,7 @@ L_SHA512_transform_len_start:
 	SUBS	r2, r2, #0x80
 	SUB	r3, r3, #0x200
 	ADD	r1, r1, #0x80
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__ICCARM__) || defined(__IAR_SYSTEMS_ICC__)
 	BNE	L_SHA512_transform_len_begin
 #else
 	BNE.W	L_SHA512_transform_len_begin
@@ -3667,8 +3665,8 @@ L_SHA512_transform_len_start:
 	/* Cycle Count = 5021 */
 	.size	Transform_Sha512_Len,.-Transform_Sha512_Len
 #endif /* WOLFSSL_ARMASM_NO_NEON */
-#endif /* WOLFSSL_SHA512 */
-#endif /* !__aarch64__ && __thumb__ */
+#endif /* WOLFSSL_SHA512 || WOLFSSL_SHA384 */
+#endif /* WOLFSSL_ARMASM_THUMB2 */
 #endif /* WOLFSSL_ARMASM */
 
 #if defined(__linux__) && defined(__ELF__)

@@ -1,12 +1,12 @@
 /* wolfssl_example.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -284,7 +284,7 @@ typedef struct {
 typedef struct {
     int ret;
 
-    osThreadId threadId;
+    osThreadId_t threadId;
 #ifdef CMSIS_OS2_H_
     osSemaphoreId_t mutex;
 #else
@@ -1700,9 +1700,7 @@ done:
     }
 
 #ifdef WOLFSSL_SMALL_STACK
-    if (tbuf != NULL) {
-        XFREE(tbuf, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    }
+    XFREE(tbuf, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #endif
 
     return ret;
@@ -1752,10 +1750,16 @@ static int tls13_uart_client(void)
 
     wolfSSL_SetIOReadCtx(ssl, tbuf);
 
-#ifdef HAVE_PQC
+#ifdef WOLFSSL_HAVE_MLKEM
+#ifndef WOLFSSL_NO_ML_KEM
+    if (wolfSSL_UseKeyShare(ssl, WOLFSSL_ML_KEM_512) != WOLFSSL_SUCCESS) {
+        printf("wolfSSL_UseKeyShare Error!!");
+    }
+#else
     if (wolfSSL_UseKeyShare(ssl, WOLFSSL_KYBER_LEVEL1) != WOLFSSL_SUCCESS) {
         printf("wolfSSL_UseKeyShare Error!!");
     }
+#endif
 #endif
 
     do {
@@ -1795,9 +1799,7 @@ done:
         wolfSSL_CTX_free(ctx);
     }
 #ifdef WOLFSSL_SMALL_STACK
-    if (tbuf != NULL) {
-        XFREE(tbuf, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    }
+    XFREE(tbuf, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #endif
 
     return ret;

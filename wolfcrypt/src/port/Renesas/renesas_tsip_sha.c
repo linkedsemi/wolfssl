@@ -1,12 +1,12 @@
 /* renesas_tsip_sha.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -18,23 +18,25 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
-#include <string.h>
-#include <stdio.h>
 
 #ifdef HAVE_CONFIG_H
     #include <config.h>
 #endif
 #include <wolfssl/wolfcrypt/settings.h>
+
+#if !defined(NO_SHA) || !defined(NO_SHA256)
+#include <string.h>
+#include <stdio.h>
+
 #include <wolfssl/internal.h>
+#include <wolfssl/wolfcrypt/logging.h>
+
 #ifdef NO_INLINE
     #include <wolfssl/wolfcrypt/misc.h>
 #else
     #define WOLFSSL_MISC_INCLUDED
     #include <wolfcrypt/src/misc.c>
 #endif
-#if !defined(NO_SHA) || !defined(NO_SHA256)
-
-#include <wolfssl/wolfcrypt/logging.h>
 
 #if (defined(WOLFSSL_RENESAS_TSIP_TLS) || \
      defined(WOLFSSL_RENESAS_TSIP_CRYPTONLY))
@@ -287,10 +289,8 @@ static void TSIPHashFree(wolfssl_TSIP_Hash* hash)
     if (hash == NULL)
         return;
 
-    if (hash->msg != NULL) {
-        XFREE(hash->msg, hash->heap, DYNAMIC_TYPE_TMP_BUFFER);
-        hash->msg = NULL;
-    }
+    XFREE(hash->msg, hash->heap, DYNAMIC_TYPE_TMP_BUFFER);
+    hash->msg = NULL;
 }
 
 static int TSIPHashInit(wolfssl_TSIP_Hash* hash, void* heap, int devId,

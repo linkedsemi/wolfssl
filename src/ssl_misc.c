@@ -1,12 +1,12 @@
 /* ssl_misc.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,13 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
-#include <wolfssl/wolfcrypt/types.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #if !defined(WOLFSSL_SSL_MISC_INCLUDED)
     #ifndef WOLFSSL_IGNORE_FILE_WARN
@@ -36,7 +30,6 @@
 #if defined(OPENSSL_EXTRA) && !defined(WOLFCRYPT_ONLY)
 #ifndef NO_BIO
 
-#ifdef WOLFSSL_NO_FSEEK
 /* Amount of memory to allocate/add. */
 #define READ_BIO_FILE_CHUNK     128
 
@@ -115,7 +108,6 @@ static int wolfssl_read_bio_file(WOLFSSL_BIO* bio, char** data)
     *data = mem;
     return ret;
 }
-#endif
 
 /* Read exactly the required amount into a newly allocated buffer.
  *
@@ -165,19 +157,19 @@ static int wolfssl_read_bio(WOLFSSL_BIO* bio, char** data, int* dataSz,
     if (bio->type == WOLFSSL_BIO_MEMORY) {
         ret = wolfSSL_BIO_get_mem_data(bio, data);
         if (ret > 0) {
-            bio->rdIdx += ret;
+            /* Advance the write index in the memory bio */
+            WOLFSSL_BIO* mem_bio = bio;
+            for (; mem_bio != NULL; mem_bio = mem_bio->next) {
+                if (mem_bio->type == WOLFSSL_BIO_MEMORY)
+                    break;
+            }
+            if (mem_bio == NULL)
+                mem_bio = bio; /* Default to input */
+            mem_bio->rdIdx += ret;
         }
         *memAlloced = 0;
     }
-#ifndef WOLFSSL_NO_FSEEK
     /* Get pending or, when a file BIO, get length of file. */
-    else if ((sz = wolfSSL_BIO_get_len(bio)) > 0) {
-        ret = wolfssl_read_bio_len(bio, sz, data);
-        if (ret > 0) {
-            *memAlloced = 1;
-        }
-    }
-#else
     else if ((sz = wolfSSL_BIO_pending(bio)) > 0) {
         ret = wolfssl_read_bio_len(bio, sz, data);
         if (ret > 0) {
@@ -190,7 +182,6 @@ static int wolfssl_read_bio(WOLFSSL_BIO* bio, char** data, int* dataSz,
             *memAlloced = 1;
         }
     }
-#endif
     else {
         WOLFSSL_ERROR_MSG("No data read from bio");
         *memAlloced = 0;

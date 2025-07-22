@@ -1,12 +1,12 @@
 /* poly1305.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -29,16 +29,17 @@ and Daniel J. Bernstein
 */
 
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
+/*
+ * WOLFSSL_W64_WRAPPER Uses wrappers around word64 types for a system that does
+ *                     not have word64 available. As expected it reduces
+ *                     performance. Benchmarks collected July 2024 show
+ *                     303.004 MiB/s with and 1874.194 MiB/s without.
+ */
 
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #ifdef HAVE_POLY1305
 #include <wolfssl/wolfcrypt/poly1305.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
-#include <wolfssl/wolfcrypt/logging.h>
 #include <wolfssl/wolfcrypt/cpuid.h>
 #ifdef NO_INLINE
     #include <wolfssl/wolfcrypt/misc.h>
@@ -199,7 +200,7 @@ extern void poly1305_final_avx2(Poly1305* ctx, byte* mac);
 #endif
 
 #elif defined(POLY130564)
-#ifndef WOLFSSL_ARMASM
+#if !defined(WOLFSSL_ARMASM) && !defined(WOLFSSL_RISCV_ASM)
     static word64 U8TO64(const byte* p)
     {
         return
@@ -223,8 +224,9 @@ extern void poly1305_final_avx2(Poly1305* ctx, byte* mac);
         p[6] = (byte)(v >> 48);
         p[7] = (byte)(v >> 56);
     }
-#endif/* WOLFSSL_ARMASM */
-#else /* if not 64 bit then use 32 bit */
+#endif/* !WOLFSSL_ARMASM && !WOLFSSL_RISCV_ASM */
+/* if not 64 bit then use 32 bit */
+#elif !defined(WOLFSSL_ARMASM)
 
     static word32 U8TO32(const byte *p)
     {
@@ -261,7 +263,7 @@ static WC_INLINE void u32tole64(const word32 inLe32, byte outLe64[8])
 }
 
 
-#if !defined(WOLFSSL_ARMASM) || !defined(__aarch64__)
+#if !defined(WOLFSSL_ARMASM) && !defined(WOLFSSL_RISCV_ASM)
 /*
 This local function operates on a message with a given number of bytes
 with a given ctx pointer to a Poly1305 structure.
@@ -332,8 +334,22 @@ static int poly1305_blocks(Poly1305* ctx, const unsigned char *m,
     word32 r0,r1,r2,r3,r4;
     word32 s1,s2,s3,s4;
     word32 h0,h1,h2,h3,h4;
-    word64 d0,d1,d2,d3,d4;
     word32 c;
+#ifdef WOLFSSL_W64_WRAPPER
+    #ifdef WOLFSSL_SMALL_STACK
+    w64wrapper* d;
+
+    d = (w64wrapper*)XMALLOC(5 * sizeof(w64wrapper), NULL,
+        DYNAMIC_TYPE_TMP_BUFFER);
+    if (d == NULL) {
+        return MEMORY_E;
+    }
+    #else
+    w64wrapper d[5];
+    #endif
+#else
+    word64 d0,d1,d2,d3,d4;
+#endif
 
 
     r0 = ctx->r[0];
@@ -362,6 +378,41 @@ static int poly1305_blocks(Poly1305* ctx, const unsigned char *m,
         h4 += (U8TO32(m+12) >> 8) | hibit;
 
         /* h *= r */
+#ifdef WOLFSSL_W64_WRAPPER
+        {
+            w64wrapper tmp;
+
+            d[0] = w64Mul(h0, r0); tmp = w64Mul(h1, s4);
+            d[0] = w64Add(d[0], tmp, NULL); tmp = w64Mul(h2, s3);
+            d[0] = w64Add(d[0], tmp, NULL); tmp = w64Mul(h3, s2);
+            d[0] = w64Add(d[0], tmp, NULL); tmp = w64Mul(h4, s1);
+            d[0] = w64Add(d[0], tmp, NULL);
+
+            d[1] = w64Mul(h0, r1); tmp = w64Mul(h1, r0);
+            d[1] = w64Add(d[1], tmp, NULL); tmp = w64Mul(h2, s4);
+            d[1] = w64Add(d[1], tmp, NULL); tmp = w64Mul(h3, s3);
+            d[1] = w64Add(d[1], tmp, NULL); tmp = w64Mul(h4, s2);
+            d[1] = w64Add(d[1], tmp, NULL);
+
+            d[2] = w64Mul(h0, r2); tmp = w64Mul(h1, r1);
+            d[2] = w64Add(d[2], tmp, NULL); tmp = w64Mul(h2, r0);
+            d[2] = w64Add(d[2], tmp, NULL); tmp = w64Mul(h3, s4);
+            d[2] = w64Add(d[2], tmp, NULL); tmp = w64Mul(h4, s3);
+            d[2] = w64Add(d[2], tmp, NULL);
+
+            d[3] = w64Mul(h0, r3); tmp = w64Mul(h1, r2);
+            d[3] = w64Add(d[3], tmp, NULL); tmp = w64Mul(h2, r1);
+            d[3] = w64Add(d[3], tmp, NULL); tmp = w64Mul(h3, r0);
+            d[3] = w64Add(d[3], tmp, NULL); tmp = w64Mul(h4, s4);
+            d[3] = w64Add(d[3], tmp, NULL);
+
+            d[4] = w64Mul(h0, r4); tmp = w64Mul(h1, r3);
+            d[4] = w64Add(d[4], tmp, NULL); tmp = w64Mul(h2, r2);
+            d[4] = w64Add(d[4], tmp, NULL); tmp = w64Mul(h3, r1);
+            d[4] = w64Add(d[4], tmp, NULL); tmp = w64Mul(h4, r0);
+            d[4] = w64Add(d[4], tmp, NULL);
+        }
+#else
         d0 = ((word64)h0 * r0) + ((word64)h1 * s4) + ((word64)h2 * s3) +
              ((word64)h3 * s2) + ((word64)h4 * s1);
         d1 = ((word64)h0 * r1) + ((word64)h1 * r0) + ((word64)h2 * s4) +
@@ -372,13 +423,31 @@ static int poly1305_blocks(Poly1305* ctx, const unsigned char *m,
              ((word64)h3 * r0) + ((word64)h4 * s4);
         d4 = ((word64)h0 * r4) + ((word64)h1 * r3) + ((word64)h2 * r2) +
              ((word64)h3 * r1) + ((word64)h4 * r0);
+#endif
 
         /* (partial) h %= p */
+#ifdef WOLFSSL_W64_WRAPPER
+        c = w64GetLow32(w64ShiftRight(d[0], 26));
+        h0 = w64GetLow32(d[0]) & 0x3ffffff;
+        d[1] = w64Add32(d[1], c, NULL);
+        c = w64GetLow32(w64ShiftRight(d[1], 26));
+        h1 = w64GetLow32(d[1]) & 0x3ffffff;
+        d[2] = w64Add32(d[2], c, NULL);
+        c = w64GetLow32(w64ShiftRight(d[2], 26));
+        h2 = w64GetLow32(d[2]) & 0x3ffffff;
+        d[3] = w64Add32(d[3], c, NULL);
+        c = w64GetLow32(w64ShiftRight(d[3], 26));
+        h3 = w64GetLow32(d[3]) & 0x3ffffff;
+        d[4] = w64Add32(d[4], c, NULL);
+        c = w64GetLow32(w64ShiftRight(d[4], 26));
+        h4 = w64GetLow32(d[4]) & 0x3ffffff;
+#else
                       c = (word32)(d0 >> 26); h0 = (word32)d0 & 0x3ffffff;
         d1 += c;      c = (word32)(d1 >> 26); h1 = (word32)d1 & 0x3ffffff;
         d2 += c;      c = (word32)(d2 >> 26); h2 = (word32)d2 & 0x3ffffff;
         d3 += c;      c = (word32)(d3 >> 26); h3 = (word32)d3 & 0x3ffffff;
         d4 += c;      c = (word32)(d4 >> 26); h4 = (word32)d4 & 0x3ffffff;
+#endif
         h0 += c * 5;  c =  (h0 >> 26); h0 =                h0 & 0x3ffffff;
         h1 += c;
 
@@ -391,6 +460,10 @@ static int poly1305_blocks(Poly1305* ctx, const unsigned char *m,
     ctx->h[2] = h2;
     ctx->h[3] = h3;
     ctx->h[4] = h4;
+
+#if defined(WOLFSSL_W64_WRAPPER) && defined(WOLFSSL_SMALL_STACK)
+    XFREE(d, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+#endif
 
     return 0;
 
@@ -413,9 +486,7 @@ static int poly1305_block(Poly1305* ctx, const unsigned char *m)
     return poly1305_blocks(ctx, m, POLY1305_BLOCK_SIZE);
 #endif
 }
-#endif /* !defined(WOLFSSL_ARMASM) || !defined(__aarch64__) */
 
-#if !defined(WOLFSSL_ARMASM) || !defined(__aarch64__)
 int wc_Poly1305SetKey(Poly1305* ctx, const byte* key, word32 keySz)
 {
 #if defined(POLY130564) && !defined(USE_INTEL_POLY1305_SPEEDUP)
@@ -452,6 +523,7 @@ int wc_Poly1305SetKey(Poly1305* ctx, const byte* key, word32 keySz)
     #endif
         poly1305_setkey_avx(ctx, key);
     RESTORE_VECTOR_REGISTERS();
+    ctx->started = 0;
 #elif defined(POLY130564)
 
     /* r &= 0xffffffc0ffffffc0ffffffc0fffffff */
@@ -517,7 +589,11 @@ int wc_Poly1305Final(Poly1305* ctx, byte* mac)
 
     word32 h0,h1,h2,h3,h4,c;
     word32 g0,g1,g2,g3,g4;
+#ifdef WOLFSSL_W64_WRAPPER
+    w64wrapper f;
+#else
     word64 f;
+#endif
     word32 mask;
 
 #endif
@@ -656,10 +732,31 @@ int wc_Poly1305Final(Poly1305* ctx, byte* mac)
     h3 = ((h3 >> 18) | (h4 <<  8)) & 0xffffffff;
 
     /* mac = (h + pad) % (2^128) */
+#ifdef WOLFSSL_W64_WRAPPER
+    f = w64From32(0, h0);
+    f = w64Add32(f, ctx->pad[0], NULL);
+    h0 = w64GetLow32(f);
+
+    f = w64ShiftRight(f, 32);
+    f = w64Add32(f, h1, NULL);
+    f = w64Add32(f, ctx->pad[1], NULL);
+    h1 = w64GetLow32(f);
+
+    f = w64ShiftRight(f, 32);
+    f = w64Add32(f, h2, NULL);
+    f = w64Add32(f, ctx->pad[2], NULL);
+    h2 = w64GetLow32(f);
+
+    f = w64ShiftRight(f, 32);
+    f = w64Add32(f, h3, NULL);
+    f = w64Add32(f, ctx->pad[3], NULL);
+    h3 = w64GetLow32(f);
+#else
     f = (word64)h0 + ctx->pad[0]            ; h0 = (word32)f;
     f = (word64)h1 + ctx->pad[1] + (f >> 32); h1 = (word32)f;
     f = (word64)h2 + ctx->pad[2] + (f >> 32); h2 = (word32)f;
     f = (word64)h3 + ctx->pad[3] + (f >> 32); h3 = (word32)f;
+#endif
 
     U32TO8(mac + 0, h0);
     U32TO8(mac + 4, h1);
@@ -686,7 +783,7 @@ int wc_Poly1305Final(Poly1305* ctx, byte* mac)
 
     return 0;
 }
-#endif /* !defined(WOLFSSL_ARMASM) || !defined(__aarch64__) */
+#endif /* !WOLFSSL_ARMASM && !WOLFSSL_RISCV_ASM */
 
 
 int wc_Poly1305Update(Poly1305* ctx, const byte* m, word32 bytes)
@@ -711,13 +808,49 @@ int wc_Poly1305Update(Poly1305* ctx, const byte* m, word32 bytes)
     printf("\n");
 #endif
 
+#if defined(WOLFSSL_ARMASM) && !defined(WOLFSSL_ARMASM_THUMB2) && \
+    !defined(WOLFSSL_ARMASM_NO_NEON)
+    /* handle leftover */
+    if (ctx->leftover) {
+        size_t want = sizeof(ctx->buffer) - ctx->leftover;
+        if (want > bytes)
+            want = bytes;
+
+        for (i = 0; i < want; i++)
+            ctx->buffer[ctx->leftover + i] = m[i];
+        bytes -= (word32)want;
+        m += want;
+        ctx->leftover += want;
+        if (ctx->leftover < sizeof(ctx->buffer)) {
+            return 0;
+        }
+
+        poly1305_blocks(ctx, ctx->buffer, sizeof(ctx->buffer));
+        ctx->leftover = 0;
+    }
+
+    /* process full blocks */
+    if (bytes >= sizeof(ctx->buffer)) {
+        size_t want = bytes & ~((size_t)POLY1305_BLOCK_SIZE - 1);
+
+        poly1305_blocks(ctx, m, want);
+        m += want;
+        bytes -= (word32)want;
+    }
+
+    /* store leftover */
+    if (bytes) {
+        for (i = 0; i < bytes; i++)
+            ctx->buffer[ctx->leftover + i] = m[i];
+        ctx->leftover += bytes;
+    }
+#else
 #ifdef USE_INTEL_POLY1305_SPEEDUP
     #ifdef HAVE_INTEL_AVX2
     if (IS_INTEL_AVX2(intel_flags)) {
         SAVE_VECTOR_REGISTERS(return _svr_ret;);
 
         /* handle leftover */
-
         if (ctx->leftover) {
             size_t want = sizeof(ctx->buffer) - ctx->leftover;
             if (want > bytes)
@@ -733,8 +866,10 @@ int wc_Poly1305Update(Poly1305* ctx, const byte* m, word32 bytes)
                 return 0;
             }
 
-            if (!ctx->started)
+            if (!ctx->started) {
                 poly1305_calc_powers_avx2(ctx);
+                ctx->started = 1;
+            }
             poly1305_blocks_avx2(ctx, ctx->buffer, sizeof(ctx->buffer));
             ctx->leftover = 0;
         }
@@ -743,8 +878,10 @@ int wc_Poly1305Update(Poly1305* ctx, const byte* m, word32 bytes)
         if (bytes >= sizeof(ctx->buffer)) {
             size_t want = bytes & ~(sizeof(ctx->buffer) - 1);
 
-            if (!ctx->started)
+            if (!ctx->started) {
                 poly1305_calc_powers_avx2(ctx);
+                ctx->started = 1;
+            }
             poly1305_blocks_avx2(ctx, m, want);
             m += want;
             bytes -= (word32)want;
@@ -781,7 +918,7 @@ int wc_Poly1305Update(Poly1305* ctx, const byte* m, word32 bytes)
         /* process full blocks */
         if (bytes >= POLY1305_BLOCK_SIZE) {
             size_t want = ((size_t)bytes & ~((size_t)POLY1305_BLOCK_SIZE - 1));
-#if !defined(WOLFSSL_ARMASM) || !defined(__aarch64__)
+#if !defined(WOLFSSL_ARMASM) && !defined(WOLFSSL_RISCV_ASM)
             int ret;
             ret = poly1305_blocks(ctx, m, want);
             if (ret != 0)
@@ -800,6 +937,7 @@ int wc_Poly1305Update(Poly1305* ctx, const byte* m, word32 bytes)
             ctx->leftover += bytes;
         }
     }
+#endif
 
     return 0;
 }

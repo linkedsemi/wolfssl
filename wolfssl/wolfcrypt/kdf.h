@@ -1,12 +1,12 @@
 /* kdf.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -140,26 +140,26 @@ WOLFSSL_API int wc_SSH_KDF(byte hashId, byte keyId,
 /* Indicators */
 enum {
     WC_SRTCP_32BIT_IDX = 0,
-    WC_SRTCP_48BIT_IDX = 1,
+    WC_SRTCP_48BIT_IDX = 1
 };
 
 /* Maximum length of salt that can be used with SRTP/SRTCP. */
 #define WC_SRTP_MAX_SALT    14
 
 WOLFSSL_API int wc_SRTP_KDF(const byte* key, word32 keySz, const byte* salt,
-    word32 saltSz, int kdrIdx, const byte* index, byte* key1, word32 key1Sz,
+    word32 saltSz, int kdrIdx, const byte* idx, byte* key1, word32 key1Sz,
     byte* key2, word32 key2Sz, byte* key3, word32 key3Sz);
 WOLFSSL_API int wc_SRTCP_KDF(const byte* key, word32 keySz, const byte* salt,
-    word32 saltSz, int kdrIdx, const byte* index, byte* key1, word32 key1Sz,
+    word32 saltSz, int kdrIdx, const byte* idx, byte* key1, word32 key1Sz,
     byte* key2, word32 key2Sz, byte* key3, word32 key3Sz);
 WOLFSSL_API int wc_SRTCP_KDF_ex(const byte* key, word32 keySz, const byte* salt,
-    word32 saltSz, int kdrIdx, const byte* index, byte* key1, word32 key1Sz,
+    word32 saltSz, int kdrIdx, const byte* idx, byte* key1, word32 key1Sz,
     byte* key2, word32 key2Sz, byte* key3, word32 key3Sz, int idxLenIndicator);
 WOLFSSL_API int wc_SRTP_KDF_label(const byte* key, word32 keySz,
-    const byte* salt, word32 saltSz, int kdrIdx, const byte* index, byte label,
+    const byte* salt, word32 saltSz, int kdrIdx, const byte* idx, byte label,
     byte* outKey, word32 outKeySz);
 WOLFSSL_API int wc_SRTCP_KDF_label(const byte* key, word32 keySz,
-    const byte* salt, word32 saltSz, int kdrIdx, const byte* index, byte label,
+    const byte* salt, word32 saltSz, int kdrIdx, const byte* idx, byte label,
     byte* outKey, word32 outKeySz);
 
 WOLFSSL_API int wc_SRTP_KDF_kdr_to_idx(word32 kdr);

@@ -1,12 +1,12 @@
 /* wc_encrypt.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,23 +19,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
 #include <wolfssl/wolfcrypt/aes.h>
 #include <wolfssl/wolfcrypt/des3.h>
 #include <wolfssl/wolfcrypt/hash.h>
 #include <wolfssl/wolfcrypt/rc2.h>
 #include <wolfssl/wolfcrypt/arc4.h>
 #include <wolfssl/wolfcrypt/wc_encrypt.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/asn.h>
 #include <wolfssl/wolfcrypt/coding.h>
 #include <wolfssl/wolfcrypt/pwdbased.h>
-#include <wolfssl/wolfcrypt/logging.h>
 
 #ifdef NO_INLINE
     #include <wolfssl/wolfcrypt/misc.h>
@@ -455,10 +449,12 @@ int wc_CryptKey(const char* password, int passwordSz, byte* salt,
     #if defined(WOLFSSL_AES_256)
         case PBE_AES256_CBC:
             switch(shaOid) {
+            #ifndef NO_SHA256
                 case HMAC_SHA256_OID:
                     typeH = WC_SHA256;
                     derivedLen = 32;
                     break;
+            #endif
             #ifndef NO_SHA
                 default:
                     typeH = WC_SHA;
@@ -471,10 +467,12 @@ int wc_CryptKey(const char* password, int passwordSz, byte* salt,
     #if defined(WOLFSSL_AES_128)
         case PBE_AES128_CBC:
             switch(shaOid) {
+            #ifndef NO_SHA256
                 case HMAC_SHA256_OID:
                     typeH = WC_SHA256;
                     derivedLen = 16;
                     break;
+            #endif
             #ifndef NO_SHA
                 default:
                     typeH = WC_SHA;
@@ -514,8 +512,10 @@ int wc_CryptKey(const char* password, int passwordSz, byte* salt,
         switch (version) {
     #ifndef NO_HMAC
             case PKCS5v2:
+                PRIVATE_KEY_UNLOCK();
                 ret = wc_PBKDF2(key, (byte*)password, passwordSz,
                                 salt, saltSz, iterations, (int)derivedLen, typeH);
+                PRIVATE_KEY_LOCK();
                 break;
     #endif
     #ifndef NO_SHA
@@ -638,10 +638,14 @@ int wc_CryptKey(const char* password, int passwordSz, byte* salt,
                 break;
             }
     #endif
-    #if !defined(NO_AES) && defined(HAVE_AES_CBC)
+    #if !defined(NO_AES) && defined(HAVE_AES_CBC) && \
+        (defined(WOLFSSL_AES_256) || defined(WOLFSSL_AES_128))
         #ifdef WOLFSSL_AES_256
             case PBE_AES256_CBC:
+        #endif /* WOLFSSL_AES_256 */
+        #ifdef WOLFSSL_AES_128
             case PBE_AES128_CBC:
+        #endif /* WOLFSSL_AES_128 */
             {
                 int free_aes;
 
@@ -688,8 +692,7 @@ int wc_CryptKey(const char* password, int passwordSz, byte* salt,
             #endif
                 break;
             }
-        #endif /* WOLFSSL_AES_256 */
-    #endif /* !NO_AES && HAVE_AES_CBC */
+    #endif /* !NO_AES && HAVE_AES_CBC && (WOLFSSL_AES_256 || WOLFSSL_AES_128) */
     #ifdef WC_RC2
             case PBE_SHA1_40RC2_CBC:
             {

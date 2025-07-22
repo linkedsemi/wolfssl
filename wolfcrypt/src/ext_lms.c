@@ -1,12 +1,12 @@
 /* ext_lms.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,15 +19,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
-#include <wolfssl/wolfcrypt/settings.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
-#include <wolfssl/wolfcrypt/logging.h>
+#if defined(WOLFSSL_HAVE_LMS) && defined(HAVE_LIBLMS)
 
-#ifdef WOLFSSL_HAVE_LMS
 #include <wolfssl/wolfcrypt/ext_lms.h>
 
 #ifdef NO_INLINE
@@ -1048,4 +1043,21 @@ int wc_LmsKey_Verify(LmsKey * key, const byte * sig, word32 sigSz,
     return 0;
 }
 
-#endif /* WOLFSSL_HAVE_LMS */
+int wc_LmsKey_GetKid(LmsKey * key, const byte ** kid, word32* kidSz)
+{
+    if ((key == NULL) || (kid == NULL) || (kidSz == NULL)) {
+        return BAD_FUNC_ARG;
+    }
+
+    return NOT_COMPILED_IN;
+}
+
+const byte * wc_LmsKey_GetKidFromPrivRaw(const byte * priv, word32 privSz)
+{
+    if ((priv == NULL) || (privSz < 16)) {
+        return NULL;
+    }
+    return priv - 16;
+}
+
+#endif /* WOLFSSL_HAVE_LMS && HAVE_LIBLMS */

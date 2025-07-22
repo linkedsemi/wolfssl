@@ -1,3 +1,733 @@
+# wolfSSL Release 5.8.2 (July 17, 2025)
+
+Release 5.8.2 has been developed according to wolfSSL's development and QA
+process (see link below) and successfully passed the quality criteria.
+https://www.wolfssl.com/about/wolfssl-software-development-process-quality-assurance
+
+NOTE: * wolfSSL is now GPLv3 instead of GPLv2
+            * --enable-heapmath is deprecated
+            * MD5 is now disabled by default
+
+
+PR stands for Pull Request, and PR <NUMBER> references a GitHub pull request number where the code change was added.
+
+## Vulnerabilities
+
+* [Low] There is the potential for a fault injection attack on ECC and Ed25519 verify operations. In versions of wolfSSL 5.7.6 and later the --enable-faultharden option is available to help mitigate against potential fault injection attacks. The mitigation added in wolfSSL version 5.7.6 is to help harden applications relying on the results of the verify operations, such as when used with wolfBoot. If doing ECC or Ed25519 verify operations on a device at risk for fault injection attacks then --enable-faultharden could be used to help mitigate it. Thanks to Kevin from Fraunhofer AISEC for the report.
+
+Hardening option added in PR https://github.com/wolfSSL/wolfssl/pull/8289
+
+
+* [High CVE-2025-7395] When using WOLFSSL_SYS_CA_CERTS and WOLFSSL_APPLE_NATIVE_CERT_VALIDATION on an Apple platform, the native trust store verification routine overrides errors produced elsewhere in the wolfSSL certificate verification process including failures due to hostname matching/SNI, OCSP, CRL, etc. This allows any trusted cert chain to override other errors detected during chain verification that should have resulted in termination of the TLS connection. If building wolfSSL on versions after 5.7.6 and before 5.8.2 with use of the system CA support and the apple native cert validation feature enabled on Apple devices (on by default for non-macOS Apple targets when using autotools or CMake) we recommend updating to the latest version of wolfSSL. Thanks to Thomas Leong from ExpressVPN for the report.
+
+Fixed in PR https://github.com/wolfSSL/wolfssl/pull/8833
+
+
+* [Med. CVE-2025-7394] In the OpenSSL compatibility layer implementation, the function RAND_poll() was not behaving as expected and leading to the potential for predictable values returned from RAND_bytes() after fork() is called. This can lead to weak or predictable random numbers generated in applications that are both using RAND_bytes() and doing fork() operations. This only affects applications explicitly calling RAND_bytes() after fork() and does not affect any internal TLS operations. Although RAND_bytes() documentation in OpenSSL calls out not being safe for use with fork() without first calling RAND_poll(), an additional code change was also made in wolfSSL to make RAND_bytes() behave similar to OpenSSL after a fork() call without calling RAND_poll(). Now the Hash-DRBG used gets reseeded after detecting running in a new process. If making use of RAND_bytes() and calling fork() we recommend updating to the latest version of wolfSSL. Thanks to Per Allansson from Appgate for the report.
+
+Fixed in the following PR’s
+https://github.com/wolfSSL/wolfssl/pull/8849
+https://github.com/wolfSSL/wolfssl/pull/8867
+https://github.com/wolfSSL/wolfssl/pull/8898
+
+
+
+* [Low CVE-2025-7396] In wolfSSL 5.8.0 the option of hardening the C implementation of Curve25519 private key operations was added with the addition of blinding support (https://www.wolfssl.com/curve25519-blinding-support-added-in-wolfssl-5-8-0/). In wolfSSL release 5.8.2 that blinding support is turned on by default in applicable builds. The blinding configure option is only for the base C implementation of Curve25519. It is not needed, or available with; ARM assembly builds, Intel assembly builds, and the small Curve25519 feature. While the attack would be very difficult to execute in practice, enabling blinding provides an additional layer of protection for devices that may be more susceptible to physical access or side-channel observation. Thanks to Arnaud Varillon, Laurent Sauvage, and Allan Delautre from Telecom Paris for the report.
+
+Blinding enabled by default in PR https://github.com/wolfSSL/wolfssl/pull/8736
+
+
+## New Features
+* Multiple sessions are now supported in the sniffer due to the removal of a cached check. (PR #8723)
+* New API ssl_RemoveSession() has been implemented for sniffer cleanup operations. (PR #8768)
+* The new ASN X509 API, `wc_GetSubjectPubKeyInfoDerFromCert`, has been introduced for retrieving public key information from certificates. (PR #8758)
+* `wc_PKCS12_create()` has been enhanced to support PBE_AES(256|128)_CBC key and certificate encryptions. (PR #8782, PR #8822, PR #8859)
+* `wc_PKCS7_DecodeEncryptedKeyPackage()` has been added for decoding encrypted key packages. (PR #8976)
+* All AES, SHA, and HMAC functionality has been implemented within the Linux Kernel Module. (PR #8998)
+* Additions to the compatibility layer have been introduced for X.509 extensions and RSA PSS. Adding the API i2d_PrivateKey_bio, BN_ucmp and X509v3_get_ext_by_NID. (PR #8897)
+* Added support for STM32N6. (PR #8914)
+* Implemented SHA-256 for PPC 32 assembly. (PR #8894)
+
+## Improvements / Optimizations
+
+### Linux Kernel Module (LinuxKM) Enhancements
+* Registered DH and FFDHE for the Linux Kernel Module. (PR #8707)
+* Implemented fixes for standard RNG in the Linux Kernel Module. (PR #8718)
+* Added an ECDSA workaround for the Linux Kernel Module. (PR #8727)
+* Added more PKCS1 pad SHA variants for RSA in the Linux Kernel Module. (PR #8730)
+* Set default priority to 100000 for LKCAPI in the Linux Kernel Module. (PR #8740)
+* Ensured ECDH never has FIPS enabled in the Linux Kernel Module. (PR #8751)
+* Implemented further Linux Kernel Module and SP tweaks. (PR #8773)
+* Added sig_alg support for Linux 6.13 RSA in the Linux Kernel Module. (PR #8796)
+* Optimized wc_linuxkm_fpu_state_assoc. (PR #8828)
+* Ensured DRBG is multithread-round-1 in the Linux Kernel Module. (PR #8840)
+* Prevented toggling of fips_enabled in the Linux Kernel Module. (PR #8873)
+* Refactored drbg_ctx clear in the Linux Kernel Module. (PR #8876)
+* Set sig_alg max_size and digest_size callbacks for RSA in the Linux Kernel Module. (PR #8915)
+* Added get_random_bytes for the Linux Kernel Module. (PR #8943)
+* Implemented distro fix for the Linux Kernel Module. (PR #8994)
+* Fixed page-flags-h in the Linux Kernel Module. (PR #9001)
+* Added MODULE_LICENSE for the Linux Kernel Module. (PR #9005)
+* Post-Quantum Cryptography (PQC) & Asymmetric Algorithms
+* Kyber has been updated to the MLKEM ARM file for Zephyr (PR #8781)
+* Backward compatibility has been implemented for ML_KEM IDs (PR #8827)
+* ASN.1 is now ensured to be enabled when only building PQ algorithms (PR #8884)
+* Building LMS with verify-only has been fixed (PR #8913)
+* Parameters for LMS SHA-256_192 have been corrected (PR #8912)
+* State can now be saved with the private key for LMS (PR #8836)
+* Support for OpenSSL format has been added for ML-DSA/Dilithium (PR #8947)
+* `dilithium_coeff_eta2[]` has been explicitly declared as signed (PR #8955)
+
+### Build System & Portability
+* Prepared for the inclusion of v5.8.0 in the Ada Alire index. (PR #8714)
+* Introduced a new build option to allow reuse of the Windows crypt provider handle. (PR #8706)
+* Introduced general fixes for various build configurations. (PR #8763)
+* Made improvements for portability using older GCC 4.8.2. (PR #8753)
+* Macro guards updated to allow tests to build with opensslall and no server. (PR #8776)
+* Added a check for STDC_NO_ATOMICS macro before use of atomics. (PR #8885)
+* Introduced CMakePresets.json and CMakeSettings.json. (PR #8905)
+* Added an option to not use constant time code with min/max. (PR #8830)
+* Implemented proper MacOS dispatch for conditional signal/wait. (PR #8928)
+* Disabled MD5 by default for both general and CMake builds. (PR #8895, PR #8948)
+* Improved to allow building OPENSSL_EXTRA without KEEP_PEER_CERT. (PR #8926)
+* Added introspection for Intel and ARM assembly speedups. (PR #8954)
+* Fixed cURL config to set HAVE_EX_DATA and HAVE_ALPN. (PR #8973)
+* Moved FREESCALE forced algorithm HAVE_ECC to IDE/MQX/user_settings.h. (PR #8977)
+
+### Testing & Debugging
+* Fixed the exit status for testwolfcrypt. (PR #8762)
+* Added WOLFSSL_DEBUG_PRINTF and WOLFSSL_DEBUG_CERTIFICATE_LOADS for improved debugging output. (PR #8769, PR #8770)
+* Guarded some benchmark tests with NO_SW_BENCH. (PR #8760)
+* Added an additional unit test for wolfcrypt PKCS12 file to improve code coverage. (PR #8831)
+* Added an additional unit test for increased DH code coverage. (PR #8837)
+* Adjusted for warnings with NO_TLS build and added GitHub actions test. (PR #8851)
+* Added additional compatibility layer RAND tests. (PR #8852)
+* Added an API unit test for checking domain name. (PR #8863)
+* Added bind v9.18.33 testing. (PR #8888)
+* Fixed issue with benchmark help options and descriptions not lining up. (PR #8957)
+
+### Certificates & ASN.1
+* Changed the algorithm for sum in ASN.1 OIDs. (PR #8655)
+* Updated PKCS7 to use X509 STORE for internal verification. (PR #8748)
+* Improved handling of temporary buffer size for X509 extension printing. (PR #8710)
+* Marked IP address as WOLFSSL_V_ASN1_OCTET_STRING for ALT_NAMES_OID. (PR #8842)
+* Fixed printing empty names in certificates. (PR #8880)
+* Allowed CA:FALSE on wolftpm. (PR #8925)
+* Fixed several inconsistent function prototype parameter names in wc/asn. (PR #8949)
+* Accounted for custom extensions when creating a Cert from a WOLFSSL_X509. (PR #8960)
+
+### TLS/DTLS & Handshake
+* Checked group correctness outside of TLS 1.3 too for TLSX_UseSupportedCurve. (PR #8785)
+* Dropped records that span datagrams in DTLS. (PR #8642)
+* Implemented WC_NID_netscape_cert_type. (PR #8800)
+* Refactored GetHandshakeHeader/GetHandShakeHeader into one function. (PR #8787)
+* Correctly set the current peer in dtlsProcessPendingPeer. (PR #8848)
+* Fixed set_groups for TLS. (PR #8824)
+* Allowed trusted_ca_keys with TLSv1.3. (PR #8860)
+* Moved Dtls13NewEpoch into DeriveTls13Keys. (PR #8858)
+* Cleared tls1_3 on downgrade. (PR #8861)
+* Always sent ACKs on detected retransmission for DTLS1.3. (PR #8882)
+* Removed DTLS from echo examples. (PR #8889)
+* Recalculated suites at SSL initialization. (PR #8757)
+* No longer using BIO for ALPN. (PR #8969)
+* Fixed wolfSSL_BIO_new_connect's handling of IPV6 addresses. (PR #8815)
+* Memory Management & Optimizations
+* Performed small stack refactors, improved stack size with mlkem and dilithium, and added additional tests. (PR #8779)
+* Implemented FREE_MP_INT_SIZE in heap math. (PR #8881)
+* Detected correct MAX_ENCODED_SIG_SZ based on max support in math lib. (PR #8931)
+* Fixed improper access of sp_int_minimal using sp_int. (PR #8985)
+
+### Cryptography & Hash Functions
+* Implemented WC_SIPHASH_NO_ASM for not using assembly optimizations with siphash. (PR #8789, PR #8791)
+* Added missing DH_MAX_SIZE define for FIPS and corrected wolfssl.rc FILETYPE to VFT_DLL. (PR #8794)
+* Implemented WC_SHA3_NO_ASM for not using assembly with SHA3. (PR #8817)
+* Improved Aarch64 XFENCE. (PR #8832)
+* Omitted frame pointer for ARM32/Thumb2/RISC-V 64 assembly. (PR #8893)
+* Fixed branch instruction in ARMv7a ASM. (PR #8933)
+* Enabled EVP HMAC to work with WOLFSSL_HMAC_COPY_HASH. (PR #8944)
+* Platform-Specific & Hardware Integration
+* Added HAVE_HKDF for wolfssl_test and explicit support for ESP32P4. (PR #8742)
+* Corrected Espressif default time setting. (PR #8829)
+* Made wc_tsip_* APIs public. (PR #8717)
+* Improved PlatformIO Certificate Bundle Support. (PR #8847)
+* Fixed the TSIP TLS example program. (PR #8857)
+* Added crypto callback functions for TROPIC01 secure element. (PR #8812)
+* Added Renesas RX TSIP AES CTR support. (PR #8854)
+* Fixed TSIP port using crypto callback. (PR #8937)
+
+### General Improvements & Refactoring
+* Attempted wolfssl_read_bio_file in read_bio even when XFSEEK is available. (PR #8703)
+* Refactored GetHandshakeHeader/GetHandShakeHeader into one function. (PR #8787)
+* Updated libspdm from 3.3.0 to 3.7.0. (PR #8906)
+* Fixed missing dashes on the end of header and footer for Falcon PEM key. (PR #8904)
+* Fixed minor code typos for macos signal and types.h max block size. (PR #8934)
+* Make the API wolfSSL_X509_STORE_CTX_get_error accessible to more build configurations for ease of getting the "store" error code and depth with certificate failure callback implementations. (PR #8903)
+
+## Bug Fixes
+* Fixed issues to support _WIN32_WCE (VS 2008 with WinCE 6.0/7.0). (PR #8709)
+* Fixed STM32 Hash with IRQ enabled. (PR #8705)
+* Fixed raw hash when using crypto instructions on RISC-V 64-bit. (PR #8733)
+* Fixed ECDH decode secret in the Linux Kernel Module. (PR #8729)
+* Passed in the correct hash type to wolfSSL_RSA_verify_ex. (PR #8726)
+* Fixed issues for Intel QuickAssist latest driver (4.28). (PR #8728)
+* Speculative fix for CodeSonar overflow issue in ssl_certman.c. (PR #8715)
+* Fixed Arduino progmem print and AVR WOLFSSL_USER_IO. (PR #8668)
+* Correctly advanced the index in wc_HKDF_Expand_ex. (PR #8737)
+* Fixed STM32 hash status check logic, including NO_AES_192 and NO_AES_256. (PR #8732)
+* Added missing call to wolfSSL_RefFree in FreeCRL to prevent memory leaks. (PR #8750)
+* Fixed sanity check on --group with unit test app and null sanity check with des decrypt. (PR #8711)
+* Fixed Curve25519 and static ephemeral issue with blinding. (PR #8766)
+* Fixed edge case issue with STM32 AES GCM auth padding. (PR #8745)
+* Removed redefinition of MlKemKey and fixed build issue in benchmark. (PR #8755)
+* Used proper heap hint when freeing CRL in error case. (PR #8713)
+* Added support for no malloc with wc_CheckCertSigPubKey. (PR #8725)
+* Fixed C# wrapper Release build. (PR #8802)
+* Handled malformed CCS and CCS before CH in TLS1.3. (PR #8788)
+* Fixed ML-DSA with WOLFSSL_DILITHIUM_NO_SIGN. (PR #8798)
+* Fixed AesGcmCrypt_1 no-stream in the Linux Kernel Module. (PR #8814)
+* Fixed return value usage for crypto_sig_sign in the Linux Kernel Module. (PR #8816)
+* Fixed issue with CSharp and Windows CE with conversion of ASCII and Unicode. (PR #8799)
+* Fixed Renesas SCE on RA6M4. (PR #8838)
+* Fixed tests for different configs for ML-DSA. (PR #8865)
+* Fixed bug in ParseCRL_Extensions around the size of a CRL number handled and CRL number OID. (PR #8587)
+* Fixed uninitialized wc_FreeRng in prime_test. (PR #8886)
+* Fixed ECC configuration issues with ECC verify only and no RNG. (PR #8901)
+* Fixed issues with max size, openssl.test netcat, and clang-tidy. (PR #8909)
+* Fixed for casting down and uninit issues in Dilithium/ML-DSA. (PR #8868)
+* Fixed memory allocation failure testing and related unit test cases. (PR #8945, PR #8952)
+* Fixed build issue with ML-DSA 44 only. (PR #8981)
+* Fixed possible memory leak with X509 reference counter when using x509small. (PR #8982)
+
+
+# wolfSSL Release 5.8.0 (Apr 24, 2025)
+
+Release 5.8.0 has been developed according to wolfSSL's development and QA
+process (see link below) and successfully passed the quality criteria.
+https://www.wolfssl.com/about/wolfssl-software-development-process-quality-assurance
+
+NOTE: * --enable-heapmath is deprecated
+
+PR stands for Pull Request, and PR <NUMBER> references a GitHub pull request
+ number where the code change was added.
+
+
+## New Feature Additions
+* Algorithm registration in the Linux kernel module for all supported FIPS AES,
+ SHA, HMAC, ECDSA, ECDH, and RSA modes, key sizes, and digest sizes.
+* Implemented various fixes to support building for Open Watcom including OS/2
+ support and Open Watcom 1.9 compatibility (PR 8505, 8484)
+* Added support for STM32H7S (tested on NUCLEO-H7S3L8) (PR 8488)
+* Added support for STM32WBA (PR 8550)
+* Added Extended Master Secret Generation Callback to the --enable-pkcallbacks
+ build (PR 8303)
+* Implement AES-CTS (configure flag --enable-aescts) in wolfCrypt (PR 8594)
+* Added support for libimobiledevice commit 860ffb (PR 8373)
+* Initial ASCON hash256 and AEAD128 support based on NIST SP 800-232 IPD
+ (PR 8307)
+* Added blinding option when using a Curve25519 private key by defining the
+ macro WOLFSSL_CURVE25519_BLINDING (PR 8392)
+
+
+## Linux Kernel Module
+* Production-ready LKCAPI registration for cbc(aes), cfb(aes), gcm(aes),
+ rfc4106 (gcm(aes)), ctr(aes), ofb(aes), and ecb(aes), ECDSA with P192, P256,
+ P384, and P521 curves, ECDH with P192, P256, and P384 curves, and RSA with
+ bare and PKCS1 padding
+* Various fixes for LKCAPI wrapper for AES-CBC and AES-CFB (PR 8534, 8552)
+* Adds support for the legacy one-shot AES-GCM back end (PR 8614, 8567) for
+ compatibility with FIPS 140-3 Cert #4718.
+* On kernel >=6.8, for CONFIG_FORTIFY_SOURCE, use 5-arg fortify_panic() override
+ macro (PR 8654)
+* Update calls to scatterwalk_map() and scatterwalk_unmap() for linux commit
+ 7450ebd29c (merged for Linux 6.15) (PR 8667)
+* Inhibit LINUXKM_LKCAPI_REGISTER_ECDH on kernel <5.13 (PR 8673)
+* Fix for uninitialized build error with fedora (PR 8569)
+* Register ecdsa, ecdh, and rsa for use with linux kernel crypto (PR 8637, 8663,
+ 8646)
+* Added force zero shared secret buffer, and clear of old key with ecdh
+ (PR 8685)
+* Update fips-check.sh script to pickup XTS streaming support on aarch64 and
+ disable XTS-384 as an allowed use in FIPS mode (PR 8509, 8546)
+
+
+## Enhancements and Optimizations
+
+### Security & Cryptography
+* Add constant-time implementation improvements for encoding functions. We thank
+ Zhiyuan and Gilles for sharing a new constant-time analysis tool (CT-LLVM) and
+ reporting several non-constant-time implementations. (PR 8396, 8617)
+* Additional support for PKCS7 verify and decode with indefinite lengths
+ (PR 8520, 834, 8645)
+* Add more PQC hybrid key exchange algorithms such as support for combinations
+ with X25519 and X448 enabling compatibility with the PQC key exchange support
+ in Chromium browsers and Mozilla Firefox (PR 7821)
+* Add short-circuit comparisons to DH key validation for RFC 7919 parameters
+ (PR 8335)
+* Improve FIPS compatibility with various build configurations for more resource
+ constrained builds (PR 8370)
+* Added option to disable ECC public key order checking (PR 8581)
+* Allow critical alt and basic constraints extensions (PR 8542)
+* New codepoint for MLDSA to help with interoperability (PR 8393)
+* Add support for parsing trusted PEM certs having the header
+ “BEGIN_TRUSTED_CERT” (PR 8400)
+* Add support for parsing only of DoD certificate policy and Comodo Ltd PKI OIDs
+ (PR 8599, 8686)
+* Update ssl code in `src/*.c` to be consistent with wolfcrypt/src/asn.c
+ handling of ML_DSA vs Dilithium and add dual alg. test (PR 8360, 8425)
+
+### Build System, Configuration, CI & Protocols
+* Internal refactor for include of config.h and when building with
+ BUILDING_WOLFSSL macro. This refactor will give a warning of “deprecated
+ function” when trying to improperly use an internal API of wolfSSL in an
+ external application. (PR 8640, 8647, 8660, 8662, 8664)
+* Add WOLFSSL_CLU option to CMakeLists.txt (PR 8548)
+* Add CMake and Zephyr support for XMSS and LMS (PR 8494)
+* Added GitHub CI for CMake builds (PR 8439)
+* Added necessary macros when building wolfTPM Zephyr with wolfSSL (PR 8382)
+* Add MSYS2 build continuous integration test (PR 8504)
+* Update DevKitPro doc to list calico dependency with build commands (PR 8607)
+* Conversion compiler warning fixes and additional continuous integration test
+ added (PR 8538)
+* Enable DTLS 1.3 by default in --enable-jni builds (PR 8481)
+* Enabled TLS 1.3 middlebox compatibility by default for --enable-jni builds
+ (PR 8526)
+
+### Performance Improvements
+* Performance improvements AES-GCM and HMAC (in/out hash copy) (PR 8429)
+* LMS fixes and improvements adding API to get Key ID from raw private key,
+ change to identifiers to match standard, and fix for when
+ WOLFSSL_LMS_MAX_LEVELS is 1 (PR 8390, 8684, 8613, 8623)
+* ML-KEM/Kyber improvements and fixes; no malloc builds, small memory usage,
+ performance improvement, fix for big-endian (PR 8397, 8412, 8436, 8467, 8619,
+ 8622, 8588)
+* Performance improvements for AES-GCM and when doing multiple HMAC operations
+ (PR 8445)
+
+### Assembly and Platform-Specific Enhancements
+* Poly1305 arm assembly changes adding ARM32 NEON implementation and fix for
+ Aarch64 use (PR 8344, 8561, 8671)
+* Aarch64 assembly enhancement to use more CPU features, fix for FreeBSD/OpenBSD
+ (PR 8325, 8348)
+* Only perform ARM assembly CPUID checks if support was enabled at build time
+ (PR 8566)
+* Optimizations for ARM32 assembly instructions on platforms less than ARMv7
+ (PR 8395)
+* Improve MSVC feature detection for static assert macros (PR 8440)
+* Improve Espressif make and CMake for ESP8266 and ESP32 series (PR 8402)
+* Espressif updates for Kconfig, ESP32P4 and adding a sample user_settings.h
+ (PR 8422, PR 8641)
+
+### OpenSSL Compatibility Layer
+* Modification to the push/pop to/from in OpenSSL compatibility layer. This is
+ a pretty major API change in the OpenSSL compatibility stack functions.
+ Previously the API would push/pop from the beginning of the list but now they
+ operate on the tail of the list. This matters when using the sk_value with
+ index values. (PR 8616)
+* OpenSSL Compat Layer: OCSP response improvements (PR 8408, 8498)
+* Expand the OpenSSL compatibility layer to include an implementation of
+ BN_CTX_get (PR 8388)
+
+### API Additions and Modifications
+* Refactor Hpke to allow multiple uses of a context instead of just one shot
+ mode (PR 6805)
+* Add support for PSK client callback with Ada and use with Alire (thanks
+ @mgrojo, PR 8332, 8606)
+* Change wolfSSL_CTX_GenerateEchConfig to generate multiple configs and add
+ functions wolfSSL_CTX_SetEchConfigs and wolfSSL_CTX_SetEchConfigsBase64 to
+ rotate the server's echConfigs (PR 8556)
+* Added the public API wc_PkcsPad to do PKCS padding (PR 8502)
+* Add NULL_CIPHER_TYPE support to wolfSSL_EVP_CipherUpdate (PR 8518)
+* Update Kyber APIs to ML-KEM APIs (PR 8536)
+* Add option to disallow automatic use of "default" devId using the macro
+ WC_NO_DEFAULT_DEVID (PR 8555)
+* Detect unknown key format on ProcessBufferTryDecode() and handle RSA-PSSk
+ format (PR 8630)
+
+### Porting and Language Support
+* Update Python port to support version 3.12.6 (PR 8345)
+* New additions for MAXQ with wolfPKCS11 (PR 8343)
+* Port to ntp 4.2.8p17 additions (PR 8324)
+* Add version 0.9.14 to tested libvncserver builds (PR 8337)
+
+### General Improvements and Cleanups
+* Cleanups for STM32 AES GCM (PR 8584)
+* Improvements to isascii() and the CMake key log option (PR 8596)
+* Arduino documentation updates, comments and spelling corrections (PR 8381,
+ 8384, 8514)
+* Expanding builds with WOLFSSL_NO_REALLOC for use with --enable-opensslall and
+ --enable-all builds (PR 8369, 8371)
+
+
+## Fixes
+* Fix a use after free caused by an early free on error in the X509 store
+ (PR 8449)
+* Fix to account for existing PKCS8 header with
+ wolfSSL_PEM_write_PKCS8PrivateKey (PR 8612)
+* Fixed failing CMake build issue when standard threads support is not found in
+ the system (PR 8485)
+* Fix segmentation fault in SHA-512 implementation for AVX512 targets built with
+ gcc -march=native -O2 (PR 8329)
+* Fix Windows socket API compatibility warning with mingw32 build (PR 8424)
+* Fix potential null pointer increments in cipher list parsing (PR 8420)
+* Fix for possible stack buffer overflow read with wolfSSL_SMIME_write_PKCS7.
+ Thanks to the team at Code Intelligence for the report. (PR 8466)
+* Fix AES ECB implementation for Aarch64 ARM assembly (PR 8379)
+* Fixed building with VS2008 and .NET 3.5 (PR 8621)
+* Fixed possible error case memory leaks in CRL and EVP_Sign_Final (PR 8447)
+* Fixed SSL_set_mtu compatibility function return code (PR 8330)
+* Fixed Renesas RX TSIP (PR 8595)
+* Fixed ECC non-blocking tests (PR 8533)
+* Fixed CMake on MINGW and MSYS (PR 8377)
+* Fixed Watcom compiler and added new CI test (PR 8391)
+* Fixed STM32 PKA ECC 521-bit support (PR 8450)
+* Fixed STM32 PKA with P521 and shared secret (PR 8601)
+* Fixed crypto callback macro guards with `DEBUG_CRYPTOCB` (PR 8602)
+* Fix outlen return for RSA private decrypt with WOLF_CRYPTO_CB_RSA_PAD
+ (PR 8575)
+* Additional sanity check on r and s lengths in DecodeECC_DSA_Sig_Bin (PR 8350)
+* Fix compat. layer ASN1_TIME_diff to accept NULL output params (PR 8407)
+* Fix CMake lean_tls build (PR 8460)
+* Fix for QUIC callback failure (PR 8475)
+* Fix missing alert types in AlertTypeToString for print out with debugging
+ enabled (PR 8572)
+* Fixes for MSVS build issues with PQC configure (PR 8568)
+* Fix for SE050 port and minor improvements (PR 8431, 8437)
+* Fix for missing rewind function in zephyr and add missing files for compiling
+ with assembly optimizations (PR 8531, 8541)
+* Fix for quic_record_append to return the correct code (PR 8340, 8358)
+* Fixes for Bind 9.18.28 port (PR 8331)
+* Fix to adhere more closely with RFC8446 Appendix D and set haveEMS when
+ negotiating TLS 1.3 (PR 8487)
+* Fix to properly check for signature_algorithms from the client in a TLS 1.3
+ server (PR 8356)
+* Fix for when BIO data is less than seq buffer size. Thanks to the team at Code
+ Intelligence for the report (PR 8426)
+* ARM32/Thumb2 fixes for WOLFSSL_NO_VAR_ASSIGN_REG and td4 variable declarations
+ (PR 8590, 8635)
+* Fix for Intel AVX1/SSE2 assembly to not use vzeroupper instructions unless ymm
+ or zmm registers are used (PR 8479)
+* Entropy MemUse fix for when block size less than update bits (PR 8675)
+
+
+# wolfSSL Release 5.7.6 (Dec 31, 2024)
+
+Release 5.7.6 has been developed according to wolfSSL's development and QA
+process (see link below) and successfully passed the quality criteria.
+https://www.wolfssl.com/about/wolfssl-software-development-process-quality-assurance
+
+NOTE:
+ * --enable-heapmath is deprecated.
+ * In this release, the default cipher suite preference is updated to prioritize
+ TLS_AES_256_GCM_SHA384 over TLS_AES_128_GCM_SHA256 when enabled.
+ * This release adds a sanity check for including wolfssl/options.h or
+ user_settings.h.
+
+
+PR stands for Pull Request, and PR <NUMBER> references a GitHub pull request
+ number where the code change was added.
+
+
+## Vulnerabilities
+* [Med] An OCSP (non stapling) issue was introduced in wolfSSL version 5.7.4
+ when performing OCSP requests for intermediate certificates in a certificate
+ chain. This affects only TLS 1.3 connections on the server side. It would not
+ impact other TLS protocol versions or connections that are not using the
+ traditional OCSP implementation. (Fix in pull request 8115)
+
+
+## New Feature Additions
+* Add support for RP2350 and improve RP2040 support, both with RNG optimizations
+ (PR 8153)
+* Add support for STM32MP135F, including STM32CubeIDE support and HAL support
+ for SHA2/SHA3/AES/RNG/ECC optimizations. (PR 8223, 8231, 8241)
+* Implement Renesas TSIP RSA Public Enc/Private support (PR 8122)
+* Add support for Fedora/RedHat system-wide crypto-policies (PR 8205)
+* Curve25519 generic keyparsing API added with  wc_Curve25519KeyToDer and
+ wc_Curve25519KeyDecode (PR 8129)
+* CRL improvements and update callback, added the functions
+ wolfSSL_CertManagerGetCRLInfo and wolfSSL_CertManagerSetCRLUpdate_Cb (PR 8006)
+* For DTLS, add server-side stateless and CID quality-of-life API. (PR 8224)
+
+
+## Enhancements and Optimizations
+* Add a CMake dependency check for pthreads when required. (PR 8162)
+* Update OS_Seed declarations for legacy compilers and FIPS modules (boundary
+ not affected). (PR 8170)
+* Enable WOLFSSL_ALWAYS_KEEP_SNI by default when using --enable-jni. (PR 8283)
+* Change the default cipher suite preference, prioritizing
+ TLS_AES_256_GCM_SHA384 over TLS_AES_128_GCM_SHA256. (PR 7771)
+* Add SRTP-KDF (FIPS module v6.0.0) to checkout script for release bundling
+ (PR 8215)
+* Make library build when no hardware crypto available for Aarch64 (PR 8293)
+* Update assembly code to avoid `uint*_t` types for better compatibility with
+ older C standards. (PR 8133)
+* Add initial documentation for writing ASN template code to decode BER/DER.
+ (PR 8120)
+* Perform full reduction in sc_muladd for EdDSA with Curve448 (PR 8276)
+* Allow SHA-3 hardware cryptography instructions to be explicitly not used in
+ MacOS builds (PR 8282)
+* Make Kyber and ML-KEM available individually and together. (PR 8143)
+* Update configuration options to include Kyber/ML-KEM and fix defines used in
+ wolfSSL_get_curve_name. (PR 8183)
+* Make GetShortInt available with WOLFSSL_ASN_EXTRA (PR 8149)
+* Improved test coverage and minor improvements of X509 (PR 8176)
+* Add sanity checks for configuration methods, ensuring the inclusion of
+ wolfssl/options.h or user_settings.h. (PR 8262)
+* Enable support for building without TLS (NO_TLS). Provides reduced code size
+ option for non-TLS users who want features like the certificate manager or
+ compatibility layer. (PR 8273)
+* Exposed get_verify functions with OPENSSL_EXTRA. (PR 8258)
+* ML-DSA/Dilithium: obtain security level from DER when decoding (PR 8177)
+* Implementation for using PKCS11 to retrieve certificate for SSL CTX (PR 8267)
+* Add support for the RFC822 Mailbox attribute (PR 8280)
+* Initialize variables and adjust types resolve warnings with Visual Studio in
+ Windows builds. (PR 8181)
+* Refactors and expansion of opensslcoexist build (PR 8132, 8216, 8230)
+* Add DTLS 1.3 interoperability, libspdm and DTLS CID interoperability tests
+ (PR 8261, 8255, 8245)
+* Remove trailing error exit code in wolfSSL install setup script (PR 8189)
+* Update Arduino files for wolfssl 5.7.4 (PR 8219)
+* Improve Espressif SHA HW/SW mutex messages (PR 8225)
+* Apply post-5.7.4 release updates for Espressif Managed Component examples
+ (PR 8251)
+* Expansion of c89 conformance (PR 8164)
+* Added configure option for additional sanity checks with --enable-faultharden
+ (PR 8289)
+* Aarch64 ASM additions to check CPU features before hardware crypto instruction
+ use (PR 8314)
+
+
+## Fixes
+* Fix a memory issue when using the compatibility layer with
+ WOLFSSL_GENERAL_NAME and handling registered ID types. (PR 8155)
+* Fix a build issue with signature fault hardening when using public key
+ callbacks (HAVE_PK_CALLBACKS). (PR 8287)
+* Fix for handling heap hint pointer properly when managing multiple WOLFSSL_CTX
+ objects and free’ing one of them (PR 8180)
+* Fix potential memory leak in error case with Aria. (PR 8268)
+* Fix Set_Verify flag behaviour on Ada wrapper. (PR 8256)
+* Fix a compilation error with the NO_WOLFSSL_DIR flag. (PR 8294)
+* Resolve a corner case for Poly1305 assembly code on Aarch64. (PR 8275)
+* Fix incorrect version setting in CSRs. (PR 8136)
+* Correct debugging output for cryptodev. (PR 8202)
+* Fix for benchmark application use with /dev/crypto GMAC auth error due to size
+ of AAD (PR 8210)
+* Add missing checks for the initialization of sp_int/mp_int with DSA to free
+ memory properly in error cases. (PR 8209)
+* Fix return value of wolfSSL_CTX_set_tlsext_use_srtp (8252)
+* Check Root CA by Renesas TSIP before adding it to ca-table (PR 8101)
+* Prevent adding a certificate to the CA cache for Renesas builds if it does not
+ set CA:TRUE in basic constraints. (PR 8060)
+* Fix attribute certificate holder entityName parsing. (PR 8166)
+* Resolve build issues for configurations without any wolfSSL/openssl
+ compatibility layer headers. (PR 8182)
+* Fix for building SP RSA small and RSA public only (PR 8235)
+* Fix for Renesas RX TSIP RSA Sign/Verify with wolfCrypt only (PR 8206)
+* Fix to ensure all files have settings.h included (like wc_lms.c) and guards
+ for building all `*.c` files (PR 8257 and PR 8140)
+* Fix x86 target build issues in Visual Studio for non-Windows operating
+ systems. (PR 8098)
+* Fix wolfSSL_X509_STORE_get0_objects to handle no CA (PR 8226)
+* Properly handle reference counting when adding to the X509 store. (PR 8233)
+* Fix for various typos and improper size used with FreeRTOS_bind in the Renesas
+ example. Thanks to Hongbo for the report on example issues. (PR 7537)
+* Fix for potential heap use after free with wolfSSL_PEM_read_bio_PrivateKey.
+ Thanks to Peter for the issue reported. (PR 8139)
+
+
+# wolfSSL Release 5.7.4 (Oct 24, 2024)
+
+Release 5.7.4 has been developed according to wolfSSL's development and QA
+process (see link below) and successfully passed the quality criteria.
+https://www.wolfssl.com/about/wolfssl-software-development-process-quality-assurance
+
+NOTE: * --enable-heapmath is being deprecated and will be removed by end of 2024
+
+PR stands for Pull Request, and PR <NUMBER> references a GitHub pull request
+ number where the code change was added.
+
+
+## Vulnerabilities
+* [Low] When the OpenSSL compatibility layer is enabled, certificate
+ verification behaved differently in wolfSSL than OpenSSL, in the
+ X509_STORE_add_cert() and X509_STORE_load_locations() implementations.
+ Previously, in cases where an application explicitly loaded an intermediate
+ certificate, wolfSSL was verifying only up to that intermediate certificate,
+ rather than verifying up to the root CA. This only affects use cases where the
+ API is called directly, and does not affect TLS connections. Users that call
+ the API X509_STORE_add_cert() or X509_STORE_load_locations() directly in their
+ applications are recommended to update the version of wolfSSL used or to have
+ additional sanity checks on certificates loaded into the X509_STORE when
+ verifying a certificate. (https://github.com/wolfSSL/wolfssl/pull/8087)
+
+
+## PQC TLS Experimental Build Fix
+* When using TLS with post quantum algorithms enabled, the connection uses a
+ smaller EC curve than agreed on. Users building with --enable-experimental and
+ enabling PQC cipher suites with TLS connections are recommended to update the
+ version of wolfSSL used. Thanks to Daniel Correa for the report.
+ (https://github.com/wolfSSL/wolfssl/pull/8084)
+
+
+## New Feature Additions
+* RISC-V 64 new assembly optimizations added for SHA-256, SHA-512, ChaCha20,
+ Poly1305, and SHA-3 (PR 7758,7833,7818,7873,7916)
+* Implement support for Connection ID (CID) with DTLS 1.2 (PR 7995)
+* Add support for (DevkitPro)libnds (PR 7990)
+* Add port for Mosquitto OSP (Open Source Project) (PR 6460)
+* Add port for init sssd (PR 7781)
+* Add port for eXosip2 (PR 7648)
+* Add support for STM32G4 (PR 7997)
+* Add support for MAX32665 and MAX32666 TPU HW and ARM ASM Crypto Callback
+ Support (PR 7777)
+* Add support for building wolfSSL to be used in libspdm (PR 7869)
+* Add port for use with Nucleus Plus 2.3 (PR 7732)
+* Initial support for RFC5755 x509 attribute certificates (acerts). Enabled with
+ --enable-acert (PR 7926)
+* PKCS#11 RSA Padding offload allows tokens to perform CKM_RSA_PKCS
+ (sign/encrypt), CKM_RSA_PKCS_PSS (sign), and CKM_RSA_PKCS_OAEP (encrypt).
+ (PR 7750)
+* Added “new” and “delete” style functions for heap/pool allocation and freeing
+ of low level crypto structures (PR 3166 and 8089)
+
+
+## Enhancements and Optimizations
+* Increase default max alt. names from 128 to 1024 (PR 7762)
+* Added new constant time DH agree function wc_DhAgree_ct (PR 7802)
+* Expanded compatibility layer with the API EVP_PKEY_is_a (PR 7804)
+* Add option to disable cryptocb test software test using
+ --disable-cryptocb-sw-test (PR 7862)
+* Add a call to certificate verify callback before checking certificate dates
+ (PR 7895)
+* Expanded algorithms supported with the wolfCrypt CSharp wrapper. Adding
+ support for RNG, ECC(ECIES and ECDHE), RSA, ED25519/Curve25519, AES-GCM, and
+ Hashing (PR 3166)
+* Expand MMCAU support for use with DES ECB (PR 7960)
+* Update AES SIV to handle multiple associated data inputs (PR 7911)
+* Remove HAVE_NULL_CIPHER from --enable-openssh (PR 7811)
+* Removed duplicate if(NULL) checks when calling XFREE (macro does) (PR 7839)
+* Set RSA_MIN_SIZE default to 2048 bits (PR 7923)
+* Added support for wolfSSL to be used as the default TLS in the zephyr kernel
+ (PR 7731)
+* Add enable provider build using --enable-wolfprovider with autotools (PR 7550)
+* Renesas RX TSIP ECDSA support (PR 7685)
+* Support DTLS1.3 downgrade when the server supports CID (PR 7841)
+* Server-side checks OCSP even if it uses v2 multi (PR 7828)
+* Add handling of absent hash params in PKCS7 bundle parsing and creation
+ (PR 7845)
+* Add the use of w64wrapper for Poly1305, enabling Poly1305 to be used in
+ environments that do not have a word64 type (PR 7759)
+* Update to the maxq10xx support (PR 7824)
+* Add support for parsing over optional PKCS8 attributes (PR 7944)
+* Add support for either side method with DTLS 1.3 (PR 8012)
+* Added PKCS7 PEM support for parsing PEM data with BEGIN/END PKCS7 (PR 7704)
+* Add CMake support for WOLFSSL_CUSTOM_CURVES (PR 7962)
+* Add left-most wildcard matching support to X509_check_host() (PR 7966)
+* Add option to set custom SKID with PKCS7 bundle creation (PR 7954)
+* Building wolfSSL as a library with Ada and corrections to Alire manifest
+ (PR 7303,7940)
+* Renesas RX72N support updated (PR 7849)
+* New option WOLFSSL_COPY_KEY added to always copy the key to the SSL object
+ (PR 8005)
+* Add the new option WOLFSSL_COPY_CERT to always copy the cert buffer for each
+ SSL object (PR 7867)
+* Add an option to use AES-CBC with HMAC for default session ticket enc/dec.
+ Defaults to AES-128-CBC with HMAC-SHA256 (PR 7703)
+* Memory usage improvements in wc_PRF, sha256 (for small code when many
+ registers are available) and sp_int objects (PR 7901)
+* Change in the configure script to work around ">>" with no command. In older
+ /bin/sh it can be ambiguous, as used in OS’s such as FreeBSD 9.2 (PR 7876)
+* Don't attempt to include system headers when not required (PR 7813)
+* Certificates: DER encoding of ECC signature algorithm parameter is now
+ allowed to be NULL with a define (PR 7903)
+* SP x86_64 asm: check for AVX2 support for VMs (PR 7979)
+* Update rx64n support on gr-rose (PR 7889)
+* Update FSP version to v5.4.0 for RA6M4 (PR 7994)
+* Update TSIP driver version to v1.21 for RX65N RSK (PR 7993)
+* Add a new crypto callback for RSA with padding (PR 7907)
+* Replaced the use of pqm4 with wolfSSL implementations of Kyber/MLDSA
+ (PR 7924)
+* Modernized memory fence support for C11 and clang (PR 7938)
+* Add a CRL error override callback (PR 7986)
+* Extend the X509 unknown extension callback for use with a user context
+ (PR 7730)
+* Additional debug error tracing added with TLS (PR 7917)
+* Added runtime support for library call stack traces with
+ –enable-debug-trace-errcodes=backtrace, using libbacktrace (PR 7846)
+* Expanded C89 conformance (PR 8077)
+* Expanded support for WOLFSSL_NO_MALLOC (PR 8065)
+* Added support for cross-compilation of Linux kernel module (PR 7746)
+* Updated Linux kernel module with support for kernel 6.11 and 6.12 (PR 7826)
+* Introduce WOLFSSL_ASN_ALLOW_0_SERIAL to allow parsing of certificates with a
+ serial number of 0 (PR 7893)
+* Add conditional repository_owner to all wolfSSL GitHub workflows (PR 7871)
+
+### Espressif / Arduino Updates
+* Update wolfcrypt settings.h for Espressif ESP-IDF, template update (PR 7953)
+* Update Espressif sha, util, mem, time helpers (PR 7955)
+* Espressif _thread_local_start and _thread_local_end fix (PR 8030)
+* Improve benchmark for Espressif devices (PR 8037)
+* Introduce Espressif common CONFIG_WOLFSSL_EXAMPLE_NAME, Kconfig (PR 7866)
+* Add wolfSSL esp-tls and Certificate Bundle Support for Espressif ESP-IDF
+ (PR 7936)
+* Update wolfssl Release for Arduino (PR 7775)
+
+### Post Quantum Crypto Updates
+* Dilithium: support fixed size arrays in dilithium_key (PR 7727)
+* Dilithium: add option to use precalc with small sign (PR 7744)
+* Allow Kyber to be built with FIPS (PR 7788)
+* Allow Kyber asm to be used in the Linux kernel module (PR 7872)
+* Dilithium, Kyber: Update to final specification (PR 7877)
+* Dilithium: Support FIPS 204 Draft and Final Draft (PR 7909,8016)
+
+### ARM Assembly Optimizations
+* ARM32 assembly optimizations added for ChaCha20 and Poly1305 (PR 8020)
+* Poly1305 assembly optimizations improvements for Aarch64 (PR 7859)
+* Poly1305 assembly optimizations added for Thumb-2 (PR 7939)
+* Adding ARM ASM build option to STM32CubePack (PR 7747)
+* Add ARM64 to Visual Studio Project (PR 8010)
+* Kyber assembly optimizations for ARM32 and Aarch64 (PR 8040,7998)
+* Kyber assembly optimizations for ARMv7E-M/ARMv7-M (PR 7706)
+
+
+## Fixes
+* ECC key load: fixes for certificates with parameters that are not default for
+ size (PR 7751)
+* Fixes for building x86 in Visual Studio for non-windows OS (PR 7884)
+* Fix for TLS v1.2 secret callback, incorrectly detecting bad master secret
+ (PR 7812)
+* Fixes for PowerPC assembly use with Darwin and SP math all (PR 7931)
+* Fix for detecting older versions of Mac OS when trying to link with
+ libdispatch (PR 7932)
+* Fix for DTLS1.3 downgrade to DTLS1.2 when the server sends multiple handshake
+ packets combined into a single transmission. (PR 7840)
+* Fix for OCSP to save the request if it was stored in ssl->ctx->certOcspRequest
+ (PR 7779)
+* Fix to OCSP for searching for CA by key hash instead of ext. key id (PR 7934)
+* Fix for staticmemory and singlethreaded build (PR 7737)
+* Fix to not allow Shake128/256 with Xilinx AFALG (PR 7708)
+* Fix to support PKCS11 without RSA key generation (PR 7738)
+* Fix not calling the signing callback when using PK callbacks + TLS 1.3
+ (PR 7761)
+* Cortex-M/Thumb2 ASM fix label for IAR compiler (PR 7753)
+* Fix with PKCS11 to iterate correctly over slotId (PR 7736)
+* Stop stripping out the sequence header on the AltSigAlg extension (PR 7710)
+* Fix ParseCRL_AuthKeyIdExt with ASN template to set extAuthKeyIdSet value
+ (PR 7742)
+* Use max key length for PSK encrypt buffer size (PR 7707)
+* DTLS 1.3 fix for size check to include headers and CID fixes (PR 7912,7951)
+* Fix STM32 Hash FIFO and add support for STM32U5A9xx (PR 7787)
+* Fix CMake build error for curl builds (PR 8021)
+* SP Maths: PowerPC ASM fix to use XOR instead of LI (PR 8038)
+* SSL loading of keys/certs: testing and fixes (PR 7789)
+* Misc. fixes for Dilithium and Kyber (PR 7721,7765,7803,8027,7904)
+* Fixes for building wolfBoot sources for PQ LMS/XMSS (PR 7868)
+* Fixes for building with Kyber enabled using CMake and zephyr port (PR 7773)
+* Fix for edge cases with session resumption with TLS 1.2 (PR 8097)
+* Fix issue with ARM ASM with AES CFB/OFB not initializing the "left" member
+ (PR 8099)
+
+
 # wolfSSL Release 5.7.2 (July 08, 2024)
 
 Release 5.7.2 has been developed according to wolfSSL's development and QA
@@ -89,6 +819,7 @@ Fixed in github pull request https://github.com/wolfSSL/wolfssl/pull/7702
 * Expanded OpenSSL compatibility layer and added EC_POINT_hex2point (PR 7191)
 
 ## Fixes
+* Fixed Kyber control-flow timing leak. Thanks to Antoon Purnal from PQShield for the report
 * Fixed the NXP MMCAU HW acceleration for SHA-256 (PR 7389)
 * Fixed AES-CFB1 encrypt/decrypt on size (8*x-1) bits (PR 7431)
 * Fixed use of %rip with SHA-256 x64 assembly (PR 7409)
@@ -219,7 +950,7 @@ fixed this omission in several PRs for this release.
 
 * [Low] CVE-2023-6936: A potential heap overflow read is possible in servers connecting over TLS 1.3 when the optional `WOLFSSL_CALLBACKS` has been defined. The out of bounds read can occur when a server receives a malicious malformed ClientHello. Users should either discontinue use of `WOLFSSL_CALLBACKS` on the server side or update versions of wolfSSL to 5.6.6. Thanks to the tlspuffin fuzzer team for the report which was designed and developed by; Lucca Hirschi (Inria, LORIA), Steve Kremer (Inria, LORIA), and Max Ammann (Trail of Bits). The fix for this issue is located in the following GitHub Pull Request: https://github.com/wolfSSL/wolfssl/pull/6949.
 
-* [Low] A side channel vulnerability with AES T-Tables is possible in a very controlled environment where precision sub-cache-line inspection can happen, such as inside an Intel SGX enclave. This can lead to recovery of the AES key. To prevent this type of attack, wolfSSL added an AES bitsliced implementation which can be enabled with the “`--enable-aes-bitsliced`” configure option. Thanks to Florian Sieck, Zhiyuan Zhang, Sebastian Berndt, Chitchanok Chuengsatiansup, Thomas Eisenbarth, and Yuval Yarom for the report (Universities of Lübeck, Melbourne, Adelaide and Bochum). The fix for this issue is located in the following GitHub Pull Request: https://github.com/wolfSSL/wolfssl/pull/6854.
+* [Low] CVE-2024-1543: A side channel vulnerability with AES T-Tables is possible in a very controlled environment where precision sub-cache-line inspection can happen, such as inside an Intel SGX enclave. This can lead to recovery of the AES key. To prevent this type of attack, wolfSSL added an AES bitsliced implementation which can be enabled with the “`--enable-aes-bitsliced`” configure option. Thanks to Florian Sieck, Zhiyuan Zhang, Sebastian Berndt, Chitchanok Chuengsatiansup, Thomas Eisenbarth, and Yuval Yarom for the report (Universities of Lübeck, Melbourne, Adelaide and Bochum). The fix for this issue is located in the following GitHub Pull Request: https://github.com/wolfSSL/wolfssl/pull/6854.
 
 * [Low] CVE-2023-6937: wolfSSL prior to 5.6.6 did not check that messages in a single (D)TLS record do not span key boundaries. As a result, it was possible to combine (D)TLS messages using different keys into one (D)TLS record. The most extreme edge case is that, in (D)TLS 1.3, it was possible that an unencrypted (D)TLS 1.3 record from the server containing first a ServerHello message and then the rest of the first server flight would be accepted by a wolfSSL client. In (D)TLS 1.3 the handshake is encrypted after the ServerHello but a wolfSSL client would accept an unencrypted flight from the server. This does not compromise key negotiation and authentication so it is assigned a low severity rating. Thanks to Johannes Wilson for the report (Sectra Communications and Linköping University). The fix for this issue is located in the following GitHub Pull Request: https://github.com/wolfSSL/wolfssl/pull/7029.
 
@@ -873,9 +1604,9 @@ Release 5.5.1 of wolfSSL embedded TLS has bug fixes and new features including:
 
 ## Enhancements
 * DTLSv1.3: Do HRR Cookie exchange by default
-* Add wolfSSL_EVP_PKEY_new_CMAC_key to OpenSSL compatible API 
-* Update ide win10 build files to add missing sp source files 
-* Improve Workbench docs 
+* Add wolfSSL_EVP_PKEY_new_CMAC_key to OpenSSL compatible API
+* Update ide win10 build files to add missing sp source files
+* Improve Workbench docs
 * Improve EVP support for CHACHA20_POLY1305
 * Improve `wc_SetCustomExtension` documentation
 * RSA-PSS with OCSP and add simple OCSP response DER verify test case
@@ -883,23 +1614,23 @@ Release 5.5.1 of wolfSSL embedded TLS has bug fixes and new features including:
 * Don't over-allocate memory for DTLS fragments
 * Add WOLFSSL_ATECC_TFLXTLS for Atmel port
 * SHA-3 performance improvements with x86_64 assembly
-* Add code to fallback to S/W if TSIP cannot handle 
+* Add code to fallback to S/W if TSIP cannot handle
 * Improves entropy with VxWorks
 * Make time in milliseconds 64-bits for longer session ticket lives
 * Support for setting cipher list with bytes
 * wolfSSL_set1_curves_list(), wolfSSL_CTX_set1_curves_list() improvements
 * Add to RSAES-OAEP key parsing for pkcs7
 * Add missing DN nid to work with PrintName()
-* SP int: default to 16 bit word size when NO_64BIT defined 
+* SP int: default to 16 bit word size when NO_64BIT defined
 * Limit the amount of fragments we store per a DTLS connection and error out when max limit is reached
 * Detect when certificate's RSA public key size is too big and fail on loading of certificate
 
 ## Fixes
 * Fix for async with OCSP non-blocking in `ProcessPeerCerts`
 * Fixes for building with 32-bit and socket size sign/unsigned mismatch
-* Fix Windows CMakeList compiler options 
-* TLS 1.3 Middle-Box compat: fix missing brace 
-* Configuration consistency fixes for RSA keys and way to force disable of private keys 
+* Fix Windows CMakeList compiler options
+* TLS 1.3 Middle-Box compat: fix missing brace
+* Configuration consistency fixes for RSA keys and way to force disable of private keys
 * Fix for Aarch64 Mac M1 SP use
 * Fix build errors and warnings for MSVC with DTLS 1.3
 * Fix HMAC compat layer function for SHA-1
@@ -907,9 +1638,9 @@ Release 5.5.1 of wolfSSL embedded TLS has bug fixes and new features including:
 * Check return from call to wc_Time
 * SP math: fix build configuration with opensslall
 * Fix for async session tickets
-* SP int mp_init_size fixes when SP_WORD_SIZE == 8 
+* SP int mp_init_size fixes when SP_WORD_SIZE == 8
 * Ed. function to make public key now checks for if the private key flag is set
-* Fix HashRaw WC_SHA256_DIGEST_SIZE for wc_Sha256GetHash 
+* Fix HashRaw WC_SHA256_DIGEST_SIZE for wc_Sha256GetHash
 * Fix for building with PSK only
 * Set correct types in wolfSSL_sk_*_new functions
 * Sanity check that size passed to mp_init_size() is no more than SP_INT_DIGITS
@@ -1023,7 +1754,7 @@ CVE-2020-12966 https://www.amd.com/en/corporate/product-security/bulletin/amd-sb
 * Update SP math all to not use sp_int_word when SQR_MUL_ASM is available
 ### SP Math Fixes
 * Fixes for constant time with div function
-* Fix casting warnings for Windows builds and assembly changes to support XMM6-15 being non-volatile 
+* Fix casting warnings for Windows builds and assembly changes to support XMM6-15 being non-volatile
 * Fix for div_word when not using div function
 * Fixes for user settings with SP ASM and ED/Curve25519 small
 * Additional Wycheproof tests ran and fixes
@@ -1203,7 +1934,7 @@ Release 5.3.0 of wolfSSL embedded TLS has bug fixes and new features including:
 ### Math Library Fixes
 * Sanity check with SP math that ECC points ordinates are not greater than modulus length
 * Additional sanity checks that _sp_add_d does not error due to overflow
-* Wycheproof fixes, testing integration, and fixes for AVX / AArch64 ASM edge case tests 
+* Wycheproof fixes, testing integration, and fixes for AVX / AArch64 ASM edge case tests
 * TFM fp_div_2_ct rework to avoid potential overflow
 
 ### Misc.
@@ -1444,7 +2175,7 @@ Release 5.1.0 of wolfSSL embedded TLS has bug fixes and new features including:
 ###### PORT Fixes
 * Building with Android wpa_supplicant and KeyStore
 * Setting initial value of CA certificate with TSIP enabled
-* Cryptocell ECC build fix and fix with RSA disabled 
+* Cryptocell ECC build fix and fix with RSA disabled
 * IoT-SAFE improvement for Key/File slot ID size, fix for C++ compile, and fixes for retrieving the public key after key generation
 
 ###### Math Library Fixes
@@ -1583,7 +2314,7 @@ Release 5.0.0 of wolfSSL embedded TLS has bug fixes and new features including:
     - SSL_SESSION_has_ticket()
     - SSL_SESSION_get_ticket_lifetime_hint()
     - DIST_POINT_new
-    - DIST_POINT_free 
+    - DIST_POINT_free
     - DIST_POINTS_free
     - CRL_DIST_POINTS_free
     - sk_DIST_POINT_push
@@ -1746,7 +2477,7 @@ Release 4.8.0 of wolfSSL embedded TLS has bug fixes and new features including:
 
 ### Vulnerabilities
 * [Low] CVE-2021-37155: OCSP request/response verification issue. In the case that the serial number in the OCSP request differs from the serial number in the OCSP response the error from the comparison was not resulting in a failed verification. We recommend users that have wolfSSL version 4.6.0 and 4.7.0 with OCSP enabled update their version of wolfSSL. Version 4.5.0 and earlier are not affected by this report. Thanks to Rainer Mueller-Amersdorffer, Roee Yankelevsky, Barak Gutman, Hila Cohen and Shoshi Berko (from CYMOTIVE Technologies and CARIAD) for the report.
-* [Low] CVE-2021-24116: Side-Channel cache look up vulnerability in base64 PEM decoding for versions of wolfSSL 4.5.0 and earlier. Versions 4.6.0 and up contain a fix and do not need to be updated for this report. If decoding a PEM format private key using version 4.5.0 and older of wolfSSL then we recommend updating the version of wolfSSL used. Thanks to Florian Sieck, Jan Wichelmann, Sebastian Berndt and Thomas Eisenbarth for the report. 
+* [Low] CVE-2021-24116: Side-Channel cache look up vulnerability in base64 PEM decoding for versions of wolfSSL 4.5.0 and earlier. Versions 4.6.0 and up contain a fix and do not need to be updated for this report. If decoding a PEM format private key using version 4.5.0 and older of wolfSSL then we recommend updating the version of wolfSSL used. Thanks to Florian Sieck, Jan Wichelmann, Sebastian Berndt and Thomas Eisenbarth for the report.
 
 ### New Feature Additions
 ###### New Product

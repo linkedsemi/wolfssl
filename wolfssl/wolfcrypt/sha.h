@@ -1,12 +1,12 @@
 /* sha.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -75,6 +75,9 @@
 #endif
 #if defined(WOLFSSL_SILABS_SE_ACCEL)
     #include <wolfssl/wolfcrypt/port/silabs/silabs_hash.h>
+#endif
+#if defined(WOLFSSL_MAX3266X) || defined(WOLFSSL_MAX3266X_OLD)
+    #include <wolfssl/wolfcrypt/port/maxim/max3266x.h>
 #endif
 
 #if !defined(NO_OLD_SHA_NAMES)
@@ -148,8 +151,8 @@ struct wc_Sha {
     #else
     word32  digest[WC_SHA_DIGEST_SIZE / sizeof(word32)];
     #endif
-    void*   heap;
 #endif
+    void*   heap;
 #ifdef WOLFSSL_PIC32MZ_HASH
     hashUpdCache cache; /* cache for updates */
 #endif
@@ -159,6 +162,9 @@ struct wc_Sha {
 #ifdef WOLF_CRYPTO_CB
     int    devId;
     void*  devCtx; /* generic crypto callback context */
+#endif
+#if defined(MAX3266X_SHA_CB) || defined(MAX3266X_SHA)
+    wc_MXC_Sha mxcCtx;
 #endif
 #ifdef WOLFSSL_IMXRT1170_CAAM
     caam_hash_ctx_t ctx;

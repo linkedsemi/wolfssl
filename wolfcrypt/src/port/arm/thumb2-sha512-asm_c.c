@@ -1,12 +1,12 @@
 /* thumb2-sha512-asm
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -21,17 +21,15 @@
 
 /* Generated using (from wolfssl):
  *   cd ../scripts
- *   ruby ./sha2/sha512.rb thumb2 ../wolfssl/wolfcrypt/src/port/arm/thumb2-sha512-asm.c
+ *   ruby ./sha2/sha512.rb \
+ *       thumb2 ../wolfssl/wolfcrypt/src/port/arm/thumb2-sha512-asm.c
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif /* HAVE_CONFIG_H */
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources_asm.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 
 #ifdef WOLFSSL_ARMASM
-#if !defined(__aarch64__) && defined(__thumb__)
+#ifdef WOLFSSL_ARMASM_THUMB2
 #ifdef WOLFSSL_ARMASM_INLINE
 
 #ifdef __IAR_SYSTEMS_ICC__
@@ -43,11 +41,12 @@
 #define __asm__        __asm
 #define __volatile__   volatile
 #endif /* __KEIL__ */
-#ifdef WOLFSSL_SHA512
+
+#if defined(WOLFSSL_SHA512) || defined(WOLFSSL_SHA384)
 #include <wolfssl/wolfcrypt/sha512.h>
 
 #ifdef WOLFSSL_ARMASM_NO_NEON
-static const uint64_t L_SHA512_transform_len_k[] = {
+static const word64 L_SHA512_transform_len_k[] = {
     0x428a2f98d728ae22UL, 0x7137449123ef65cdUL,
     0xb5c0fbcfec4d3b2fUL, 0xe9b5dba58189dbbcUL,
     0x3956c25bf348b538UL, 0x59f111f1b605d019UL,
@@ -92,16 +91,24 @@ static const uint64_t L_SHA512_transform_len_k[] = {
 
 void Transform_Sha512_Len(wc_Sha512* sha512, const byte* data, word32 len);
 #ifndef WOLFSSL_NO_VAR_ASSIGN_REG
-void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
+WC_OMIT_FRAME_POINTER void Transform_Sha512_Len(wc_Sha512* sha512_p,
+    const byte* data_p, word32 len_p)
 #else
-void Transform_Sha512_Len(wc_Sha512* sha512, const byte* data, word32 len)
+WC_OMIT_FRAME_POINTER void Transform_Sha512_Len(wc_Sha512* sha512,
+    const byte* data, word32 len)
 #endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
 {
 #ifndef WOLFSSL_NO_VAR_ASSIGN_REG
     register wc_Sha512* sha512 __asm__ ("r0") = (wc_Sha512*)sha512_p;
     register const byte* data __asm__ ("r1") = (const byte*)data_p;
     register word32 len __asm__ ("r2") = (word32)len_p;
-    register uint64_t* L_SHA512_transform_len_k_c __asm__ ("r3") = (uint64_t*)&L_SHA512_transform_len_k;
+    register word64* L_SHA512_transform_len_k_c __asm__ ("r3") =
+        (word64*)&L_SHA512_transform_len_k;
+
+#else
+    register word64* L_SHA512_transform_len_k_c =
+        (word64*)&L_SHA512_transform_len_k;
+
 #endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
 
     __asm__ __volatile__ (
@@ -126,7 +133,11 @@ void Transform_Sha512_Len(wc_Sha512* sha512, const byte* data, word32 len)
         "STRD	r10, r11, [sp, #184]\n\t"
         /* Start of loop processing a block */
         "\n"
-    "L_SHA512_transform_len_begin%=:\n\t"
+#if defined(__IAR_SYSTEMS_ICC__) && (__VER__ < 9000000)
+    "L_SHA512_transform_len_begin:\n\t"
+#else
+    "L_SHA512_transform_len_begin_%=:\n\t"
+#endif
         /* Load, Reverse and Store W */
         "LDR	r4, [%[data]]\n\t"
         "LDR	r5, [%[data], #4]\n\t"
@@ -232,7 +243,11 @@ void Transform_Sha512_Len(wc_Sha512* sha512, const byte* data, word32 len)
         "MOV	r12, #0x4\n\t"
         /* Start of 16 rounds */
         "\n"
-    "L_SHA512_transform_len_start%=:\n\t"
+#if defined(__IAR_SYSTEMS_ICC__) && (__VER__ < 9000000)
+    "L_SHA512_transform_len_start:\n\t"
+#else
+    "L_SHA512_transform_len_start_%=:\n\t"
+#endif
         /* Round 0 */
         "LDRD	r4, r5, [%[sha512], #32]\n\t"
         "LSRS	r6, r4, #14\n\t"
@@ -2219,10 +2234,12 @@ void Transform_Sha512_Len(wc_Sha512* sha512, const byte* data, word32 len)
         "STRD	r4, r5, [sp, #120]\n\t"
         "ADD	r3, r3, #0x80\n\t"
         "SUBS	r12, r12, #0x1\n\t"
-#ifdef __GNUC__
-        "BNE	L_SHA512_transform_len_start%=\n\t"
+#if defined(__GNUC__)
+        "BNE	L_SHA512_transform_len_start_%=\n\t"
+#elif defined(__IAR_SYSTEMS_ICC__) && (__VER__ < 9000000)
+        "BNE.W	L_SHA512_transform_len_start\n\t"
 #else
-        "BNE.W	L_SHA512_transform_len_start%=\n\t"
+        "BNE.W	L_SHA512_transform_len_start_%=\n\t"
 #endif
         /* Round 0 */
         "LDRD	r4, r5, [%[sha512], #32]\n\t"
@@ -3556,28 +3573,26 @@ void Transform_Sha512_Len(wc_Sha512* sha512, const byte* data, word32 len)
         "SUBS	%[len], %[len], #0x80\n\t"
         "SUB	r3, r3, #0x200\n\t"
         "ADD	%[data], %[data], #0x80\n\t"
-#ifdef __GNUC__
-        "BNE	L_SHA512_transform_len_begin%=\n\t"
+#if defined(__GNUC__)
+        "BNE	L_SHA512_transform_len_begin_%=\n\t"
+#elif defined(__IAR_SYSTEMS_ICC__) && (__VER__ < 9000000)
+        "BNE.W	L_SHA512_transform_len_begin\n\t"
 #else
-        "BNE.W	L_SHA512_transform_len_begin%=\n\t"
+        "BNE.W	L_SHA512_transform_len_begin_%=\n\t"
 #endif
         "EOR	r0, r0, r0\n\t"
         "ADD	sp, sp, #0xc0\n\t"
-#ifndef WOLFSSL_NO_VAR_ASSIGN_REG
         : [sha512] "+r" (sha512), [data] "+r" (data), [len] "+r" (len),
           [L_SHA512_transform_len_k] "+r" (L_SHA512_transform_len_k_c)
         :
-        : "memory", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "cc"
-#else
-        : [sha512] "+r" (sha512), [data] "+r" (data), [len] "+r" (len)
-        : [L_SHA512_transform_len_k] "r" (L_SHA512_transform_len_k)
-        : "memory", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "cc"
-#endif /* WOLFSSL_NO_VAR_ASSIGN_REG */
+        : "memory", "cc", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11",
+            "r12"
     );
 }
 
 #endif /* WOLFSSL_ARMASM_NO_NEON */
-#endif /* WOLFSSL_SHA512 */
-#endif /* !__aarch64__ && __thumb__ */
+#endif /* WOLFSSL_SHA512 || WOLFSSL_SHA384 */
+#endif /* WOLFSSL_ARMASM_THUMB2 */
 #endif /* WOLFSSL_ARMASM */
+
 #endif /* WOLFSSL_ARMASM_INLINE */

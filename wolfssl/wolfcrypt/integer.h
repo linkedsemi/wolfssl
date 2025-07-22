@@ -1,12 +1,12 @@
 /* integer.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -42,6 +42,8 @@
 
 #else
 
+#include <wolfssl/wolfcrypt/types.h>
+#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/random.h>
 
 #ifndef CHAR_BIT
@@ -162,9 +164,6 @@ extern "C" {
 #define MP_NEG        1   /* negative */
 
 #define MP_OKAY       0   /* ok result */
-#define MP_MEM       (-2) /* out of mem */
-#define MP_VAL       (-3) /* invalid input */
-#define MP_NOT_INF   (-4) /* point not at infinity */
 #define MP_RANGE      MP_NOT_INF
 
 #define MP_YES        1   /* yes response */
@@ -206,7 +205,12 @@ typedef int           mp_err;
 #define NEW_MP_INT_SIZE(name, bits, heap, type) \
     XMEMSET(name, 0, sizeof(mp_int))
 /* Dispose of static mp_int. */
-#define FREE_MP_INT_SIZE(name, heap, type) WC_DO_NOTHING
+#define FREE_MP_INT_SIZE(name, heap, type) \
+    do {                                   \
+        if ((name) != NULL) {              \
+            mp_free(name);                 \
+        }                                  \
+    } while (0)
 /* Initialize an mp_int. */
 #define INIT_MP_INT_SIZE(name, bits) \
     mp_init(name)
@@ -222,6 +226,9 @@ typedef int           mp_err;
     } WC_BIGINT;
     #define WOLF_BIGINT_DEFINED
 #endif
+
+#define wc_mp_size_t int
+#define wc_mp_sign_t int
 
 /* the mp_int structure */
 typedef struct mp_int {

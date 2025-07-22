@@ -1,12 +1,12 @@
 /* testsuite.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -24,7 +24,14 @@
     #include <config.h>
 #endif
 
+#ifndef WOLFSSL_USER_SETTINGS
+    #include <wolfssl/options.h>
+#endif
 #include <wolfssl/wolfcrypt/settings.h>
+
+#undef TEST_OPENSSL_COEXIST /* can't use this option with this example */
+#undef OPENSSL_COEXIST /* can't use this option with this example */
+
 #include <wolfssl/wolfcrypt/types.h>
 
 #include <wolfssl/ssl.h>
@@ -45,13 +52,16 @@
 #include <examples/server/server.h>
 #include <examples/client/client.h>
 
-#include "tests/utils.h"
+#include <testsuite/utils.h>
+/* include source file to not change all the testsuite build systems */
+#include <testsuite/utils.c>
 
 #ifndef NO_SHA256
 void file_test(const char* file, byte* check);
 #endif
 
-#if !defined(NO_WOLFSSL_SERVER) && !defined(NO_WOLFSSL_CLIENT)
+#if !defined(NO_WOLFSSL_SERVER) && !defined(NO_WOLFSSL_CLIENT) && \
+    !defined(NO_TLS)
 
 #ifdef HAVE_STACK_SIZE
 static THREAD_RETURN simple_test(func_args *args);
@@ -104,6 +114,7 @@ static void *echoclient_test_wrapper(void* args) {
 int testsuite_test(int argc, char** argv)
 {
 #if !defined(NO_WOLFSSL_SERVER) && !defined(NO_WOLFSSL_CLIENT) && \
+    !defined(NO_TLS) && \
     (!defined(WOLF_CRYPTO_CB_ONLY_RSA) && !defined(WOLF_CRYPTO_CB_ONLY_ECC))
     func_args server_args;
 
@@ -298,9 +309,11 @@ static int test_crl_monitor(void)
     int ret = -1;
     int i = -1, j;
 
+    XMEMSET(tmpDir, '\0', sizeof(tmpDir));
+
     printf("\nRunning CRL monitor test\n");
 
-    sprintf(rounds, "%d", CRL_MONITOR_TEST_ROUNDS);
+    (void)XSNPRINTF(rounds, sizeof(rounds), "%d", CRL_MONITOR_TEST_ROUNDS);
 
     XMEMSET(&server_args, 0, sizeof(func_args));
     XMEMSET(&client_args, 0, sizeof(func_args));
@@ -320,18 +333,19 @@ static int test_crl_monitor(void)
     InitTcpReady(&ready);
     start_thread(server_test, &server_args, &serverThread);
     wait_tcp_ready(&server_args);
-    sprintf(portNum, "%d", server_args.signal->port);
+    (void)XSNPRINTF(portNum, sizeof(portNum), "%d", server_args.signal->port);
 
     for (i = 0; i < CRL_MONITOR_TEST_ROUNDS; i++) {
         int expectFail;
         if (i % 2 == 0) {
+
             /* succeed on even rounds */
-            sprintf(buf, "%s/%s", tmpDir, "crl.pem");
+            (void)XSNPRINTF(buf, sizeof(buf), "%s/%s", tmpDir, "crl.pem");
             if (STAGE_FILE("certs/crl/crl.pem", buf) != 0) {
                 fprintf(stderr, "[%d] Failed to copy file to %s\n", i, buf);
                 goto cleanup;
             }
-            sprintf(buf, "%s/%s", tmpDir, "crl.revoked");
+            (void)XSNPRINTF(buf, sizeof(buf), "%s/%s", tmpDir, "crl.revoked");
             /* The monitor can be holding the file handle and this will cause
              * the remove call to fail. Let's give the monitor a some time to
              * finish up. */
@@ -349,12 +363,12 @@ static int test_crl_monitor(void)
         }
         else {
             /* fail on odd rounds */
-            sprintf(buf, "%s/%s", tmpDir, "crl.revoked");
+            (void)XSNPRINTF(buf, sizeof(buf), "%s/%s", tmpDir, "crl.revoked");
             if (STAGE_FILE("certs/crl/crl.revoked", buf) != 0) {
                 fprintf(stderr, "[%d] Failed to copy file to %s\n", i, buf);
                 goto cleanup;
             }
-            sprintf(buf, "%s/%s", tmpDir, "crl.pem");
+            (void)XSNPRINTF(buf, sizeof(buf), "%s/%s", tmpDir, "crl.pem");
             /* The monitor can be holding the file handle and this will cause
              * the remove call to fail. Let's give the monitor a some time to
              * finish up. */
@@ -395,9 +409,9 @@ static int test_crl_monitor(void)
 cleanup:
     if (ret != 0 && i >= 0)
         fprintf(stderr, "test_crl_monitor failed on iteration %d\n", i);
-    sprintf(buf, "%s/%s", tmpDir, "crl.pem");
+    (void)XSNPRINTF(buf, sizeof(buf), "%s/%s", tmpDir, "crl.pem");
     rem_file(buf);
-    sprintf(buf, "%s/%s", tmpDir, "crl.revoked");
+    (void)XSNPRINTF(buf, sizeof(buf), "%s/%s", tmpDir, "crl.revoked");
     rem_file(buf);
     (void)rem_dir(tmpDir);
     return ret;
@@ -405,6 +419,7 @@ cleanup:
 #endif
 
 #if !defined(NO_WOLFSSL_SERVER) && !defined(NO_WOLFSSL_CLIENT) && \
+    !defined(NO_TLS) && \
    (!defined(WOLF_CRYPTO_CB_ONLY_RSA) && !defined(WOLF_CRYPTO_CB_ONLY_ECC))
 /* Perform a basic TLS handshake.
  *
@@ -452,11 +467,6 @@ static int test_tls(func_args* server_args)
     if (echo_args.return_code != 0)
         return echo_args.return_code;
 
-#ifdef WOLFSSL_DTLS
-    /* Ensure server is ready for UDP data. */
-    wait_tcp_ready(server_args);
-#endif
-
     /* Next client connection - send quit to shutdown server. */
     echo_args.argc = 2;
     XSTRLCPY(arg[1], "quit", sizeof(arg[1]));
@@ -486,7 +496,11 @@ static void show_ciphers(void)
 /* Cleanup temporary output file. */
 static void cleanup_output(void)
 {
-    remove(outputName);
+    int ret = 0;
+    ret = remove(outputName);
+    if (ret < 0) {
+        fprintf(stderr, "remove(%s) failed: %d\n", outputName, ret);
+    }
 }
 
 /* Validate output equals input using a hash. Remove temporary output file.

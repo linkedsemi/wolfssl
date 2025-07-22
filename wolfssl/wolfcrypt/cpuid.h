@@ -1,12 +1,12 @@
 /* cpuid.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -38,6 +38,11 @@
     #define HAVE_CPUID
     #define HAVE_CPUID_INTEL
 #endif
+#if (defined(WOLFSSL_AARCH64_BUILD) || (defined(__aarch64__) && \
+     defined(WOLFSSL_ARMASM))) && !defined(WOLFSSL_NO_ASM)
+    #define HAVE_CPUID
+    #define HAVE_CPUID_AARCH64
+#endif
 
 #ifdef HAVE_CPUID_INTEL
 
@@ -62,6 +67,28 @@
     #define IS_INTEL_MOVBE(f)   ((f) & CPUID_MOVBE)
     #define IS_INTEL_BMI1(f)    ((f) & CPUID_BMI1)
     #define IS_INTEL_SHA(f)     ((f) & CPUID_SHA)
+
+#elif defined(HAVE_CPUID_AARCH64)
+
+    #define CPUID_AES         0x0001    /* AES enc/dec */
+    #define CPUID_PMULL       0x0002    /* Carryless multiplication */
+    #define CPUID_SHA256      0x0004    /* SHA-256 digest */
+    #define CPUID_SHA512      0x0008    /* SHA-512 digest */
+    #define CPUID_RDM         0x0010    /* SQRDMLAH and SQRDMLSH */
+    #define CPUID_SHA3        0x0020    /* SHA-3 digest */
+    #define CPUID_SM3         0x0040    /* SM3 digest */
+    #define CPUID_SM4         0x0080    /* SM4 enc/dec */
+    #define CPUID_SB          0x0100    /* Speculation barrier */
+
+    #define IS_AARCH64_AES(f)       ((f) & CPUID_AES)
+    #define IS_AARCH64_PMULL(f)     ((f) & CPUID_PMULL)
+    #define IS_AARCH64_SHA256(f)    ((f) & CPUID_SHA256)
+    #define IS_AARCH64_SHA512(f)    ((f) & CPUID_SHA512)
+    #define IS_AARCH64_RDM(f)       ((f) & CPUID_RDM)
+    #define IS_AARCH64_SHA3(f)      ((f) & CPUID_SHA3)
+    #define IS_AARCH64_SM3(f)       ((f) & CPUID_SM3)
+    #define IS_AARCH64_SM4(f)       ((f) & CPUID_SM4)
+    #define IS_AARCH64_SB(f)        ((f) & CPUID_SB)
 
 #endif
 

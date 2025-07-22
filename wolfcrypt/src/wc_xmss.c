@@ -1,12 +1,12 @@
 /* wc_xmss.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,13 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
-#include <wolfssl/wolfcrypt/logging.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #ifdef WOLFSSL_HAVE_XMSS
 #include <wolfssl/wolfcrypt/wc_xmss.h>
@@ -155,7 +149,13 @@ static WC_INLINE void wc_xmss_state_free(XmssState* state)
  */
 typedef struct wc_XmssString {
     /* Name of algorithm as a string. */
+#ifdef WOLFSSL_NAMES_STATIC
+    const char str[32]; /* large enough for largest string in wc_xmss_alg[] or
+                         * wc_xmssmt_alg[]
+                         */
+#else
     const char* str;
+#endif
     /* OID for algorithm. */
     word32 oid;
     /* XMSS parameters. */
@@ -738,7 +738,7 @@ static WC_INLINE int wc_xmsskey_signupdate(XmssKey* key, byte* sig,
     #endif
 
     #ifdef WOLFSSL_SMALL_STACK
-        state = XMALLOC(sizeof(XmssState), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        state = (XmssState*)XMALLOC(sizeof(XmssState), NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (state == NULL) {
             ret = MEMORY_E;
         }
@@ -1109,7 +1109,7 @@ int wc_XmssKey_MakeKey(XmssKey* key, WC_RNG* rng)
     #endif
 
     #ifdef WOLFSSL_SMALL_STACK
-        state = XMALLOC(sizeof(XmssState), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        state = (XmssState*)XMALLOC(sizeof(XmssState), NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (state == NULL) {
             ret = MEMORY_E;
         }
@@ -1645,7 +1645,7 @@ int wc_XmssKey_Verify(XmssKey* key, const byte* sig, word32 sigLen,
     #endif
 
     #ifdef WOLFSSL_SMALL_STACK
-        state = XMALLOC(sizeof(XmssState), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        state = (XmssState*)XMALLOC(sizeof(XmssState), NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (state == NULL) {
             ret = MEMORY_E;
         }

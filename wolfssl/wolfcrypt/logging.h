@@ -1,12 +1,12 @@
 /* logging.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -89,11 +89,6 @@ enum wc_FuncNum {
 };
 #endif
 
-#if defined(ARDUINO)
-/* implemented in Arduino wolfssl.h */
-extern WOLFSSL_API int wolfSSL_Arduino_Serial_Print(const char* const s);
-#endif /* ARDUINO */
-
 typedef void (*wolfSSL_Logging_cb)(const int logLevel,
                                    const char *const logMessage);
 
@@ -135,7 +130,7 @@ WOLFSSL_API void wolfSSL_SetLoggingPrefix(const char* prefix);
     WOLFSSL_LOCAL unsigned long wc_PeekErrorNodeLineData(
             const char **file, int *line, const char **data, int *flags,
             int (*ignore_err)(int err));
-    WOLFSSL_LOCAL unsigned long wc_GetErrorNodeErr(void);
+    WOLFSSL_LOCAL int wc_GetErrorNodeErr(void);
     #if !defined(NO_FILESYSTEM) && !defined(NO_STDIO_FILESYSTEM)
         WOLFSSL_API void wc_ERR_print_errors_fp(XFILE fp);
         WOLFSSL_API void wc_ERR_print_errors_cb(int (*cb)(const char *str,
@@ -174,11 +169,15 @@ WOLFSSL_API void wolfSSL_SetLoggingPrefix(const char* prefix);
     #define WOLFSSL_STUB(m) \
         WOLFSSL_MSG(WOLFSSL_LOG_CAT(wolfSSL Stub, m, not implemented))
     WOLFSSL_API int WOLFSSL_IS_DEBUG_ON(void);
-#if defined(XVSNPRINTF)
+#if defined(XVSNPRINTF) && !defined(NO_WOLFSSL_MSG_EX)
     WOLFSSL_API void WOLFSSL_MSG_EX(const char* fmt, ...);
     #define HAVE_WOLFSSL_MSG_EX
 #else
-    #define WOLFSSL_MSG_EX(...) WC_DO_NOTHING
+    #ifdef WOLF_NO_VARIADIC_MACROS
+        #define WOLFSSL_MSG_EX()    WC_DO_NOTHING
+    #else
+        #define WOLFSSL_MSG_EX(...) WC_DO_NOTHING
+    #endif
 #endif
     WOLFSSL_API void WOLFSSL_MSG(const char* msg);
 #ifdef WOLFSSL_DEBUG_CODEPOINTS
@@ -197,7 +196,11 @@ WOLFSSL_API void wolfSSL_SetLoggingPrefix(const char* prefix);
         #define WOLFSSL_MSG_EX(fmt, args...) \
                 WOLFSSL_MSG_EX2(__FILE__, __LINE__, fmt, ## args)
     #else
-        #define WOLFSSL_MSG_EX2(...) WC_DO_NOTHING
+        #ifdef WOLF_NO_VARIADIC_MACROS
+            #define WOLFSSL_MSG_EX2() WC_DO_NOTHING
+        #else
+            #define WOLFSSL_MSG_EX2(...) WC_DO_NOTHING
+        #endif
     #endif
 #endif
     WOLFSSL_API void WOLFSSL_BUFFER(const byte* buffer, word32 length);
@@ -209,7 +212,14 @@ WOLFSSL_API void wolfSSL_SetLoggingPrefix(const char* prefix);
     #define WOLFSSL_STUB(m)       WC_DO_NOTHING
     #define WOLFSSL_IS_DEBUG_ON() 0
 
-    #define WOLFSSL_MSG_EX(...)   WC_DO_NOTHING
+    #ifdef WOLF_NO_VARIADIC_MACROS
+        /* note, modern preprocessors will generate errors with this definition.
+         * "error: macro "WOLFSSL_MSG_EX" passed 2 arguments, but takes just 0"
+         */
+        #define WOLFSSL_MSG_EX()    WC_DO_NOTHING
+    #else
+        #define WOLFSSL_MSG_EX(...) WC_DO_NOTHING
+    #endif
     #define WOLFSSL_MSG(m)        WC_DO_NOTHING
     #define WOLFSSL_BUFFER(b, l)  WC_DO_NOTHING
 
@@ -221,8 +231,13 @@ WOLFSSL_API void wolfSSL_SetLoggingPrefix(const char* prefix);
     #ifdef WOLFSSL_HAVE_ERROR_QUEUE
         WOLFSSL_API void WOLFSSL_ERROR_LINE(int err, const char* func, unsigned int line,
             const char* file, void* ctx);
-        #define WOLFSSL_ERROR(x) \
-            WOLFSSL_ERROR_LINE((x), __func__, __LINE__, __FILE__, NULL)
+        #ifdef WOLF_C89
+            #define WOLFSSL_ERROR(x) \
+                WOLFSSL_ERROR_LINE((x), __FILE__, __LINE__, __FILE__, NULL)
+        #else
+            #define WOLFSSL_ERROR(x) \
+                WOLFSSL_ERROR_LINE((x), __func__, __LINE__, __FILE__, NULL)
+        #endif
     #else
         WOLFSSL_API void WOLFSSL_ERROR(int err);
     #endif /* WOLFSSL_HAVE_ERROR_QUEUE */
@@ -246,6 +261,99 @@ WOLFSSL_API void wolfSSL_SetLoggingPrefix(const char* prefix);
     extern WOLFSSL_API THREAD_LS_T size_t StackSizeCheck_stackSizeHWM;
     extern WOLFSSL_API THREAD_LS_T size_t *StackSizeCheck_stackSizeHWM_ptr;
     extern WOLFSSL_API THREAD_LS_T void *StackSizeCheck_stackOffsetPointer;
+#endif
+
+/* Port-specific includes and printf methods: */
+
+#if defined(ARDUINO)
+    /* implemented in Arduino wolfssl.h */
+    extern WOLFSSL_API int wolfSSL_Arduino_Serial_Print(const char* const s);
+#elif defined(FREESCALE_MQX) || defined(FREESCALE_KSDK_MQX)
+    /* see wc_port.h for fio.h and nio.h includes */
+#elif defined(WOLFSSL_SGX)
+    /* Declare sprintf for ocall */
+    int sprintf(char* buf, const char *fmt, ...);
+#elif defined(WOLFSSL_DEOS)
+#elif defined(MICRIUM)
+    #if (BSP_SER_COMM_EN  == DEF_ENABLED)
+        #include <bsp_ser.h>
+    #endif
+#elif defined(WOLFSSL_USER_LOG)
+    /* user includes their own headers */
+#elif defined(WOLFSSL_ESPIDF)
+    #include "esp_types.h"
+    #include "esp_log.h"
+#elif defined(WOLFSSL_TELIT_M2MB)
+    #include <stdio.h>
+    #include "m2m_log.h"
+#elif defined(WOLFSSL_ANDROID_DEBUG)
+    #include <android/log.h>
+#elif defined(WOLFSSL_XILINX)
+    #include "xil_printf.h"
+#elif defined(WOLFSSL_LINUXKM)
+    /* the requisite linux/kernel.h is included in linuxkm_wc_port.h, with
+     * incompatible warnings masked out.
+     */
+#elif defined(FUSION_RTOS)
+    #include <fclstdio.h>
+    #define fprintf FCL_FPRINTF
+#else
+    #include <stdio.h>  /* for default printf stuff */
+#endif
+
+#if defined(THREADX) && !defined(THREADX_NO_DC_PRINTF)
+    int dc_log_printf(char*, ...);
+#endif
+
+#ifdef WOLFSSL_DEBUG_PRINTF_FN
+    /* user-supplied definition */
+#elif defined(ARDUINO)
+    /* ARDUINO only has print and sprintf, no printf. */
+#elif defined(WOLFSSL_LOG_PRINTF) || defined(WOLFSSL_DEOS)
+    #define WOLFSSL_DEBUG_PRINTF_FN printf
+#elif defined(THREADX) && !defined(THREADX_NO_DC_PRINTF)
+    #define WOLFSSL_DEBUG_PRINTF_FN dc_log_printf
+#elif defined(MICRIUM)
+    #define WOLFSSL_DEBUG_PRINTF_FN BSP_Ser_Printf
+#elif defined(WOLFSSL_MDK_ARM)
+    #define WOLFSSL_DEBUG_PRINTF_FN printf
+#elif defined(WOLFSSL_UTASKER)
+    /* WOLFSSL_UTASKER only has fnDebugMsg and related primitives, no printf. */
+#elif defined(MQX_USE_IO_OLD)
+    #define WOLFSSL_DEBUG_PRINTF_FN fprintf
+    #define WOLFSSL_DEBUG_PRINTF_FIRST_ARGS _mqxio_stderr,
+#elif defined(WOLFSSL_APACHE_MYNEWT)
+    #define WOLFSSL_DEBUG_PRINTF_FN LOG_DEBUG
+    #define WOLFSSL_DEBUG_PRINTF_FIRST_ARGS &mynewt_log, LOG_MODULE_DEFAULT,
+#elif defined(WOLFSSL_ESPIDF)
+    #define WOLFSSL_DEBUG_PRINTF_FN ESP_LOGI
+    #define WOLFSSL_DEBUG_PRINTF_FIRST_ARGS "wolfssl",
+#elif defined(WOLFSSL_ZEPHYR)
+    #define WOLFSSL_DEBUG_PRINTF_FN printk
+#elif defined(WOLFSSL_TELIT_M2MB)
+    #define WOLFSSL_DEBUG_PRINTF_FN M2M_LOG_INFO
+#elif defined(WOLFSSL_ANDROID_DEBUG)
+    #define WOLFSSL_DEBUG_PRINTF_FN __android_log_print
+    #define WOLFSSL_DEBUG_PRINTF_FIRST_ARGS ANDROID_LOG_VERBOSE, "[wolfSSL]"
+#elif defined(WOLFSSL_XILINX)
+    #define WOLFSSL_DEBUG_PRINTF_FN xil_printf
+#elif defined(WOLFSSL_LINUXKM)
+    #define WOLFSSL_DEBUG_PRINTF_FN printk
+#elif defined(WOLFSSL_RENESAS_RA6M4)
+    #define WOLFSSL_DEBUG_PRINTF_FN myprintf
+#else
+    #define WOLFSSL_DEBUG_PRINTF_FN fprintf
+    #define WOLFSSL_DEBUG_PRINTF_FIRST_ARGS stderr,
+#endif
+
+#ifndef WOLFSSL_DEBUG_PRINTF_FIRST_ARGS
+    #define WOLFSSL_DEBUG_PRINTF_FIRST_ARGS
+#endif
+
+#if defined(WOLFSSL_DEBUG_PRINTF_FN) && !defined(WOLFSSL_DEBUG_PRINTF) && \
+    !defined(WOLF_NO_VARIADIC_MACROS)
+    #define WOLFSSL_DEBUG_PRINTF(...) \
+        WOLFSSL_DEBUG_PRINTF_FN(WOLFSSL_DEBUG_PRINTF_FIRST_ARGS __VA_ARGS__)
 #endif
 
 #ifdef __cplusplus

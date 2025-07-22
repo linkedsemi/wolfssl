@@ -1,12 +1,12 @@
 /* wolfmath.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -26,15 +26,9 @@
  * NO_BIG_INT: Disable support for all multi-precision math libraries
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
-/* in case user set USE_FAST_MATH there */
-#include <wolfssl/wolfcrypt/settings.h>
 #include <wolfssl/wolfcrypt/wolfmath.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
-#include <wolfssl/wolfcrypt/logging.h>
 
 #ifdef WOLFSSL_ASYNC_CRYPT
     #include <wolfssl/wolfcrypt/async.h>
@@ -91,7 +85,7 @@ void mp_reverse(unsigned char *s, int len)
     }
 }
 
-int get_digit_count(const mp_int* a)
+int mp_get_digit_count(const mp_int* a)
 {
     if (a == NULL)
         return 0;
@@ -99,7 +93,7 @@ int get_digit_count(const mp_int* a)
     return (int)a->used;
 }
 
-mp_digit get_digit(const mp_int* a, int n)
+mp_digit mp_get_digit(const mp_int* a, int n)
 {
     if (a == NULL)
         return 0;
@@ -141,18 +135,18 @@ int mp_cond_copy(mp_int* a, int copy, mp_int* b)
          * When mask all set, b ^ b ^ a = a
          */
         /* Conditionally copy all digits and then number of used digits.
-         * get_digit() returns 0 when index greater than available digit.
+         * mp_get_digit() returns 0 when index greater than available digit.
          */
         for (i = 0; i < a->used; i++) {
-            b->dp[i] ^= (get_digit(a, (int)i) ^ get_digit(b, (int)i)) & mask;
+            b->dp[i] ^= (mp_get_digit(a, (int)i) ^ mp_get_digit(b, (int)i)) & mask;
         }
         for (; i < b->used; i++) {
-            b->dp[i] ^= (get_digit(a, (int)i) ^ get_digit(b, (int)i)) & mask;
+            b->dp[i] ^= (mp_get_digit(a, (int)i) ^ mp_get_digit(b, (int)i)) & mask;
         }
-        b->used ^= (a->used ^ b->used) & (unsigned int)mask;
+        b->used ^= (a->used ^ b->used) & (wc_mp_size_t)mask;
 #if (!defined(WOLFSSL_SP_MATH) && !defined(WOLFSSL_SP_MATH_ALL)) || \
     defined(WOLFSSL_SP_INT_NEGATIVE)
-        b->sign ^= (a->sign ^ b->sign) & (unsigned int)mask;
+        b->sign ^= (wc_mp_sign_t)(a->sign ^ b->sign) & (wc_mp_sign_t)mask;
 #endif
     }
 
@@ -162,13 +156,11 @@ int mp_cond_copy(mp_int* a, int copy, mp_int* b)
 
 
 #ifndef WC_NO_RNG
-int get_rand_digit(WC_RNG* rng, mp_digit* d)
+int mp_get_rand_digit(WC_RNG* rng, mp_digit* d)
 {
     return wc_RNG_GenerateBlock(rng, (byte*)d, sizeof(mp_digit));
 }
 
-#if defined(WC_RSA_BLINDING) || defined(WOLFCRYPT_HAVE_SAKKE) || \
-    defined(WOLFSSL_ECC_BLIND_K)
 int mp_rand(mp_int* a, int digits, WC_RNG* rng)
 {
     int ret = 0;
@@ -196,7 +188,7 @@ int mp_rand(mp_int* a, int digits, WC_RNG* rng)
         ret = BAD_FUNC_ARG;
     }
     if (ret == MP_OKAY) {
-        a->used = (word32)digits;
+        a->used = (wc_mp_size_t)digits;
     }
 #endif
     /* fill the data with random bytes */
@@ -213,7 +205,7 @@ int mp_rand(mp_int* a, int digits, WC_RNG* rng)
 #endif
         /* ensure top digit is not zero */
         while ((ret == MP_OKAY) && (a->dp[a->used - 1] == 0)) {
-            ret = get_rand_digit(rng, &a->dp[a->used - 1]);
+            ret = mp_get_rand_digit(rng, &a->dp[a->used - 1]);
 #ifdef USE_INTEGER_HEAP_MATH
             a->dp[a->used - 1] &= MP_MASK;
 #endif
@@ -222,7 +214,6 @@ int mp_rand(mp_int* a, int digits, WC_RNG* rng)
 
     return ret;
 }
-#endif /* WC_RSA_BLINDING || WOLFCRYPT_HAVE_SAKKE || WOLFSSL_ECC_BLIND_K */
 #endif /* !WC_NO_RNG */
 
 #if defined(HAVE_ECC) || defined(WOLFSSL_EXPORT_INT)
@@ -358,9 +349,7 @@ void wc_bigint_zero(WC_BIGINT* a)
 void wc_bigint_free(WC_BIGINT* a)
 {
     if (a) {
-        if (a->buf) {
-          XFREE(a->buf, a->heap, DYNAMIC_TYPE_WOLF_BIGINT);
-        }
+        XFREE(a->buf, a->heap, DYNAMIC_TYPE_WOLF_BIGINT);
         a->buf = NULL;
         a->len = 0;
     }
@@ -476,14 +465,16 @@ const char *wc_GetMathInfo(void)
         #elif defined(WOLFSSL_HAVE_SP_DH)
             " dh"
         #endif
-        #ifndef WOLFSSL_SP_NO_2048
-            " 2048"
-        #endif
-        #ifndef WOLFSSL_SP_NO_3072
-            " 3072"
-        #endif
-        #ifdef WOLFSSL_SP_4096
-            " 4096"
+        #if defined(WOLFSSL_HAVE_SP_RSA) || defined(WOLFSSL_HAVE_SP_DH)
+            #ifndef WOLFSSL_SP_NO_2048
+                " 2048"
+            #endif
+            #ifndef WOLFSSL_SP_NO_3072
+                " 3072"
+            #endif
+            #ifdef WOLFSSL_SP_4096
+                " 4096"
+            #endif
         #endif
         #ifdef WOLFSSL_SP_ASM
             " asm"
@@ -520,6 +511,54 @@ const char *wc_GetMathInfo(void)
             " no-malloc"
         #endif
     #endif
+
+    /* ARM Assembly speedups */
+    #if defined(WOLFSSL_ARMASM) || defined(USE_INTEL_SPEEDUP)
+        "\n\tAssembly Speedups:"
+
+        #ifdef WOLFSSL_ARMASM
+            " ARMASM"
+            #ifdef WOLFSSL_ARMASM_THUMB2
+                " THUMB2"
+            #endif
+            #ifdef WOLFSSL_ARMASM_INLINE
+                " INLINE"
+            #endif
+            #ifdef WOLFSSL_ARMASM_NO_HW_CRYPTO
+                " NO_HW_CRYPTO"
+            #endif
+            #ifdef WOLFSSL_ARMASM_NO_NEON
+                " NO_NEON"
+            #endif
+            #ifdef WOLFSSL_ARM_ARCH
+                " ARM ARCH=" WC_STRINGIFY(WOLFSSL_ARM_ARCH)
+            #endif
+        #endif
+
+        #ifdef USE_INTEL_SPEEDUP
+            " INTELASM"
+            #ifdef USE_INTEL_SPEEDUP_FOR_AES
+                " AES"
+            #endif
+        #endif
+
+        #ifdef WOLFSSL_USE_ALIGN
+            " ALIGN"
+        #endif
+        #ifdef HAVE_INTEL_RDRAND
+            " INTEL_RDRAND"
+        #endif
+        #ifdef HAVE_AMD_RDSEED
+            " AMD_RDSEED"
+        #endif
+        #ifdef WOLFSSL_X86_64_BUILD
+            " X86_64_BUILD"
+        #endif
+        #ifdef WOLFSSL_X86_BUILD
+            " X86_BUILD"
+        #endif
+    #endif
+
     ;
 }
 #endif /* HAVE_WC_INTROSPECTION */

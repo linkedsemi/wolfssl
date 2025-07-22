@@ -1,12 +1,12 @@
 /* crypto.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -25,12 +25,12 @@
 #endif
 
 #include <wolfssl/wolfcrypt/settings.h>
-#include <wolfssl/wolfcrypt/port/autosar/Csm.h>
-#include <wolfssl/wolfcrypt/port/autosar/Crypto.h>
 
 #ifdef WOLFSSL_AUTOSAR
 #ifndef NO_WOLFSSL_AUTOSAR_CRYPTO
 
+#include <wolfssl/wolfcrypt/port/autosar/Csm.h>
+#include <wolfssl/wolfcrypt/port/autosar/Crypto.h>
 #include <wolfssl/wolfcrypt/logging.h>
 #include <wolfssl/wolfcrypt/aes.h>
 #include <wolfssl/wolfcrypt/random.h>
@@ -250,7 +250,7 @@ Std_ReturnType wolfSSL_Crypto_CBC(Crypto_JobType* job)
             return E_NOT_OK;
         }
 
-        if (iv != NULL && ivSz < AES_BLOCK_SIZE) {
+        if (iv != NULL && ivSz < WC_AES_BLOCK_SIZE) {
             WOLFSSL_MSG("Error IV is too small");
             return E_NOT_OK;
         }

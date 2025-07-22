@@ -1,12 +1,12 @@
 /* ed448.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -85,8 +85,8 @@ struct ed448_key {
     byte pointX[ED448_KEY_SIZE]; /* recovered X coordinate */
     byte pointY[ED448_KEY_SIZE]; /* Y coordinate is the public key with The most significant bit of the final octet always zero. */
 #endif
-    word16 privKeySet:1;
-    word16 pubKeySet:1;
+    WC_BITFIELD privKeySet:1;
+    WC_BITFIELD pubKeySet:1;
 #ifdef WOLFSSL_ASYNC_CRYPT
     WC_ASYNC_DEV asyncDev;
 #endif
@@ -97,7 +97,7 @@ struct ed448_key {
     void *heap;
 #ifdef WOLFSSL_ED448_PERSISTENT_SHA
     wc_Shake sha;
-    int sha_clean_flag;
+    unsigned int sha_clean_flag : 1;
 #endif
 };
 

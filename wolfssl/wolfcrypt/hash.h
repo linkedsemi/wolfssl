@@ -1,12 +1,12 @@
 /* hash.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -40,7 +40,7 @@
 #if defined(WOLFSSL_SHA384) || defined(WOLFSSL_SHA512)
     #include <wolfssl/wolfcrypt/sha512.h>
 #endif
-#ifdef HAVE_BLAKE2
+#if defined(HAVE_BLAKE2) || defined(HAVE_BLAKE2S)
     #include <wolfssl/wolfcrypt/blake2.h>
 #endif
 #ifdef WOLFSSL_SHA3
@@ -51,9 +51,6 @@
 #endif
 #ifdef WOLFSSL_MD2
     #include <wolfssl/wolfcrypt/md2.h>
-#endif
-#if defined(HAVE_BLAKE2) || defined(HAVE_BLAKE2S)
-    #include <wolfssl/wolfcrypt/blake2.h>
 #endif
 #ifdef WOLFSSL_SM3
     #include <wolfssl/wolfcrypt/sm3.h>
@@ -80,53 +77,57 @@ enum wc_MACAlgorithm {
     sha512_mac,
     rmd_mac,
     blake2b_mac,
-    sm3_mac,
+    sm3_mac
 };
 
-enum wc_HashFlags {
-    WC_HASH_FLAG_NONE =     0x00000000,
-    WC_HASH_FLAG_WILLCOPY = 0x00000001, /* flag to indicate hash will be copied */
-    WC_HASH_FLAG_ISCOPY =   0x00000002, /* hash is copy */
-#ifdef WOLFSSL_SHA3
-    WC_HASH_SHA3_KECCAK256 =0x00010000, /* Older KECCAK256 */
+/* hash union */
+typedef union {
+#ifndef NO_MD5
+    wc_Md5 md5;
 #endif
-    WOLF_ENUM_DUMMY_LAST_ELEMENT(WC_HASH)
-};
+#ifndef NO_SHA
+    wc_Sha sha;
+#endif
+#ifdef WOLFSSL_SHA224
+    wc_Sha224 sha224;
+#endif
+#ifndef NO_SHA256
+    wc_Sha256 sha256;
+#endif
+#ifdef WOLFSSL_SHA384
+    wc_Sha384 sha384;
+#endif
+#ifdef WOLFSSL_SHA512
+    wc_Sha512 sha512;
+#endif
+#ifdef WOLFSSL_SHA3
+    wc_Sha3 sha3;
+#endif
+#ifdef WOLFSSL_SM3
+    wc_Sm3 sm3;
+#endif
+    WOLF_AGG_DUMMY_MEMBER;
+} wc_Hashes;
 
 #ifndef NO_HASH_WRAPPER
-typedef union {
-    #ifndef NO_MD5
-        wc_Md5 md5;
-    #endif
-    #ifndef NO_SHA
-        wc_Sha sha;
-    #endif
-    #ifdef WOLFSSL_SHA224
-        wc_Sha224 sha224;
-    #endif
-    #ifndef NO_SHA256
-        wc_Sha256 sha256;
-    #endif
-    #ifdef WOLFSSL_SHA384
-        wc_Sha384 sha384;
-    #endif
-    #ifdef WOLFSSL_SHA512
-        wc_Sha512 sha512;
-    #endif
-    #ifdef WOLFSSL_SHA3
-        wc_Sha3 sha3;
-    #endif
-    #ifdef WOLFSSL_SM3
-        wc_Sm3 sm3;
-    #endif
+typedef struct {
+    wc_Hashes alg;
+    enum wc_HashType type; /* sanity check */
+#ifndef WC_NO_CONSTRUCTORS
+    void *heap;
+#endif
 } wc_HashAlg;
 #endif /* !NO_HASH_WRAPPER */
 
+
 /* Find largest possible digest size
    Note if this gets up to the size of 80 or over check smallstack build */
+#undef WC_MAX_DIGEST_SIZE
+#undef WC_MAX_BLOCK_SIZE
 #if defined(WOLFSSL_SHA3)
+    /* note: SHA3-224 has the largest block size */
     #define WC_MAX_DIGEST_SIZE WC_SHA3_512_DIGEST_SIZE
-    #define WC_MAX_BLOCK_SIZE  WC_SHA3_224_BLOCK_SIZE /* 224 is the largest block size */
+    #define WC_MAX_BLOCK_SIZE  WC_SHA3_224_BLOCK_SIZE
 #elif defined(WOLFSSL_SHA512)
     #define WC_MAX_DIGEST_SIZE WC_SHA512_DIGEST_SIZE
     #define WC_MAX_BLOCK_SIZE  WC_SHA512_BLOCK_SIZE
@@ -183,6 +184,11 @@ WOLFSSL_API int wc_HashUpdate(wc_HashAlg* hash, enum wc_HashType type,
 WOLFSSL_API int wc_HashFinal(wc_HashAlg* hash, enum wc_HashType type,
     byte* out);
 WOLFSSL_API int wc_HashFree(wc_HashAlg* hash, enum wc_HashType type);
+#ifndef WC_NO_CONSTRUCTORS
+WOLFSSL_API wc_HashAlg* wc_HashNew(enum wc_HashType type, void* heap,
+                                   int devId, int *result_code);
+WOLFSSL_API int wc_HashDelete(wc_HashAlg *hash, wc_HashAlg **hash_p);
+#endif
 
 #ifdef WOLFSSL_HASH_FLAGS
     WOLFSSL_API int wc_HashSetFlags(wc_HashAlg* hash, enum wc_HashType type,

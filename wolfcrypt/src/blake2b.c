@@ -12,13 +12,13 @@
 */
 /* blake2b.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -31,20 +31,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #ifdef HAVE_BLAKE2
 
 #include <wolfssl/wolfcrypt/blake2.h>
 #include <wolfssl/wolfcrypt/blake2-impl.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
-
 
 static const word64 blake2b_IV[8] =
 {
@@ -364,7 +356,9 @@ int blake2b_final( blake2b_state *S, byte *out, byte outlen )
     }
 
     S->buflen -= BLAKE2B_BLOCKBYTES;
-    XMEMCPY( S->buf, S->buf + BLAKE2B_BLOCKBYTES, (wolfssl_word)S->buflen );
+    if ( S->buflen > BLAKE2B_BLOCKBYTES )
+      return BAD_LENGTH_E;
+    XMEMMOVE( S->buf, S->buf + BLAKE2B_BLOCKBYTES, (wolfssl_word)S->buflen );
   }
 
   blake2b_increment_counter( S, S->buflen );
@@ -491,6 +485,16 @@ int wc_InitBlake2b_WithKey(Blake2b* b2b, word32 digestSz, const byte *key, word3
 /* Blake2b Update */
 int wc_Blake2bUpdate(Blake2b* b2b, const byte* data, word32 sz)
 {
+    if (b2b == NULL){
+        return BAD_FUNC_ARG;
+    }
+    if (data == NULL && sz != 0){
+        return BAD_FUNC_ARG;
+    }
+    if (sz == 0){
+        return 0;
+    }
+
     return blake2b_update(b2b->S, data, sz);
 }
 
@@ -498,7 +502,16 @@ int wc_Blake2bUpdate(Blake2b* b2b, const byte* data, word32 sz)
 /* Blake2b Final, if pass in zero size we use init digestSz */
 int wc_Blake2bFinal(Blake2b* b2b, byte* final, word32 requestSz)
 {
-    word32 sz = requestSz ? requestSz : b2b->digestSz;
+    word32 sz;
+
+    if (b2b == NULL){
+        return BAD_FUNC_ARG;
+    }
+    if (final == NULL){
+        return BAD_FUNC_ARG;
+    }
+
+    sz = requestSz ? requestSz : b2b->digestSz;
 
     return blake2b_final(b2b->S, final, (byte)sz);
 }

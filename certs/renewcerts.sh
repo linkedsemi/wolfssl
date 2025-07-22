@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # renewcerts.sh
 #
 # renews the following certs:
@@ -29,6 +29,7 @@
 #                       client-crl-dist.pem
 #                       entity-no-ca-bool-cert.pem
 #                       fpki-cert.der
+#                       fpki-certpol-cert.der
 #                       rid-cert.der
 # updates the following crls:
 #                       crl/cliCrl.pem
@@ -373,6 +374,20 @@ run_renewcerts(){
     echo "End of section"
     echo "---------------------------------------------------------------------"
     ###########################################################
+    ########## update and sign fpki-certpol-cert.der ################
+    ###########################################################
+    echo "Updating fpki-certpol-cert.der"
+    echo ""
+    #pipe the following arguments to openssl req...
+    echo -e "US\\nMontana\\nBozeman\\nwolfSSL\\nFPKI\\nwww.wolfssl.com\\ninfo@wolfssl.com\\n.\\n.\\n" | openssl req -new -key server-key.pem -config ./wolfssl.cnf -nodes > fpki-certpol-req.pem
+    check_result $? "Step 1"
+
+    openssl x509 -req -in fpki-certpol-req.pem -extfile wolfssl.cnf -extensions fpki_ext_certpol -days 1000 -CA ca-cert.pem -CAkey ca-key.pem -set_serial 01 -out fpki-certpol-cert.der -outform DER
+    check_result $? "Step 2"
+    rm fpki-certpol-req.pem
+    echo "End of section"
+    echo "---------------------------------------------------------------------"
+    ###########################################################
     ########## update and sign rid-cert.der ################
     ###########################################################
     echo "Updating rid-cert.der"
@@ -696,7 +711,7 @@ run_renewcerts(){
     check_result $? "Step 1"
 
     echo "Updating client-ecc-cert-rpk.der"
-    cp ecc-client-keyPub.der ./rpk/ecc-client-cert-rpk.der
+    cp ecc-client-keyPub.der ./rpk/client-ecc-cert-rpk.der
     check_result $? "Step 2"
 
     echo "Updating server-cert-rpk.der"
@@ -777,6 +792,8 @@ run_renewcerts(){
     cd ./test || { echo "Failed to switch to dir ./test"; exit 1; }
     echo "test" | openssl cms -encrypt -binary -keyid -out ktri-keyid-cms.msg -outform der -recip ../client-cert.pem -nocerts
     check_result $? "generate ktri-keyid-cms.msg"
+    echo "testencrypt" | openssl cms -EncryptedData_encrypt -binary -keyid -aes-128-cbc -secretkey 0123456789ABCDEF0011223344556677 -out encrypteddata.msg -outform der -recip ../client-cert.pem -nocerts
+    check_result $? "generate encrypteddata.msg"
     cd ../ || exit 1
     echo "End of section"
     echo "---------------------------------------------------------------------"
@@ -856,6 +873,11 @@ run_renewcerts(){
     check_result $? ""
 
     openssl smime -sign -in ./ca-cert.pem -out test-stream-sign.p7b -signer ./ca-cert.pem -nodetach -nocerts -binary -outform DER -stream -inkey ./ca-key.pem
+    check_result $? ""
+
+    echo "Creating test-stream-dec.p7b..."
+    echo ""
+    openssl cms -encrypt -in ca-cert.pem -recip client-cert.pem -out test-stream-dec.p7b -outform DER -stream
     check_result $? ""
 
     echo "End of section"

@@ -1,12 +1,12 @@
 /* logging.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,15 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
-
-#include <wolfssl/wolfcrypt/logging.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
 #if defined(OPENSSL_EXTRA) && !defined(WOLFCRYPT_ONLY)
 /* avoid adding WANT_READ and WANT_WRITE to error queue */
 #include <wolfssl/error-ssl.h>
@@ -237,43 +230,6 @@ void WOLFSSL_TIME(int count)
 
 #ifdef DEBUG_WOLFSSL
 
-#if defined(ARDUINO)
-    /* see Arduino wolfssl.h for wolfSSL_Arduino_Serial_Print */
-#elif defined(FREESCALE_MQX) || defined(FREESCALE_KSDK_MQX)
-    /* see wc_port.h for fio.h and nio.h includes */
-#elif defined(WOLFSSL_SGX)
-    /* Declare sprintf for ocall */
-    int sprintf(char* buf, const char *fmt, ...);
-#elif defined(WOLFSSL_DEOS)
-#elif defined(MICRIUM)
-    #if (BSP_SER_COMM_EN  == DEF_ENABLED)
-        #include <bsp_ser.h>
-    #endif
-#elif defined(WOLFSSL_USER_LOG)
-    /* user includes their own headers */
-#elif defined(WOLFSSL_ESPIDF)
-    #include "esp_types.h"
-    #include "esp_log.h"
-#elif defined(WOLFSSL_TELIT_M2MB)
-    #include <stdio.h>
-    #include "m2m_log.h"
-#elif defined(WOLFSSL_ANDROID_DEBUG)
-    #include <android/log.h>
-#elif defined(WOLFSSL_XILINX)
-    #include "xil_printf.h"
-#elif defined(WOLFSSL_LINUXKM)
-    /* the requisite linux/kernel.h is included in wc_port.h, with incompatible warnings masked out. */
-#elif defined(FUSION_RTOS)
-    #include <fclstdio.h>
-    #include <wolfssl/wolfcrypt/wc_port.h>
-    #define fprintf FCL_FPRINTF
-#else
-    #include <stdio.h>  /* for default printf stuff */
-#endif
-
-#if defined(THREADX) && !defined(THREADX_NO_DC_PRINTF)
-    int dc_log_printf(char*, ...);
-#endif
 
 #ifdef HAVE_STACK_SIZE_VERBOSE
 #include <wolfssl/wolfcrypt/mem_track.h>
@@ -289,106 +245,40 @@ static void wolfssl_log(const int logLevel, const char* const file_name,
     else {
 #if defined(WOLFSSL_USER_LOG)
         WOLFSSL_USER_LOG(logMessage);
+#elif defined(WOLFSSL_DEBUG_PRINTF_FN)
+    #ifdef WOLFSSL_MDK_ARM
+        fflush(stdout);
+    #endif
+        if (log_prefix != NULL) {
+            if (file_name != NULL)
+                WOLFSSL_DEBUG_PRINTF_FN(WOLFSSL_DEBUG_PRINTF_FIRST_ARGS
+                        "[%s]: [%s L %d] %s\n",
+                        log_prefix, file_name, line_number, logMessage);
+            else
+                WOLFSSL_DEBUG_PRINTF_FN(WOLFSSL_DEBUG_PRINTF_FIRST_ARGS
+                        "[%s]: %s\n", log_prefix, logMessage);
+        } else {
+            if (file_name != NULL)
+                WOLFSSL_DEBUG_PRINTF_FN(WOLFSSL_DEBUG_PRINTF_FIRST_ARGS
+                        "[%s L %d] %s\n",
+                        file_name, line_number, logMessage);
+            else
+                WOLFSSL_DEBUG_PRINTF_FN(WOLFSSL_DEBUG_PRINTF_FIRST_ARGS
+                        "%s\n", logMessage);
+        }
+    #ifdef WOLFSSL_MDK_ARM
+        fflush(stdout);
+    #endif
 #elif defined(ARDUINO)
         wolfSSL_Arduino_Serial_Print(logMessage);
-#elif defined(WOLFSSL_LOG_PRINTF)
-        if (file_name != NULL)
-            printf("[%s L %d] %s\n", file_name, line_number, logMessage);
-        else
-            printf("%s\n", logMessage);
-#elif defined(THREADX) && !defined(THREADX_NO_DC_PRINTF)
-        if (file_name != NULL)
-            dc_log_printf("[%s L %d] %s\n", file_name, line_number, logMessage);
-        else
-            dc_log_printf("%s\n", logMessage);
-#elif defined(WOLFSSL_DEOS)
-        if (file_name != NULL)
-            printf("[%s L %d] %s\r\n", file_name, line_number, logMessage);
-        else
-            printf("%s\r\n", logMessage);
-#elif defined(MICRIUM)
-        if (file_name != NULL)
-            BSP_Ser_Printf("[%s L %d] %s\r\n",
-                           file_name, line_number, logMessage);
-        else
-            BSP_Ser_Printf("%s\r\n", logMessage);
-#elif defined(WOLFSSL_MDK_ARM)
-        fflush(stdout) ;
-        if (file_name != NULL)
-            printf("[%s L %d] %s\n", file_name, line_number, logMessage);
-        else
-            printf("%s\n", logMessage);
-        fflush(stdout) ;
 #elif defined(WOLFSSL_UTASKER)
         fnDebugMsg((char*)logMessage);
         fnDebugMsg("\r\n");
-#elif defined(MQX_USE_IO_OLD)
-        if (file_name != NULL)
-            fprintf(_mqxio_stderr, "[%s L %d] %s\n",
-                    file_name, line_number, logMessage);
-        else
-            fprintf(_mqxio_stderr, "%s\n", logMessage);
-#elif defined(WOLFSSL_APACHE_MYNEWT)
-        if (file_name != NULL)
-            LOG_DEBUG(&mynewt_log, LOG_MODULE_DEFAULT, "[%s L %d] %s\n",
-                      file_name, line_number, logMessage);
-        else
-            LOG_DEBUG(&mynewt_log, LOG_MODULE_DEFAULT, "%s\n", logMessage);
-#elif defined(WOLFSSL_ESPIDF)
-        if (file_name != NULL)
-            ESP_LOGI("wolfssl", "[%s L %d] %s",
-                     file_name, line_number, logMessage);
-        else
-            ESP_LOGI("wolfssl", "%s", logMessage);
-#elif defined(WOLFSSL_ZEPHYR)
-        if (file_name != NULL)
-            printk("[%s L %d] %s\n", file_name, line_number, logMessage);
-        else
-            printk("%s\n", logMessage);
-#elif defined(WOLFSSL_TELIT_M2MB)
-        if (file_name != NULL)
-            M2M_LOG_INFO("[%s L %d] %s\n", file_name, line_number, logMessage);
-        else
-            M2M_LOG_INFO("%s\n", logMessage);
-#elif defined(WOLFSSL_ANDROID_DEBUG)
-        if (file_name != NULL)
-            __android_log_print(ANDROID_LOG_VERBOSE, "[wolfSSL]", "[%s L %d] %s",
-                                file_name, line_number, logMessage);
-        else
-            __android_log_print(ANDROID_LOG_VERBOSE, "[wolfSSL]", "%s",
-                                logMessage);
-#elif defined(WOLFSSL_XILINX)
-        if (file_name != NULL)
-            xil_printf("[%s L %d] %s\r\n", file_name, line_number, logMessage);
-        else
-            xil_printf("%s\r\n", logMessage);
-#elif defined(WOLFSSL_LINUXKM)
-        if (file_name != NULL)
-            printk("[%s L %d] %s\n", file_name, line_number, logMessage);
-        else
-            printk("%s\n", logMessage);
-#elif defined(WOLFSSL_RENESAS_RA6M4)
-        if (file_name != NULL)
-            myprintf("[%s L %d] %s\n", file_name, line_number, logMessage);
-        else
-            myprintf("%s\n", logMessage);
 #elif defined(STACK_SIZE_CHECKPOINT_MSG) && \
       defined(HAVE_STACK_SIZE_VERBOSE) && defined(HAVE_STACK_SIZE_VERBOSE_LOG)
         STACK_SIZE_CHECKPOINT_MSG(logMessage);
 #else
-        if (log_prefix != NULL) {
-            if (file_name != NULL)
-                fprintf(stderr, "[%s]: [%s L %d] %s\n",
-                        log_prefix, file_name, line_number, logMessage);
-            else
-                fprintf(stderr, "[%s]: %s\n", log_prefix, logMessage);
-        } else {
-            if (file_name != NULL)
-                fprintf(stderr, "[%s L %d] %s\n",
-                        file_name, line_number, logMessage);
-            else
-                fprintf(stderr, "%s\n", logMessage);
-        }
+    #error No log method defined.
 #endif
     }
 }
@@ -471,26 +361,48 @@ void WOLFSSL_BUFFER(const byte* buffer, word32 length)
 
     while (buflen > 0) {
         int bufidx = 0;
-        XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "\t");
+        if (XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "\t")
+            >= (int)sizeof(line) - bufidx)
+        {
+            goto errout;
+        }
         bufidx++;
 
         for (i = 0; i < LINE_LEN; i++) {
             if (i < buflen) {
-                XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "%02x ", buffer[i]);
+                if (XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "%02x ",
+                              buffer[i]) >= (int)sizeof(line) - bufidx)
+                {
+                    goto errout;
+                }
             }
             else {
-                XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "   ");
+                if (XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "   ")
+                    >= (int)sizeof(line) - bufidx)
+                {
+                    goto errout;
+                }
             }
             bufidx += 3;
         }
 
-        XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "| ");
+        if (XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "| ")
+            >= (int)sizeof(line) - bufidx)
+        {
+            goto errout;
+        }
         bufidx++;
 
         for (i = 0; i < LINE_LEN; i++) {
             if (i < buflen) {
-                XSNPRINTF(&line[bufidx], sizeof(line)-bufidx,
-                     "%c", 31 < buffer[i] && buffer[i] < 127 ? buffer[i] : '.');
+                if (XSNPRINTF(&line[bufidx], sizeof(line)-bufidx,
+                              "%c", 31 < buffer[i] && buffer[i] < 127
+                              ? buffer[i]
+                              : '.')
+                    >= (int)sizeof(line) - bufidx)
+                {
+                    goto errout;
+                }
                 bufidx++;
             }
         }
@@ -499,6 +411,12 @@ void WOLFSSL_BUFFER(const byte* buffer, word32 length)
         buffer += LINE_LEN;
         buflen -= LINE_LEN;
     }
+
+    return;
+
+errout:
+
+    wolfssl_log(INFO_LOG, NULL, 0, "\t[Buffer error while rendering]");
 }
 
 #undef WOLFSSL_ENTER /* undo WOLFSSL_DEBUG_CODEPOINTS wrapper */
@@ -506,7 +424,11 @@ void WOLFSSL_ENTER(const char* msg)
 {
     if (loggingEnabled) {
         char buffer[WOLFSSL_MAX_ERROR_SZ];
-        XSNPRINTF(buffer, sizeof(buffer), "wolfSSL Entering %s", msg);
+        if (XSNPRINTF(buffer, sizeof(buffer), "wolfSSL Entering %s", msg)
+            >= (int)sizeof(buffer))
+        {
+            buffer[sizeof(buffer) - 1] = 0;
+        }
         wolfssl_log(ENTER_LOG, NULL, 0, buffer);
     }
 }
@@ -516,7 +438,11 @@ void WOLFSSL_ENTER2(const char *file, int line, const char* msg)
 {
     if (loggingEnabled) {
         char buffer[WOLFSSL_MAX_ERROR_SZ];
-        XSNPRINTF(buffer, sizeof(buffer), "wolfSSL Entering %s", msg);
+        if (XSNPRINTF(buffer, sizeof(buffer), "wolfSSL Entering %s", msg)
+            >= (int)sizeof(buffer))
+        {
+            buffer[sizeof(buffer) - 1] = 0;
+        }
         wolfssl_log(ENTER_LOG, file, line, buffer);
     }
 }
@@ -527,8 +453,12 @@ void WOLFSSL_LEAVE(const char* msg, int ret)
 {
     if (loggingEnabled) {
         char buffer[WOLFSSL_MAX_ERROR_SZ];
-        XSNPRINTF(buffer, sizeof(buffer), "wolfSSL Leaving %s, return %d",
-                msg, ret);
+        if (XSNPRINTF(buffer, sizeof(buffer), "wolfSSL Leaving %s, return %d",
+                      msg, ret)
+            >= (int)sizeof(buffer))
+        {
+            buffer[sizeof(buffer) - 1] = 0;
+        }
         wolfssl_log(LEAVE_LOG, NULL, 0, buffer);
     }
 }
@@ -538,8 +468,12 @@ void WOLFSSL_LEAVE2(const char *file, int line, const char* msg, int ret)
 {
     if (loggingEnabled) {
         char buffer[WOLFSSL_MAX_ERROR_SZ];
-        XSNPRINTF(buffer, sizeof(buffer), "wolfSSL Leaving %s, return %d",
-                msg, ret);
+        if (XSNPRINTF(buffer, sizeof(buffer), "wolfSSL Leaving %s, return %d",
+                      msg, ret)
+            >= (int)sizeof(buffer))
+        {
+            buffer[sizeof(buffer) - 1] = 0;
+        }
         wolfssl_log(LEAVE_LOG, file, line, buffer);
     }
 }
@@ -860,7 +794,7 @@ unsigned long wc_PeekErrorNodeLineData(const char **file, int *line,
  * Get the error value at the HEAD of the ERR queue or 0 if the queue
  * is empty. The HEAD entry is removed by this call.
  */
-unsigned long wc_GetErrorNodeErr(void)
+int wc_GetErrorNodeErr(void)
 {
     int ret;
 
@@ -879,7 +813,7 @@ unsigned long wc_GetErrorNodeErr(void)
             wc_ClearErrorNodes();
         }
     }
-    return (unsigned long)ret;
+    return ret;
 }
 
 #if !defined(NO_FILESYSTEM) && !defined(NO_STDIO_FILESYSTEM)
@@ -1127,7 +1061,7 @@ int wc_AddErrorNode(int error, int line, char* buf, char* file)
             sz = WOLFSSL_MAX_ERROR_SZ - 1;
         }
         if (sz > 0) {
-            XMEMCPY(err->error, buf, sz);
+            XMEMCPY(err->error, buf, (size_t)sz);
         }
 
         sz = (int)XSTRLEN(file);
@@ -1135,7 +1069,7 @@ int wc_AddErrorNode(int error, int line, char* buf, char* file)
             sz = WOLFSSL_MAX_ERROR_SZ - 1;
         }
         if (sz > 0) {
-            XMEMCPY(err->file, file, sz);
+            XMEMCPY(err->file, file, (size_t)sz);
         }
 
         err->value = error;
@@ -1376,7 +1310,7 @@ unsigned long wc_PeekErrorNodeLineData(const char **file, int *line,
     }
 }
 
-unsigned long wc_GetErrorNodeErr(void)
+int wc_GetErrorNodeErr(void)
 {
     int ret;
 
@@ -1384,7 +1318,7 @@ unsigned long wc_GetErrorNodeErr(void)
 
     if (ERRQ_LOCK() != 0) {
         WOLFSSL_MSG("Lock debug mutex failed");
-        return (unsigned long)(0 - BAD_MUTEX_E);
+        return (0 - BAD_MUTEX_E);
     }
 
     ret = pullErrorNode(NULL, NULL, NULL);
@@ -1551,10 +1485,10 @@ unsigned long wc_PeekErrorNodeLineData(const char **file, int *line,
     return (unsigned long)(0 - NOT_COMPILED_IN);
 }
 
-unsigned long wc_GetErrorNodeErr(void)
+int wc_GetErrorNodeErr(void)
 {
     WOLFSSL_ENTER("wc_GetErrorNodeErr");
-    return (unsigned long)(0 - NOT_COMPILED_IN);
+    return (0 - NOT_COMPILED_IN);
 }
 
 #if !defined(NO_FILESYSTEM) && !defined(NO_STDIO_FILESYSTEM)
@@ -1674,3 +1608,144 @@ void WOLFSSL_ERROR_MSG(const char* msg)
 }
 
 #endif  /* DEBUG_WOLFSSL || WOLFSSL_NGINX || WOLFSSL_HAPROXY */
+
+#ifdef WOLFSSL_DEBUG_BACKTRACE_ERROR_CODES
+
+#ifdef WOLFSSL_LINUXKM
+
+void wc_backtrace_render(void) {
+    dump_stack();
+}
+
+#else /* !WOLFSSL_LINUXKM */
+
+#include <backtrace-supported.h>
+
+#if BACKTRACE_SUPPORTED != 1
+    #error WOLFSSL_DEBUG_BACKTRACE_ERROR_CODES is defined but BACKTRACE_SUPPORTED is 0.
+#endif
+
+#if !defined(WOLFSSL_MUTEX_INITIALIZER) && defined(WOLFSSL_NO_ATOMICS)
+    #error WOLFSSL_DEBUG_BACKTRACE_ERROR_CODES requires WOLFSSL_MUTEX_INITIALIZER or wolfSSL_Atomic_Ints.
+#endif
+
+#include <backtrace.h>
+
+static int backtrace_callback(void *data, uintptr_t pc, const char *filename,
+                              int lineno, const char *function)
+{
+    if (function == NULL)
+        return 0;
+    /* the first callback is for the call to wc_print_backtrace() -- skip it. */
+    if (*(int *)data == 0) {
+        *(int *)data = 1;
+        return 0;
+    }
+#ifdef NO_STDIO_FILESYSTEM
+    printf("    #%d %p in %s %s:%d\n", (*(int *)data)++, (void *)pc,
+           function, filename, lineno);
+#else
+    fprintf(stderr, "    #%d %p in %s %s:%d\n", (*(int *)data)++, (void *)pc,
+            function, filename, lineno);
+#endif
+    return 0;
+}
+
+static void backtrace_error(void *data, const char *msg, int errnum) {
+    (void)data;
+#ifdef NO_STDIO_FILESYSTEM
+    printf("ERR TRACE: error %d while backtracing: %s", errnum, msg);
+#else
+    fprintf(stderr, "ERR TRACE: error %d while backtracing: %s", errnum, msg);
+#endif
+}
+
+static void backtrace_creation_error(void *data, const char *msg, int errnum) {
+    (void)data;
+#ifdef NO_STDIO_FILESYSTEM
+    printf("ERR TRACE: internal error %d "
+            "while initializing backtrace facility: %s", errnum, msg);
+    printf("ERR TRACE: internal error "
+           "while initializing backtrace facility");
+#else
+    fprintf(stderr, "ERR TRACE: internal error %d "
+            "while initializing backtrace facility: %s", errnum, msg);
+#endif
+}
+
+static int backtrace_init(struct backtrace_state **backtrace_state) {
+#ifdef WOLFSSL_MUTEX_INITIALIZER
+    static wolfSSL_Mutex backtrace_create_state_mutex =
+        WOLFSSL_MUTEX_INITIALIZER(backtrace_create_state_mutex);
+    if (wc_LockMutex(&backtrace_create_state_mutex) != 0)
+        return -1;
+#elif defined(WOLFSSL_ATOMIC_OPS)
+    static wolfSSL_Atomic_Int init_count = 0;
+    if (wolfSSL_Atomic_Int_FetchAdd(&init_count, 1) != 1)
+        return -1;
+#endif
+    if (*backtrace_state == NULL) {
+        /* passing a NULL filename to backtrace_create_state() tells
+         * libbacktrace to use a target-specific strategy to determine the
+         * executable.  "libbacktrace supports ELF, PE/COFF, Mach-O, and XCOFF
+         * executables with DWARF debugging information.  In other words, it
+         * supports GNU/Linux, *BSD, macOS, Windows, and AIX."
+         */
+        *backtrace_state = backtrace_create_state(
+            NULL, 0, backtrace_creation_error, NULL);
+    }
+#ifdef WOLFSSL_MUTEX_INITIALIZER
+    wc_UnLockMutex(&backtrace_create_state_mutex);
+#endif
+    if (*backtrace_state == NULL)
+        return -1;
+    return 0;
+}
+
+void wc_backtrace_render(void) {
+    static wolfSSL_Mutex backtrace_mutex
+        WOLFSSL_MUTEX_INITIALIZER_CLAUSE(backtrace_mutex);
+    static struct backtrace_state *backtrace_state = NULL;
+    int depth = 0;
+
+#ifndef WOLFSSL_MUTEX_INITIALIZER
+    static wolfSSL_Atomic_Int init_count = 0;
+    if (init_count != 1) {
+        int cur_init_count = wolfSSL_Atomic_Int_FetchSub(&init_count, 1);
+        if (cur_init_count != 0) {
+            (void)wolfSSL_Atomic_Int_FetchAdd(&init_count, 1);
+            return;
+        }
+        if (wc_InitMutex(&backtrace_mutex) != 0)
+            return;
+        /* set init_count to 1, race-free: (-1) - (0-2) = 1 */
+        (void)wolfSSL_Atomic_Int_FetchSub(&init_count, cur_init_count - 2);
+    }
+#endif
+
+    /* backtrace_state can't be shared between threads even when
+     * BACKTRACE_SUPPORTS_THREADS == 1, so we serialize the render op.  this
+     * helpfully mutexes the initialization too.
+     */
+    if (wc_LockMutex(&backtrace_mutex) != 0)
+        return;
+
+    if (backtrace_state == NULL) {
+        if (backtrace_init(&backtrace_state) < 0) {
+            wc_UnLockMutex(&backtrace_mutex);
+            return;
+        }
+    }
+
+    /* note that the optimizer can produce misleading backtraces, even with
+     * -funwind-tables.  in contrast, the macro-generated "ERR TRACE" message
+     * from WC_ERR_TRACE() always accurately identifies the error code point.
+     */
+    backtrace_full(backtrace_state, 0, backtrace_callback, backtrace_error,
+                   (void *)&depth);
+
+    wc_UnLockMutex(&backtrace_mutex);
+}
+#endif /* !WOLFSSL_LINUXKM */
+
+#endif /* WOLFSSL_DEBUG_BACKTRACE_ERROR_CODES */

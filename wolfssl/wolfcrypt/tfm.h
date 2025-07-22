@@ -1,12 +1,12 @@
 /* tfm.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -40,6 +40,7 @@
 #define WOLF_CRYPT_TFM_H
 
 #include <wolfssl/wolfcrypt/types.h>
+#include <wolfssl/wolfcrypt/error-crypt.h>
 #ifndef CHAR_BIT
     #include <limits.h>
 #endif
@@ -305,10 +306,10 @@
 
 /* return codes */
 #define FP_OKAY      0
-#define FP_VAL      (-1)
-#define FP_MEM      (-2)
-#define FP_NOT_INF  (-3)
-#define FP_WOULDBLOCK (-4)
+#define FP_VAL      MP_VAL
+#define FP_MEM      MP_MEM
+#define FP_NOT_INF  MP_NOT_INF
+#define FP_WOULDBLOCK MP_WOULDBLOCK
 
 /* equalities */
 #define FP_LT        (-1)   /* less than */
@@ -377,6 +378,9 @@ while (0)
     } WC_BIGINT;
     #define WOLF_BIGINT_DEFINED
 #endif
+
+#define wc_mp_size_t int
+#define wc_mp_sign_t int
 
 /* a FP type */
 typedef struct fp_int {
@@ -721,6 +725,7 @@ int fp_leading_bit(fp_int *a);
 int fp_unsigned_bin_size(const fp_int *a);
 int fp_read_unsigned_bin(fp_int *a, const unsigned char *b, int c);
 int fp_to_unsigned_bin(fp_int *a, unsigned char *b);
+int fp_to_unsigned_bin_len_ct(fp_int *a, unsigned char *out, int outSz);
 int fp_to_unsigned_bin_len(fp_int *a, unsigned char *b, int c);
 int fp_to_unsigned_bin_at_pos(int x, fp_int *t, unsigned char *b);
 
@@ -776,9 +781,7 @@ int  fp_sqr_comba64(fp_int *a, fp_int *b);
 #define MP_LT   FP_LT   /* less than    */
 #define MP_EQ   FP_EQ   /* equal to     */
 #define MP_GT   FP_GT   /* greater than */
-#define MP_VAL  FP_VAL  /* invalid */
-#define MP_MEM  FP_MEM  /* memory error */
-#define MP_NOT_INF FP_NOT_INF /* point not at infinity */
+#define MP_RANGE MP_NOT_INF
 #define MP_OKAY FP_OKAY /* ok result    */
 #define MP_NO   FP_NO   /* yes/no result */
 #define MP_YES  FP_YES  /* yes/no result */
@@ -845,7 +848,7 @@ MP_API int  mp_unsigned_bin_size(const mp_int * a);
 MP_API int  mp_read_unsigned_bin (mp_int * a, const unsigned char *b, int c);
 MP_API int  mp_to_unsigned_bin_at_pos(int x, mp_int *t, unsigned char *b);
 MP_API int  mp_to_unsigned_bin (mp_int * a, unsigned char *b);
-#define mp_to_unsigned_bin_len_ct   mp_to_unsigned_bin_len
+MP_API int  mp_to_unsigned_bin_len_ct(mp_int * a, unsigned char *b, int c);
 MP_API int  mp_to_unsigned_bin_len(mp_int * a, unsigned char *b, int c);
 
 MP_API int  mp_sub_d(fp_int *a, fp_digit b, fp_int *c);

@@ -1,12 +1,12 @@
 /* wolfcrypt/benchmark/benchmark.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -64,6 +64,7 @@ void bench_camellia(void);
 void bench_sm4_cbc(void);
 void bench_sm4_gcm(void);
 void bench_sm4_ccm(void);
+void bench_ascon_aead(void);
 void bench_md5(int useDeviceID);
 void bench_sha(int useDeviceID);
 void bench_sha224(int useDeviceID);
@@ -101,7 +102,7 @@ void bench_rsaKeyGen_size(int useDeviceID, word32 keySz);
 void bench_rsa(int useDeviceID);
 void bench_rsa_key(int useDeviceID, word32 keySz);
 void bench_dh(int useDeviceID);
-void bench_kyber(int type);
+void bench_mlkem(int type);
 void bench_lms(void);
 void bench_xmss(int hash);
 void bench_ecc_curve(int curveId);
@@ -128,6 +129,7 @@ void bench_sakke(void);
 void bench_rng(void);
 void bench_blake2b(void);
 void bench_blake2s(void);
+void bench_ascon_hash(void);
 void bench_pbkdf2(void);
 void bench_falconKeySign(byte level);
 void bench_dilithiumKeySign(byte level);

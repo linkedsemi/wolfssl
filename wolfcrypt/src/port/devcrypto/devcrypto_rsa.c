@@ -1,12 +1,12 @@
 /* devcrypto_rsa.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,18 +19,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #if defined(WOLFSSL_DEVCRYPTO_RSA)
 
-#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/rsa.h>
-#include <wolfssl/wolfcrypt/logging.h>
 #include <wolfssl/wolfcrypt/port/devcrypto/wc_devcrypto.h>
 
 static void wc_SetupRsaPublic(struct crypt_kop* kop, WC_CRYPTODEV* dev,
@@ -244,20 +237,13 @@ static int _PrivateOperation(const byte* in, word32 inlen, byte* out,
         }
     }
 
-    if (d != NULL)
-        XFREE(d, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (p != NULL)
-        XFREE(p, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (q != NULL)
-        XFREE(q, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (dp != NULL)
-        XFREE(dp, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (dq != NULL)
-        XFREE(dq, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (u != NULL)
-        XFREE(u,  NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (n != NULL)
-        XFREE(n,  NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(d, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(p, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(q, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(dp, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(dq, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(u, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(n, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
     wc_DevCryptoFree(dev);
     return ret;
@@ -311,10 +297,8 @@ static int _PublicOperation(const byte* in, word32 inlen, byte* out,
     }
     wc_DevCryptoFree(&key->ctx);
 
-    if (m != NULL)
-        XFREE(m, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (e != NULL)
-        XFREE(e, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(m, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(e, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     return ret;
 }
 
@@ -556,21 +540,13 @@ int wc_DevCrypto_MakeRsaKey(RsaKey* key, int size, long e, WC_RNG* rng)
     #endif
     }
 
-    if (p != NULL)
-        XFREE(p, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
-    if (q != NULL)
-        XFREE(q, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
-    if (dp != NULL)
-        XFREE(dp, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
-    if (dq != NULL)
-        XFREE(dq, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
-    if (c != NULL)
-        XFREE(c, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
-    if (n != NULL)
-        XFREE(n, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
-    if (d != NULL) {
-        XFREE(d, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
-    }
+    XFREE(p, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(q, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(dp, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(dq, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(c, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(n, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(d, key->heap, DYNAMIC_TYPE_TMP_BUFFER);
 
     (void)rng;
     return ret;

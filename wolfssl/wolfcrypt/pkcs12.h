@@ -1,12 +1,12 @@
 /* pkcs12.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -55,6 +55,9 @@ WOLFSSL_API int wc_i2d_PKCS12(WC_PKCS12* pkcs12, byte** der, int* derSz);
 WOLFSSL_API int wc_PKCS12_parse(WC_PKCS12* pkcs12, const char* psw,
         byte** pkey, word32* pkeySz, byte** cert, word32* certSz,
         WC_DerCertList** ca);
+WOLFSSL_API int wc_PKCS12_parse_ex(WC_PKCS12* pkcs12, const char* psw,
+        byte** pkey, word32* pkeySz, byte** cert, word32* certSz,
+        WC_DerCertList** ca, int keepKeyHeader);
 WOLFSSL_LOCAL int wc_PKCS12_verify_ex(WC_PKCS12* pkcs12,
         const byte* psw, word32 pswSz);
 WOLFSSL_API WC_PKCS12* wc_PKCS12_create(char* pass, word32 passSz,

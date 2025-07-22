@@ -13,7 +13,7 @@ int fflush(FILE *stream)
 
 #ifdef LS_HASH
 
-static WOLFSSL_GLOBAL wolfSSL_Mutex doneLock WOLFSSL_MUTEX_INITIALIZER_CLAUSE(doneLock);
+static wolfSSL_Mutex doneLock;
 static LS_HASH_Context* ls_sha_ctx = NULL;
 
 void wc_LS_Hash_Init()

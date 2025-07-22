@@ -1,12 +1,12 @@
 /* thumb2-sha3-asm
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -21,17 +21,15 @@
 
 /* Generated using (from wolfssl):
  *   cd ../scripts
- *   ruby ./sha3/sha3.rb thumb2 ../wolfssl/wolfcrypt/src/port/arm/thumb2-sha3-asm.c
+ *   ruby ./sha3/sha3.rb \
+ *       thumb2 ../wolfssl/wolfcrypt/src/port/arm/thumb2-sha3-asm.c
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif /* HAVE_CONFIG_H */
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources_asm.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 
 #ifdef WOLFSSL_ARMASM
-#if !defined(__aarch64__) && defined(__thumb__)
+#ifdef WOLFSSL_ARMASM_THUMB2
 #ifdef WOLFSSL_ARMASM_INLINE
 
 #ifdef __IAR_SYSTEMS_ICC__
@@ -43,8 +41,9 @@
 #define __asm__        __asm
 #define __volatile__   volatile
 #endif /* __KEIL__ */
+
 #ifdef WOLFSSL_SHA3
-static const uint64_t L_sha3_thumb2_rt[] = {
+static const word64 L_sha3_thumb2_rt[] = {
     0x0000000000000001UL, 0x0000000000008082UL,
     0x800000000000808aUL, 0x8000000080008000UL,
     0x000000000000808bUL, 0x0000000080000001UL,
@@ -62,14 +61,19 @@ static const uint64_t L_sha3_thumb2_rt[] = {
 #include <wolfssl/wolfcrypt/sha3.h>
 
 #ifndef WOLFSSL_NO_VAR_ASSIGN_REG
-void BlockSha3(word64* state_p)
+WC_OMIT_FRAME_POINTER void BlockSha3(word64* state_p)
 #else
-void BlockSha3(word64* state)
+WC_OMIT_FRAME_POINTER void BlockSha3(word64* state)
 #endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
 {
 #ifndef WOLFSSL_NO_VAR_ASSIGN_REG
     register word64* state __asm__ ("r0") = (word64*)state_p;
-    register uint64_t* L_sha3_thumb2_rt_c __asm__ ("r1") = (uint64_t*)&L_sha3_thumb2_rt;
+    register word64* L_sha3_thumb2_rt_c __asm__ ("r1") =
+        (word64*)&L_sha3_thumb2_rt;
+
+#else
+    register word64* L_sha3_thumb2_rt_c = (word64*)&L_sha3_thumb2_rt;
+
 #endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
 
     __asm__ __volatile__ (
@@ -77,7 +81,11 @@ void BlockSha3(word64* state)
         "MOV	r1, %[L_sha3_thumb2_rt]\n\t"
         "MOV	r2, #0xc\n\t"
         "\n"
-    "L_sha3_thumb2_begin%=:\n\t"
+#if defined(__IAR_SYSTEMS_ICC__) && (__VER__ < 9000000)
+    "L_sha3_thumb2_begin:\n\t"
+#else
+    "L_sha3_thumb2_begin_%=:\n\t"
+#endif
         "STR	r2, [sp, #200]\n\t"
         /* Round even */
         /* Calc b[4] */
@@ -1137,26 +1145,23 @@ void BlockSha3(word64* state)
         "STR	lr, [%[state], #164]\n\t"
         "LDR	r2, [sp, #200]\n\t"
         "SUBS	r2, r2, #0x1\n\t"
-#ifdef __GNUC__
-        "BNE	L_sha3_thumb2_begin%=\n\t"
+#if defined(__GNUC__)
+        "BNE	L_sha3_thumb2_begin_%=\n\t"
+#elif defined(__IAR_SYSTEMS_ICC__) && (__VER__ < 9000000)
+        "BNE.W	L_sha3_thumb2_begin\n\t"
 #else
-        "BNE.W	L_sha3_thumb2_begin%=\n\t"
+        "BNE.W	L_sha3_thumb2_begin_%=\n\t"
 #endif
         "ADD	sp, sp, #0xcc\n\t"
-#ifndef WOLFSSL_NO_VAR_ASSIGN_REG
-        : [state] "+r" (state),
-          [L_sha3_thumb2_rt] "+r" (L_sha3_thumb2_rt_c)
+        : [state] "+r" (state), [L_sha3_thumb2_rt] "+r" (L_sha3_thumb2_rt_c)
         :
-        : "memory", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "lr", "cc"
-#else
-        : [state] "+r" (state)
-        : [L_sha3_thumb2_rt] "r" (L_sha3_thumb2_rt)
-        : "memory", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "lr", "cc"
-#endif /* WOLFSSL_NO_VAR_ASSIGN_REG */
+        : "memory", "cc", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10",
+            "r11", "r12", "lr"
     );
 }
 
 #endif /* WOLFSSL_SHA3 */
-#endif /* !__aarch64__ && __thumb__ */
+#endif /* WOLFSSL_ARMASM_THUMB2 */
 #endif /* WOLFSSL_ARMASM */
+
 #endif /* WOLFSSL_ARMASM_INLINE */

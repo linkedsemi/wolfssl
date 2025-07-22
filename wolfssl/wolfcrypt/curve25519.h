@@ -1,12 +1,12 @@
 /* curve25519.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -44,6 +44,7 @@
 
 #define CURVE25519_KEYSIZE 32
 #define CURVE25519_PUB_KEY_SIZE 32
+#define CURVE25519_MAX_KEY_TO_DER_SZ 82 /* for exported DER keys temp buffer */
 
 #ifdef WOLFSSL_NAMES_STATIC
 typedef char curve25519_str[12];
@@ -90,15 +91,18 @@ struct curve25519_key {
     void* devCtx;
     int devId;
 #endif
-
+    void *heap;
+#ifdef WOLFSSL_CURVE25519_BLINDING
+    WC_RNG* rng;
+#endif
 #ifdef WOLFSSL_SE050
     word32 keyId;
     byte   keyIdSet;
 #endif
 
     /* bit fields */
-    byte pubSet:1;
-    byte privSet:1;
+    WC_BITFIELD pubSet:1;
+    WC_BITFIELD privSet:1;
 };
 
 enum {
@@ -109,11 +113,23 @@ enum {
 WOLFSSL_API
 int wc_curve25519_make_pub(int public_size, byte* pub, int private_size,
                            const byte* priv);
+#ifdef WOLFSSL_CURVE25519_BLINDING
+WOLFSSL_API
+int wc_curve25519_make_pub_blind(int public_size, byte* pub, int private_size,
+                                 const byte* priv, WC_RNG* rng);
+#endif
 
 WOLFSSL_API
 int wc_curve25519_generic(int public_size, byte* pub,
                           int private_size, const byte* priv,
                           int basepoint_size, const byte* basepoint);
+#ifdef WOLFSSL_CURVE25519_BLINDING
+WOLFSSL_API
+int wc_curve25519_generic_blind(int public_size, byte* pub,
+                                int private_size, const byte* priv,
+                                int basepoint_size, const byte* basepoint,
+                                WC_RNG* rng);
+#endif
 
 WOLFSSL_API
 int wc_curve25519_make_priv(WC_RNG* rng, int keysize, byte* priv);
@@ -139,6 +155,17 @@ int wc_curve25519_init_ex(curve25519_key* key, void* heap, int devId);
 WOLFSSL_API
 void wc_curve25519_free(curve25519_key* key);
 
+#ifdef WOLFSSL_CURVE25519_BLINDING
+WOLFSSL_API
+int wc_curve25519_set_rng(curve25519_key* key, WC_RNG* rng);
+#endif
+
+#ifndef WC_NO_CONSTRUCTORS
+WOLFSSL_API
+curve25519_key* wc_curve25519_new(void* heap, int devId, int *result_code);
+WOLFSSL_API
+int wc_curve25519_delete(curve25519_key* key, curve25519_key** key_p);
+#endif
 
 /* raw key helpers */
 WOLFSSL_API

@@ -1,12 +1,12 @@
 /* fips_test.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -72,7 +72,9 @@ enum FipsCastId {
     FIPS_CAST_ED25519           = 16,
     FIPS_CAST_ED448             = 17,
     FIPS_CAST_PBKDF2            = 18,
-    FIPS_CAST_COUNT             = 19
+    /* v7.0.0 + */
+    FIPS_CAST_AES_ECB           = 19,
+    FIPS_CAST_COUNT             = 20
 };
 
 enum FipsCastStateId {
@@ -113,6 +115,13 @@ WOLFSSL_LOCAL int DoKnownAnswerTests(char* base16_hash, int base16_hashSz); /* F
 WOLFSSL_API int wc_RunCast_fips(int type);
 WOLFSSL_API int wc_GetCastStatus_fips(int type);
 WOLFSSL_API int wc_RunAllCast_fips(void);
+
+#ifdef NO_ATTRIBUTE_CONSTRUCTOR
+    /* NOTE: Must be called in OS initialization section outside user control
+     * and must prove during operational testing/code review with the lab that
+     * this is outside user-control if called by the OS */
+    void fipsEntry(void);
+#endif
 
 #ifdef __cplusplus
     } /* extern "C" */

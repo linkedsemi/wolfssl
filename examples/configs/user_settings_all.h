@@ -1,12 +1,12 @@
 /* user_settings_all.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -46,7 +46,7 @@ extern "C" {
 #define HAVE_EXT_CACHE
 #define ATOMIC_USER /* Enable Atomic Record Layer callbacks */
 #define HAVE_PK_CALLBACKS /* Enable public key callbacks */
-#define WOLFSSL_ALT_NAMES /* Allow alternate cert chain validation to any trusted cert (not entire chain presented by peer) */
+#define WOLFSSL_ALT_CERT_CHAINS /* Allow alternate cert chain validation to any trusted cert (not entire chain presented by peer) */
 #define HAVE_NULL_CIPHER /* Enable use of TLS cipher suites without cipher (clear text / no encryption) */
 #define WOLFSSL_HAVE_CERT_SERVICE
 #define WOLFSSL_JNI
@@ -126,6 +126,7 @@ extern "C" {
 #define WOLFSSL_CUSTOM_OID
 #define HAVE_OID_ENCODING
 #define WOLFSSL_ASN_TEMPLATE
+#define WOLFSSL_ALT_NAMES /* Support subject alternative names extension */
 
 /* Certificate Revocation */
 #define HAVE_OCSP

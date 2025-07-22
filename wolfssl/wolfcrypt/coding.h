@@ -1,12 +1,12 @@
 /* coding.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -34,6 +34,9 @@
 
 
 WOLFSSL_API int Base64_Decode(const byte* in, word32 inLen, byte* out,
+                               word32* outLen);
+
+WOLFSSL_API int Base64_Decode_nonCT(const byte* in, word32 inLen, byte* out,
                                word32* outLen);
 
 #if defined(OPENSSL_EXTRA) || defined(SESSION_CERTS) || defined(WOLFSSL_KEY_GEN) \

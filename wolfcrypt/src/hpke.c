@@ -1,12 +1,12 @@
 /* hpke.c
  *
- * Copyright (C) 2006-2022 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -23,16 +23,11 @@
  * TODO: Add X448 and ChaCha20
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #if defined(HAVE_HPKE) && (defined(HAVE_ECC) || defined(HAVE_CURVE25519)) && \
     defined(HAVE_AESGCM)
 
-#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/curve25519.h>
 #include <wolfssl/wolfcrypt/curve448.h>
@@ -256,13 +251,13 @@ int wc_HpkeInit(Hpke* hpke, int kem, int kdf, int aead, void* heap)
         case HPKE_AES_128_GCM:
             hpke->Nk = AES_128_KEY_SIZE;
             hpke->Nn = GCM_NONCE_MID_SZ;
-            hpke->Nt = AES_BLOCK_SIZE;
+            hpke->Nt = WC_AES_BLOCK_SIZE;
             break;
 
         case HPKE_AES_256_GCM:
             hpke->Nk = AES_256_KEY_SIZE;
             hpke->Nn = GCM_NONCE_MID_SZ;
-            hpke->Nt = AES_BLOCK_SIZE;
+            hpke->Nt = WC_AES_BLOCK_SIZE;
             break;
 
         default:
@@ -591,6 +586,10 @@ static int wc_HpkeContextComputeNonce(Hpke* hpke, HpkeBaseContext* context,
     int ret;
     byte seq_bytes[HPKE_Nn_MAX];
 
+    if (hpke == NULL || context == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
     /* convert the sequence into a byte string with the same length as the
      * nonce */
     ret = I2OSP(context->seq, (int)hpke->Nn, seq_bytes);
@@ -875,49 +874,63 @@ static int wc_HpkeSetupBaseSender(Hpke* hpke, HpkeBaseContext* context,
     return ret;
 }
 
+/* give SetupBaseSender a more intuitive and wolfCrypt friendly name */
+int wc_HpkeInitSealContext(Hpke* hpke, HpkeBaseContext* context,
+    void* ephemeralKey, void* receiverKey, byte* info, word32 infoSz)
+{
+    if (hpke == NULL || context == NULL || ephemeralKey == NULL ||
+        receiverKey == NULL || (info == NULL && infoSz > 0)) {
+        return BAD_FUNC_ARG;
+    }
+
+    /* zero out all fields */
+    XMEMSET(context, 0, sizeof(HpkeBaseContext));
+
+    return wc_HpkeSetupBaseSender(hpke, context, ephemeralKey, receiverKey,
+        info, infoSz);
+}
+
 /* encrypt a message using an hpke base context, return 0 or error */
-static int wc_HpkeContextSealBase(Hpke* hpke, HpkeBaseContext* context,
+int wc_HpkeContextSealBase(Hpke* hpke, HpkeBaseContext* context,
     byte* aad, word32 aadSz, byte* plaintext, word32 ptSz, byte* out)
 {
     int ret;
     byte nonce[HPKE_Nn_MAX];
 #ifndef WOLFSSL_SMALL_STACK
-    Aes aes_key[1];
+    Aes aes[1];
 #else
-    Aes* aes_key;
+    Aes* aes;
 #endif
-
-    if (hpke == NULL) {
+    if (hpke == NULL || context == NULL || (aad == NULL && aadSz > 0) ||
+        plaintext == NULL || out == NULL) {
         return BAD_FUNC_ARG;
     }
-
 #ifdef WOLFSSL_SMALL_STACK
-    aes_key = (Aes*)XMALLOC(sizeof(Aes), hpke->heap, DYNAMIC_TYPE_AES);
-    if (aes_key == NULL) {
+    aes = (Aes*)XMALLOC(sizeof(Aes), hpke->heap, DYNAMIC_TYPE_AES);
+    if (aes == NULL) {
         return MEMORY_E;
     }
 #endif
-
-    ret = wc_AesInit(aes_key, hpke->heap, INVALID_DEVID);
+    ret = wc_AesInit(aes, hpke->heap, INVALID_DEVID);
     if (ret == 0) {
+        /* compute nonce */
         ret = wc_HpkeContextComputeNonce(hpke, context, nonce);
         if (ret == 0) {
-            ret = wc_AesGcmSetKey(aes_key, context->key, hpke->Nk);
+            ret = wc_AesGcmSetKey(aes, context->key, hpke->Nk);
         }
         if (ret == 0) {
-            ret = wc_AesGcmEncrypt(aes_key, out, plaintext, ptSz, nonce,
+            ret = wc_AesGcmEncrypt(aes, out, plaintext, ptSz, nonce,
                 hpke->Nn, out + ptSz, hpke->Nt, aad, aadSz);
         }
+        /* increment sequence for non one shot */
         if (ret == 0) {
             context->seq++;
         }
-        wc_AesFree(aes_key);
+        wc_AesFree(aes);
     }
-
 #ifdef WOLFSSL_SMALL_STACK
-    XFREE(aes_key, hpke->heap, DYNAMIC_TYPE_AES);
+    XFREE(aes, hpke->heap, DYNAMIC_TYPE_AES);
 #endif
-
     return ret;
 }
 
@@ -974,7 +987,7 @@ static int wc_HpkeDecap(Hpke* hpke, void* receiverKey, const byte* pubKey,
     word16 pubKeySz, byte* sharedSecret)
 {
     int ret;
-#ifdef ECC_TIMING_RESISTANT
+#if defined(ECC_TIMING_RESISTANT) || defined(WOLFSSL_CURVE25519_BLINDING)
     WC_RNG* rng;
 #endif
     word32 dh_len;
@@ -1021,8 +1034,10 @@ static int wc_HpkeDecap(Hpke* hpke, void* receiverKey, const byte* pubKey,
 #ifdef ECC_TIMING_RESISTANT
                 rng = wc_rng_new(NULL, 0, hpke->heap);
 
-                if (rng == NULL)
-                    return RNG_FAILURE_E;
+                if (rng == NULL) {
+                    ret = RNG_FAILURE_E;
+                    break;
+                }
 
                 wc_ecc_set_rng((ecc_key*)receiverKey, rng);
 #endif
@@ -1037,9 +1052,22 @@ static int wc_HpkeDecap(Hpke* hpke, void* receiverKey, const byte* pubKey,
 #endif
 #if defined(HAVE_CURVE25519)
             case DHKEM_X25519_HKDF_SHA256:
+            #ifdef WOLFSSL_CURVE25519_BLINDING
+                rng = wc_rng_new(NULL, 0, hpke->heap);
+
+                if (rng == NULL) {
+                    ret = RNG_FAILURE_E;
+                    break;
+                }
+
+                wc_curve25519_set_rng((curve25519_key*)receiverKey, rng);
+            #endif
                 ret = wc_curve25519_shared_secret_ex(
                     (curve25519_key*)receiverKey, (curve25519_key*)ephemeralKey,
                     dh, &dh_len, EC25519_LITTLE_ENDIAN);
+            #ifdef WOLFSSL_CURVE25519_BLINDING
+                wc_rng_free(rng);
+            #endif
                 break;
 #endif
             case DHKEM_X448_HKDF_SHA512:
@@ -1111,49 +1139,60 @@ static int wc_HpkeSetupBaseReceiver(Hpke* hpke, HpkeBaseContext* context,
     return ret;
 }
 
+/* give SetupBaseReceiver a more intuitive and wolfCrypt friendly name */
+int wc_HpkeInitOpenContext(Hpke* hpke, HpkeBaseContext* context,
+    void* receiverKey, const byte* pubKey, word16 pubKeySz, byte* info,
+    word32 infoSz)
+{
+    if (hpke == NULL || context == NULL || receiverKey == NULL || pubKey == NULL
+        || (info == NULL && infoSz > 0)) {
+        return BAD_FUNC_ARG;
+    }
+
+    return wc_HpkeSetupBaseReceiver(hpke, context, receiverKey, pubKey,
+        pubKeySz, info, infoSz);
+}
+
 /* decrypt a message using a setup hpke context, return 0 or error */
-static int wc_HpkeContextOpenBase(Hpke* hpke, HpkeBaseContext* context,
-    byte* aad, word32 aadSz, byte* ciphertext, word32 ctSz, byte* out)
+int wc_HpkeContextOpenBase(Hpke* hpke, HpkeBaseContext* context, byte* aad,
+    word32 aadSz, byte* ciphertext, word32 ctSz, byte* out)
 {
     int ret;
     byte nonce[HPKE_Nn_MAX];
 #ifndef WOLFSSL_SMALL_STACK
-    Aes aes_key[1];
+    Aes aes[1];
 #else
-    Aes* aes_key;
+    Aes* aes;
 #endif
-
     if (hpke == NULL) {
         return BAD_FUNC_ARG;
     }
-
     XMEMSET(nonce, 0, sizeof(nonce));
 #ifdef WOLFSSL_SMALL_STACK
-    aes_key = (Aes*)XMALLOC(sizeof(Aes), hpke->heap, DYNAMIC_TYPE_AES);
-    if (aes_key == NULL) {
+    aes = (Aes*)XMALLOC(sizeof(Aes), hpke->heap, DYNAMIC_TYPE_AES);
+    if (aes == NULL) {
         return MEMORY_E;
     }
 #endif
-
+    /* compute nonce */
     ret = wc_HpkeContextComputeNonce(hpke, context, nonce);
     if (ret == 0)
-        ret = wc_AesInit(aes_key, hpke->heap, INVALID_DEVID);
+        ret = wc_AesInit(aes, hpke->heap, INVALID_DEVID);
     if (ret == 0) {
-        ret = wc_AesGcmSetKey(aes_key, context->key, hpke->Nk);
+        ret = wc_AesGcmSetKey(aes, context->key, hpke->Nk);
         if (ret == 0) {
-            ret = wc_AesGcmDecrypt(aes_key, out, ciphertext, ctSz, nonce,
+            ret = wc_AesGcmDecrypt(aes, out, ciphertext, ctSz, nonce,
                 hpke->Nn, ciphertext + ctSz, hpke->Nt, aad, aadSz);
         }
+        /* increment sequence for non one shot */
         if (ret == 0) {
             context->seq++;
         }
-        wc_AesFree(aes_key);
+        wc_AesFree(aes);
     }
-
 #ifdef WOLFSSL_SMALL_STACK
-    XFREE(aes_key, hpke->heap, DYNAMIC_TYPE_AES);
+    XFREE(aes, hpke->heap, DYNAMIC_TYPE_AES);
 #endif
-
     return ret;
 }
 

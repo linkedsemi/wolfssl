@@ -1,12 +1,12 @@
 /* psa_aes.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -293,7 +293,7 @@ int wc_psa_aes_free(Aes *aes)
 int wc_AesEncrypt(Aes *aes, const byte *inBlock, byte *outBlock)
 {
     return wc_psa_aes_encrypt_decrypt(aes, inBlock, outBlock,
-                                      AES_BLOCK_SIZE, PSA_ALG_ECB_NO_PADDING,
+                                      WC_AES_BLOCK_SIZE, PSA_ALG_ECB_NO_PADDING,
                                       AES_ENCRYPTION);
 }
 
@@ -301,7 +301,7 @@ int wc_AesEncrypt(Aes *aes, const byte *inBlock, byte *outBlock)
 int wc_AesDecrypt(Aes *aes, const byte *inBlock, byte *outBlock)
 {
     return wc_psa_aes_encrypt_decrypt(aes, inBlock, outBlock,
-                                      AES_BLOCK_SIZE, PSA_ALG_ECB_NO_PADDING,
+                                      WC_AES_BLOCK_SIZE, PSA_ALG_ECB_NO_PADDING,
                                       AES_DECRYPTION);
 }
 #endif
@@ -319,7 +319,7 @@ int wc_AesCtrEncrypt(Aes *aes, byte *out, const byte *in, word32 sz)
 int wc_AesCbcEncrypt(Aes *aes, byte *out, const byte *in, word32 sz)
 {
 
-    if (sz % AES_BLOCK_SIZE != 0)
+    if (sz % WC_AES_BLOCK_SIZE != 0)
 #if defined (WOLFSSL_AES_CBC_LENGTH_CHECKS)
         return BAD_LENGTH_E;
 #else
@@ -334,7 +334,7 @@ int wc_AesCbcEncrypt(Aes *aes, byte *out, const byte *in, word32 sz)
 int wc_AesCbcDecrypt(Aes *aes, byte *out, const byte *in, word32 sz)
 {
 
-    if (sz % AES_BLOCK_SIZE != 0)
+    if (sz % WC_AES_BLOCK_SIZE != 0)
 #if defined (WOLFSSL_AES_CBC_LENGTH_CHECKS)
         return BAD_LENGTH_E;
 #else

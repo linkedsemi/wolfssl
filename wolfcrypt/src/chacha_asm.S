@@ -1,12 +1,12 @@
 /* chacha_asm.S */
 /*
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -42,7 +42,9 @@
 #define HAVE_INTEL_AVX1
 #endif /* HAVE_INTEL_AVX1 */
 #ifndef NO_AVX2_SUPPORT
+#ifndef HAVE_INTEL_AVX2
 #define HAVE_INTEL_AVX2
+#endif /* HAVE_INTEL_AVX2 */
 #endif /* NO_AVX2_SUPPORT */
 
 #ifdef WOLFSSL_X86_64_BUILD
@@ -1033,7 +1035,6 @@ L_chacha20_avx1_partial_end64:
         subl	%r11d, %r8d
         movl	%r8d, 76(%rdi)
 L_chacha20_avx1_partial_done:
-        vzeroupper
         addq	$0x190, %rsp
         popq	%r15
         popq	%r14

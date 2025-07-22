@@ -1,12 +1,12 @@
 /* kcapi_hash.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
+
 /*
  * KCAPI hash options:
  *
@@ -26,18 +28,10 @@
  *     Needed to get the current hash and continue with more data.
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
-
 #if defined(WOLFSSL_KCAPI_HASH)
 
 #define FIPS_NO_WRAPPERS
 
-#include <wolfssl/wolfcrypt/error-crypt.h>
-#include <wolfssl/wolfcrypt/logging.h>
 #include <wolfssl/wolfcrypt/port/kcapi/wc_kcapi.h>
 #include <wolfssl/wolfcrypt/port/kcapi/kcapi_hash.h>
 
@@ -51,10 +45,8 @@ void KcapiHashFree(wolfssl_KCAPI_Hash* hash)
         }
 
     #if defined(WOLFSSL_KCAPI_HASH_KEEP)
-        if (hash->msg != NULL) {
-            XFREE(hash->msg, hash->heap, DYNAMIC_TYPE_TMP_BUFFER);
-            hash->msg = NULL;
-        }
+        XFREE(hash->msg, hash->heap, DYNAMIC_TYPE_TMP_BUFFER);
+        hash->msg = NULL;
     #endif
     }
 }

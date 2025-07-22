@@ -1,12 +1,12 @@
 /* renesas-fspsm-crypt.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -66,7 +66,7 @@ typedef struct FSPSM_tag_ST {
     uint8_t     clientRandom[FSPSM_TLS_CLIENTRANDOM_SZ];
     uint8_t     serverRandom[FSPSM_TLS_SERVERRANDOM_SZ];
     uint8_t     cipher;
-
+    uint8_t     side; /* for key set side */
    #endif
 
     /* installed key handling */

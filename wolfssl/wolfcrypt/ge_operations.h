@@ -1,12 +1,12 @@
 /* ge_operations.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -112,7 +112,6 @@ typedef struct {
   ge Z;
   ge T2d;
 } ge_cached;
-#endif /* !ED25519_SMALL */
 
 #ifdef CURVED25519_ASM
 void ge_p1p1_to_p2(ge_p2 *r, const ge_p1p1 *p);
@@ -124,6 +123,7 @@ void ge_msub(ge_p1p1 *r, const ge_p3 *p, const ge_precomp *q);
 void ge_add(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q);
 void ge_sub(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q);
 #endif
+#endif /* !ED25519_SMALL */
 
 #ifdef __cplusplus
     }    /* extern "C" */

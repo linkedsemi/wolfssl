@@ -1,12 +1,12 @@
 /* mem_track.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -157,9 +157,9 @@ static WC_INLINE void* TrackMalloc(size_t sz)
         return NULL;
 
 #ifdef FREERTOS
-    mt = (memoryTrack*)pvPortMalloc(sizeof(memoryTrack) + sz);
+    mt = (memoryTrack*)pvPortMalloc(sizeof(memoryTrack) + sz); /* native heap */
 #else
-    mt = (memoryTrack*)malloc(sizeof(memoryTrack) + sz);
+    mt = (memoryTrack*)malloc(sizeof(memoryTrack) + sz); /* native heap */
 #endif
     if (mt == NULL)
         return NULL;
@@ -177,7 +177,7 @@ static WC_INLINE void* TrackMalloc(size_t sz)
     (void)line;
 #endif
 #endif
-#if defined(DO_MEM_LIST) || defined(DO_MEM_STATS)
+#if !defined(SINGLE_THREADED) && (defined(DO_MEM_LIST) || defined(DO_MEM_STATS))
     if (pthread_mutex_lock(&memLock) == 0)
     {
 #endif
@@ -223,7 +223,7 @@ static WC_INLINE void* TrackMalloc(size_t sz)
         ourMemList.tail = header;      /* add to the end either way */
         ourMemList.count++;
 #endif
-#if defined(DO_MEM_LIST) || defined(DO_MEM_STATS)
+#if !defined(SINGLE_THREADED) && (defined(DO_MEM_LIST) || defined(DO_MEM_STATS))
         pthread_mutex_unlock(&memLock);
     }
 #endif /* DO_MEM_LIST */
@@ -250,7 +250,7 @@ static WC_INLINE void TrackFree(void* ptr)
     header = &mt->u.hint;
     sz = header->thisSize;
 
-#if defined(DO_MEM_LIST) || defined(DO_MEM_STATS)
+#if !defined(SINGLE_THREADED) && (defined(DO_MEM_LIST) || defined(DO_MEM_STATS))
     if (pthread_mutex_lock(&memLock) == 0)
     {
 #endif
@@ -284,7 +284,7 @@ static WC_INLINE void TrackFree(void* ptr)
         ourMemList.count--;
 #endif
 
-#if defined(DO_MEM_LIST) || defined(DO_MEM_STATS)
+#if !defined(SINGLE_THREADED) && (defined(DO_MEM_LIST) || defined(DO_MEM_STATS))
         pthread_mutex_unlock(&memLock);
     }
 #endif
@@ -300,9 +300,9 @@ static WC_INLINE void TrackFree(void* ptr)
     (void)sz;
 
 #ifdef FREERTOS
-    vPortFree(mt);
+    vPortFree(mt); /* native heap */
 #else
-    free(mt);
+    free(mt); /* native heap */
 #endif
 }
 
@@ -596,11 +596,11 @@ static WC_INLINE int StackSizeCheck(struct func_args* args, thread_func tf)
 #endif
 
 #ifdef PTHREAD_STACK_MIN
-    if (stackSize < PTHREAD_STACK_MIN)
+    if (stackSize < (size_t)PTHREAD_STACK_MIN)
         stackSize = PTHREAD_STACK_MIN;
 #endif
 
-    ret = posix_memalign((void**)&myStack, sysconf(_SC_PAGESIZE), stackSize);
+    ret = posix_memalign((void**)&myStack, sysconf(_SC_PAGESIZE), stackSize); /* native heap */
     if (ret != 0 || myStack == NULL) {
         wc_mem_printf("posix_memalign failed\n");
         return -1;
@@ -650,7 +650,7 @@ static WC_INLINE int StackSizeCheck(struct func_args* args, thread_func tf)
         }
     }
 
-    free(myStack);
+    free(myStack); /* native heap */
 #ifdef HAVE_STACK_SIZE_VERBOSE
     printf("stack used = %lu\n", StackSizeCheck_stackSizeHWM > (stackSize - i)
         ? (unsigned long)StackSizeCheck_stackSizeHWM
@@ -677,20 +677,20 @@ static WC_INLINE int StackSizeCheck_launch(struct func_args* args,
     struct stack_size_debug_context* shim_args;
 
 #ifdef PTHREAD_STACK_MIN
-    if (stackSize < PTHREAD_STACK_MIN)
+    if (stackSize < (size_t)PTHREAD_STACK_MIN)
         stackSize = PTHREAD_STACK_MIN;
 #endif
 
-    shim_args = (struct stack_size_debug_context *)malloc(sizeof *shim_args);
+    shim_args = (struct stack_size_debug_context *)malloc(sizeof *shim_args); /* native heap */
     if (shim_args == NULL) {
         perror("malloc");
         return -1;
     }
 
-    ret = posix_memalign((void**)&myStack, sysconf(_SC_PAGESIZE), stackSize);
+    ret = posix_memalign((void**)&myStack, sysconf(_SC_PAGESIZE), stackSize); /* native heap */
     if (ret != 0 || myStack == NULL) {
         wc_mem_printf("posix_memalign failed\n");
-        free(shim_args);
+        free(shim_args); /* native heap */
         return -1;
     }
 
@@ -699,8 +699,8 @@ static WC_INLINE int StackSizeCheck_launch(struct func_args* args,
     ret = pthread_attr_init(&myAttr);
     if (ret != 0) {
         wc_mem_printf("attr_init failed\n");
-        free(shim_args);
-        free(myStack);
+        free(shim_args); /* native heap */
+        free(myStack); /* native heap */
         return ret;
     }
 
@@ -749,7 +749,7 @@ static WC_INLINE int StackSizeCheck_reap(pthread_t threadId,
         }
     }
 
-    free(shim_args->myStack);
+    free(shim_args->myStack); /* native heap */
 #ifdef HAVE_STACK_SIZE_VERBOSE
     printf("stack used = %lu\n",
         *shim_args->stackSizeHWM_ptr > (shim_args->stackSize - i)
@@ -761,7 +761,7 @@ static WC_INLINE int StackSizeCheck_reap(pthread_t threadId,
       printf("stack used = %lu\n", (unsigned long)used);
     }
 #endif
-    free(shim_args);
+    free(shim_args); /* native heap */
 
     return (int)((size_t)status);
 }

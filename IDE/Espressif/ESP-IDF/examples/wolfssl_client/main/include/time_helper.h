@@ -1,12 +1,12 @@
 /* time_helper.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -24,8 +24,8 @@
 #ifndef _TIME_HELPER_H_
 #define _TIME_HELPER_H_
 
-/* ESP-IDF uses a 64-bit signed integer to represent time_t starting from release v5.0
- * See: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/system_time.html#year-2036-and-2038-overflow-issues
+/* ESP-IDF uses a 64-bit signed integer to represent time_t starting from
+ * release v5.0 See Espressif api-reference/system/system_time
  */
 
 #ifdef __cplusplus

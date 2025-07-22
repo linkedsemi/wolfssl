@@ -1,12 +1,12 @@
 /* ecc.h
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -215,7 +215,7 @@ enum {
 #if defined(HAVE_ECC) || defined(HAVE_CURVE25519) || \
     defined(HAVE_CURVE448) || defined(WOLFCRYPT_HAVE_SAKKE)
 /* Curve Types */
-typedef enum ecc_curve_id {
+enum ecc_curve_ids {
     ECC_CURVE_INVALID = -1,
     ECC_CURVE_DEF = 0, /* NIST or SECP */
 
@@ -272,7 +272,8 @@ typedef enum ecc_curve_id {
     ECC_CURVE_CUSTOM,
 #endif
     ECC_CURVE_MAX
-} ecc_curve_id;
+};
+typedef enum ecc_curve_ids ecc_curve_id;
 #endif
 
 #ifdef HAVE_ECC
@@ -287,7 +288,8 @@ typedef byte   ecc_oid_t;
 #endif
 
 
-#if !defined(WOLFSSL_ECC_CURVE_STATIC) && defined(USE_WINDOWS_API)
+#if !defined(WOLFSSL_ECC_CURVE_STATIC) && defined(USE_WINDOWS_API) && \
+        !defined(__WATCOMC__)
     /* MSC does something different with the pointers to the arrays than GCC,
      * and it causes the FIPS checksum to fail. In the case of windows builds,
      * store everything as arrays instead of pointers to strings. */
@@ -467,6 +469,7 @@ struct ecc_point {
 #if defined(WOLFSSL_SMALL_STACK_CACHE) && !defined(WOLFSSL_ECC_NO_SMALL_STACK)
     ecc_key* key;
 #endif
+    WC_BITFIELD isAllocated:1;
 };
 
 /* ECC Flags */
@@ -589,12 +592,13 @@ struct ecc_key {
     mp_int* sign_k;
 #else
     mp_int sign_k[1];
-    byte sign_k_set:1;
+    WC_BITFIELD sign_k_set:1;
 #endif
 #endif
 #if defined(WOLFSSL_ECDSA_DETERMINISTIC_K) || \
     defined(WOLFSSL_ECDSA_DETERMINISTIC_K_VARIANT)
-    byte deterministic:1;
+    WC_BITFIELD deterministic:1;
+    enum wc_HashType hashType;
 #endif
 
 #if defined(WOLFSSL_SMALL_STACK_CACHE) && !defined(WOLFSSL_ECC_NO_SMALL_STACK)
@@ -640,8 +644,15 @@ WOLFSSL_ABI WOLFSSL_API void wc_ecc_key_free(ecc_key* key);
 
 
 /* ECC predefined curve sets  */
-extern const ecc_set_type ecc_sets[];
-extern const size_t ecc_sets_count;
+#if defined(HAVE_FIPS) && FIPS_VERSION3_LT(6,0,0)
+    extern const ecc_set_type ecc_sets[];
+    extern const size_t ecc_sets_count;
+#else
+    WOLFSSL_API const ecc_set_type *wc_ecc_get_sets(void);
+    WOLFSSL_API size_t wc_ecc_get_sets_count(void);
+    #define ecc_sets wc_ecc_get_sets()
+    #define ecc_sets_count wc_ecc_get_sets_count()
+#endif
 
 WOLFSSL_API
 const char* wc_ecc_get_name(int curve_id);
@@ -719,6 +730,9 @@ int wc_ecc_sign_hash_ex(const byte* in, word32 inlen, WC_RNG* rng,
 WOLFSSL_API
 int wc_ecc_set_deterministic(ecc_key* key, byte flag);
 WOLFSSL_API
+int wc_ecc_set_deterministic_ex(ecc_key* key, byte flag,
+        enum wc_HashType hashType);
+WOLFSSL_API
 int wc_ecc_gen_deterministic_k(const byte* hash, word32 hashSz,
         enum wc_HashType hashType, mp_int* priv, mp_int* k, mp_int* order,
         void* heap);
@@ -759,7 +773,7 @@ WOLFSSL_API
 int wc_ecc_set_flags(ecc_key* key, word32 flags);
 WOLFSSL_ABI WOLFSSL_API
 void wc_ecc_fp_free(void);
-WOLFSSL_LOCAL
+WOLFSSL_API
 void wc_ecc_fp_init(void);
 WOLFSSL_API
 int wc_ecc_set_rng(ecc_key* key, WC_RNG* rng);
@@ -1014,6 +1028,11 @@ WOLFSSL_API int wc_X963_KDF(enum wc_HashType type, const byte* secret,
 #ifdef ECC_CACHE_CURVE
 WOLFSSL_API int wc_ecc_curve_cache_init(void);
 WOLFSSL_API void wc_ecc_curve_cache_free(void);
+#endif
+
+#ifdef HAVE_OID_ENCODING
+WOLFSSL_LOCAL int wc_ecc_oid_cache_init(void);
+WOLFSSL_LOCAL void wc_ecc_oid_cache_free(void);
 #endif
 
 WOLFSSL_API

@@ -1,12 +1,12 @@
 /* server-tls.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -39,10 +39,28 @@
 #endif
 
 /* wolfSSL */
-#include <wolfssl/wolfcrypt/settings.h>
-#include <wolfssl/certs_test.h>
-#include <wolfssl/ssl.h>
-
+/* Always include wolfcrypt/settings.h before any other wolfSSL file.    */
+/* Reminder: settings.h pulls in user_settings.h; don't include it here. */
+#ifdef WOLFSSL_USER_SETTINGS
+    #include <wolfssl/wolfcrypt/settings.h>
+    #ifndef WOLFSSL_ESPIDF
+        #warning "Problem with wolfSSL user_settings."
+        #warning "Check components/wolfssl/include"
+    #endif
+    #include <wolfssl/ssl.h>
+#else
+    /* Define WOLFSSL_USER_SETTINGS project wide for settings.h to include   */
+    /* wolfSSL user settings in ./components/wolfssl/include/user_settings.h */
+    #error "Missing WOLFSSL_USER_SETTINGS in CMakeLists or Makefile:\
+    CFLAGS +=-DWOLFSSL_USER_SETTINGS"
+#endif
+#if defined(WOLFSSL_WC_MLKEM)
+    #include <wolfssl/wolfcrypt/mlkem.h>
+    #include <wolfssl/wolfcrypt/wc_mlkem.h>
+#endif
+#if defined(USE_CERT_BUFFERS_2048) || defined(USE_CERT_BUFFERS_1024)
+    #include <wolfssl/certs_test.h>
+#endif
 #ifdef WOLFSSL_TRACK_MEMORY
     #include <wolfssl/wolfcrypt/mem_track.h>
 #endif
@@ -112,6 +130,7 @@ WOLFSSL_ESP_TASK tls_smp_server_task(void *args)
     int                connd;
     int                shutdown = 0;
     int                ret;
+    int                ret_i; /* interim return values */
     socklen_t          size = sizeof(clientAddr);
     size_t             len;
 #if 0
@@ -287,14 +306,18 @@ WOLFSSL_ESP_TASK tls_smp_server_task(void *args)
     atmel_set_slot_allocator(my_atmel_alloc, my_atmel_free);
     #endif
 #endif
+#ifdef WOLFSSL_EXAMPLE_VERBOSITY
+    ESP_LOGI(TAG, "Initial stack used: %d\n",
+             TLS_SMP_SERVER_TASK_BYTES  - uxTaskGetStackHighWaterMark(NULL) );
+#endif
     ESP_LOGI(TAG, "accept clients...");
     /* Continue to accept clients until shutdown is issued */
     while (!shutdown) {
-        ESP_LOGI(TAG, "Stack used: %d\n", TLS_SMP_SERVER_TASK_BYTES
-                                        - uxTaskGetStackHighWaterMark(NULL) );
         WOLFSSL_MSG("Waiting for a connection...");
+#if ESP_IDF_VERSION_MAJOR >=4
+        /* TODO: IP Address is problematic in RTOS SDK 3.4 */
         wifi_show_ip();
-
+#endif
         /* Accept client socket connections */
         if ((connd = accept(sockfd, (struct sockaddr*)&clientAddr, &size))
             == -1) {
@@ -307,20 +330,40 @@ WOLFSSL_ESP_TASK tls_smp_server_task(void *args)
         if ((ssl = wolfSSL_new(ctx)) == NULL) {
             ESP_LOGE(TAG, "ERROR: failed to create WOLFSSL object");
         }
-#if defined(WOLFSSL_HAVE_KYBER)
         else {
-            /* If success creating CTX and Kyber enabled, set key share: */
-            ret = wolfSSL_UseKeyShare(ssl, WOLFSSL_P521_KYBER_LEVEL5);
-            if (ret == SSL_SUCCESS) {
-                ESP_LOGI(TAG, "UseKeyShare WOLFSSL_P521_KYBER_LEVEL5 success");
-            }
-            else {
-                ESP_LOGE(TAG, "UseKeyShare WOLFSSL_P521_KYBER_LEVEL5 failed");
-            }
+#ifdef DEBUG_WOLFSSL
+        ESP_LOGI(TAG, "\nCreated WOLFSSL object:");
+        ShowCiphers(ssl);
+        this_heap = esp_get_free_heap_size();
+        ESP_LOGI(TAG, "tls_smp_client_task heap @ %p = %d",
+                      &this_heap, this_heap);
+#endif
+#if defined(WOLFSSL_HAVE_MLKEM)
+        /* Client sets the keyshare; we at the server only need to enable it. */
+        ESP_LOGI(TAG, "WOLFSSL_HAVE_MLKEM is enabled");
+        ret_i = WOLFSSL_SUCCESS;
+
+    #if defined(WOLFSSL_KYBER1024)
+        ESP_LOGI(TAG, "WOLFSSL_KYBER1024 is enabled");
+    #elif defined(WOLFSSL_KYBER768)
+        ESP_LOGI(TAG, "WOLFSSL_KYBER768 is enabled");
+    #elif defined(WOLFSSL_KYBER512)
+        ESP_LOGI(TAG, "WOLFSSL_KYBER512 is enabled");
+    #else
+        ESP_LOGW(TAG, "WOLFSSL_HAVE_MLKEM enabled but no key size available.");
+        ret_i = ESP_FAIL;
+    #endif
+
+        if (ret_i == WOLFSSL_SUCCESS) {
+            ESP_LOGI(TAG, "WOLFSSL_HAVE_MLKEM success");
+        }
+        else {
+            ESP_LOGE(TAG, "WOLFSSL_HAVE_MLKEM failed");
         }
 #else
-        ESP_LOGI(TAG, "WOLFSSL_HAVE_KYBER is not enabled");
+        ESP_LOGI(TAG, "WOLFSSL_HAVE_MLKEM is not enabled, not using PQ.");
 #endif
+        }
         /* show what cipher connected for this WOLFSSL* object */
         ShowCiphers(ssl);
 
@@ -331,6 +374,8 @@ WOLFSSL_ESP_TASK tls_smp_server_task(void *args)
         ret = wolfSSL_accept(ssl);
         if (ret == SSL_SUCCESS) {
             ShowCiphers(ssl);
+            const char* curve = wolfSSL_get_curve_name(ssl);
+            ESP_LOGI(TAG, "Server negotiated key share group: %s", curve);
         }
         else {
             ESP_LOGE(TAG, "wolfSSL_accept error %d",
@@ -363,6 +408,10 @@ WOLFSSL_ESP_TASK tls_smp_server_task(void *args)
         /* Cleanup after this connection */
         wolfSSL_free(ssl);      /* Free the wolfSSL object              */
         close(connd);           /* Close the connection to the client   */
+#ifdef WOLFSSL_EXAMPLE_VERBOSITY
+        ESP_LOGI(TAG, "Stack used: %d\n",
+                TLS_SMP_SERVER_TASK_BYTES - uxTaskGetStackHighWaterMark(NULL));
+#endif
     } /* !shutdown */
     /* Cleanup and return */
     wolfSSL_free(ssl);      /* Free the wolfSSL object                  */
@@ -398,8 +447,7 @@ WOLFSSL_ESP_TASK tls_smp_server_init(void* args)
     xTaskHandle _handle;
 #endif
     /* Note that despite vanilla FreeRTOS using WORDS for a parameter,
-     * Espressif uses BYTES for the task stack size here.
-     * See https://docs.espressif.com/projects/esp-idf/en/v4.3/esp32/api-reference/system/freertos.html */
+     * Espressif uses BYTES for the task stack size here. */
     ESP_LOGI(TAG, "Creating tls_smp_server_task with stack size = %d",
                    TLS_SMP_SERVER_TASK_BYTES);
     ret_i = xTaskCreate(tls_smp_server_task,

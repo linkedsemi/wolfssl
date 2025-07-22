@@ -1,12 +1,12 @@
 /* pwdbased.c
  *
- * Copyright (C) 2006-2023 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,12 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #ifndef NO_PWDBASED
 
@@ -42,7 +37,6 @@
 #include <wolfssl/wolfcrypt/hmac.h>
 #include <wolfssl/wolfcrypt/hash.h>
 #include <wolfssl/wolfcrypt/wolfmath.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
 
 #ifdef NO_INLINE
     #include <wolfssl/wolfcrypt/misc.h>
@@ -52,9 +46,6 @@
 #endif
 
 #if FIPS_VERSION3_GE(6,0,0)
-    #ifdef DEBUG_WOLFSSL
-        #include <wolfssl/wolfcrypt/logging.h>
-    #endif
     const unsigned int wolfCrypt_FIPS_pbkdf_ro_sanity[2] =
                                                      { 0x1a2b3c4d, 0x00000010 };
     int wolfCrypt_FIPS_PBKDF_sanity(void)
@@ -218,7 +209,7 @@ int wc_PBKDF2_ex(byte* output, const byte* passwd, int pLen, const byte* salt,
      * length", ensure the returned bits for the derived master key are at a
      * minimum 14-bytes or 112-bits after stretching and strengthening
      * (iterations) */
-    if (kLen < HMAC_FIPS_MIN_KEY/8)
+    if (kLen < HMAC_FIPS_MIN_KEY)
         return BAD_LENGTH_E;
 #endif
 
@@ -588,16 +579,11 @@ int wc_PKCS12_PBKDF_ex(byte* output, const byte* passwd, int passLen,
 #ifdef WOLFSSL_SMALL_STACK
   out:
 
-    if (Ai != NULL)
-        XFREE(Ai, heap, DYNAMIC_TYPE_TMP_BUFFER);
-    if (B != NULL)
-        XFREE(B,  heap, DYNAMIC_TYPE_TMP_BUFFER);
-    if (B1 != NULL)
-        XFREE(B1, heap, DYNAMIC_TYPE_TMP_BUFFER);
-    if (i1 != NULL)
-        XFREE(i1, heap, DYNAMIC_TYPE_TMP_BUFFER);
-    if (res != NULL)
-        XFREE(res, heap, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(Ai, heap, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(B, heap, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(B1, heap, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(i1, heap, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(res, heap, DYNAMIC_TYPE_TMP_BUFFER);
 #endif
 
     if (dynamic)
@@ -831,7 +817,7 @@ int wc_scrypt(byte* output, const byte* passwd, int passLen,
         goto end;
     }
     /* Temporary for scryptROMix. */
-    v = (byte*)XMALLOC((size_t)((1 << cost) * bSz), NULL,
+    v = (byte*)XMALLOC((size_t)((1U << cost) * bSz), NULL,
                        DYNAMIC_TYPE_TMP_BUFFER);
     if (v == NULL) {
         ret = MEMORY_E;
@@ -845,6 +831,8 @@ int wc_scrypt(byte* output, const byte* passwd, int passLen,
         goto end;
     }
 
+    XMEMSET(y, 0, (size_t)(blockSize * 128));
+
     /* Step 1. */
     ret = wc_PBKDF2(blocks, passwd, passLen, salt, saltLen, 1, (int)blocksSz,
                     WC_SHA256);
@@ -853,18 +841,15 @@ int wc_scrypt(byte* output, const byte* passwd, int passLen,
 
     /* Step 2. */
     for (i = 0; i < parallel; i++)
-        scryptROMix(blocks + i * (int)bSz, v, y, (int)blockSize, 1 << cost);
+        scryptROMix(blocks + i * (int)bSz, v, y, (int)blockSize, 1U << cost);
 
     /* Step 3. */
     ret = wc_PBKDF2(output, passwd, passLen, blocks, (int)blocksSz, 1, dkLen,
                     WC_SHA256);
 end:
-    if (blocks != NULL)
-        XFREE(blocks, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (v != NULL)
-        XFREE(v, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (y != NULL)
-        XFREE(y, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(blocks, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(v, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(y, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
     return ret;
 }

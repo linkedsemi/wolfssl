@@ -6203,6 +6203,68 @@ exit:
 #endif
 
 #ifdef WOLFSSL_SM3
+#ifdef LS_HASH
+WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sm3_test(void)
+{
+    wc_Sha256 sm3[3];
+    byte   hash[WC_SM3_DIGEST_SIZE];
+    wc_test_ret_t ret = 0;
+    WOLFSSL_ENTER("sm3_test");
+
+    testVector a, b, c;
+    testVector test_sm3[3];
+    int times = sizeof(test_sm3) / sizeof(struct testVector), i, j;
+
+    a.input  = "";
+    a.output = "\x1a\xb2\x1d\x83\x55\xcf\xa1\x7f\x8e\x61\x19\x48\x31\xe8\x1a"
+               "\x8f\x22\xbe\xc8\xc7\x28\xfe\xfb\x74\x7e\xd0\x35\xeb\x50\x82"
+               "\xaa\x2b";
+    a.inLen  = XSTRLEN(a.input);
+    a.outLen = WC_SM3_DIGEST_SIZE;
+
+    b.input  = "abc";
+    b.output = "\x66\xc7\xf0\xf4\x62\xee\xed\xd9\xd1\xf2\xd4\x6b\xdc\x10\xe4"
+               "\xe2\x41\x67\xc4\x87\x5c\xf2\xf7\xa2\x29\x7d\xa0\x2b\x8f\x4b"
+               "\xa8\xe0";
+    b.inLen  = XSTRLEN(b.input);
+    b.outLen = WC_SM3_DIGEST_SIZE;
+
+    c.input  = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
+    c.output = "\x63\x9b\x6c\xc5\xe6\x4d\x9e\x37\xa3\x90\xb1\x92\xdf\x4f\xa1"
+               "\xea\x07\x20\xab\x74\x7f\xf6\x92\xb9\xf3\x8c\x4e\x66\xad\x7b"
+               "\x8c\x05";
+    c.inLen  = XSTRLEN(c.input);
+    c.outLen = WC_SM3_DIGEST_SIZE;
+
+    test_sm3[0] = a;
+    test_sm3[1] = b;
+    test_sm3[2] = c;
+
+    /* Test all the KATs. */
+    for (i = 0; i < times; ++i) {
+        wc_LSSHA_SM3_Init(&sm3[i].lsCtx);
+
+        ret = wc_LS_Hash_Update(&sm3[i].lsCtx, (byte*)test_sm3[i].input,
+            (word32)test_sm3[i].inLen);
+        if (ret != 0) {
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+        }
+        ret = wc_LS_Hash_Final(&sm3[i].lsCtx, hash);
+        if (ret != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+        /* Check hashes match expected. */
+        if (XMEMCMP(hash, test_sm3[i].output, WC_SM3_DIGEST_SIZE) != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+    }
+exit:
+    for(j = 0; j < i; ++j)
+    {
+         wc_Sha256Free(&sm3[j]);
+    }
+
+    return ret;
+}
+#else
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sm3_test(void)
 {
     wc_Sm3 sm3, sm3Copy;
@@ -6364,6 +6426,7 @@ exit:
 
     return ret;
 }
+#endif /* LS_HASH */
 #endif
 
 #ifndef NO_HASH_WRAPPER

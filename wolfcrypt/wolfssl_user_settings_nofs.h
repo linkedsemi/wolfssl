@@ -33,6 +33,9 @@ extern "C" {
 #define NO_RSA
 #define NO_DH
 
+#undef  WOLFSSL_SM3
+#define WOLFSSL_SM3
+
 #undef  WOLFSSL_SMALL_STACK
 #define WOLFSSL_SMALL_STACK
 

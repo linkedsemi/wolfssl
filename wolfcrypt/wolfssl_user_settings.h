@@ -31,6 +31,9 @@ extern "C" {
 #undef  LS_HASH
 #define LS_HASH
 
+#undef  WOLFSSL_SM3
+#define WOLFSSL_SM3
+
 #undef  TFM_TIMING_RESISTANT
 #define TFM_TIMING_RESISTANT
 

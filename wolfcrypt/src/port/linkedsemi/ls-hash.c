@@ -35,6 +35,12 @@ void wc_LSSHA_SHA256_Init(LS_HASH_Context* lsCtx)
     HAL_LSSHA_SHA256_Init();
 }
 
+void wc_LSSHA_SM3_Init(LS_HASH_Context* lsCtx)
+{
+    XMEMSET(lsCtx, 0, sizeof(LS_HASH_Context));
+    HAL_LSSHA_SM3_Init();
+}
+
 int  wc_LS_Hash_Update(LS_HASH_Context* lsCtx, const uint8_t *data,uint32_t length)
 {
     int ret = 0;

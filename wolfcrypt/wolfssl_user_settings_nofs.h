@@ -28,6 +28,27 @@ extern "C" {
 #undef  LS_HASH
 #define LS_HASH
 
+#undef  LS_HASH_SHA512
+#define LS_HASH_SHA512
+
+#undef  NO_OLD_SHA_NAMES
+#define NO_OLD_SHA_NAMES
+#undef  NO_OLD_WC_NAMES
+#define NO_OLD_WC_NAMES
+
+#undef  NO_WOLFSSL_CLIENT
+#define NO_WOLFSSL_CLIENT
+
+#undef  WOLFSSL_NO_CLIENT_AUTH
+#define WOLFSSL_NO_CLIENT_AUTH
+
+#undef  WOLFSSL_NOSHA512_256
+#define WOLFSSL_NOSHA512_256
+
+#undef  WOLFSSL_NOSHA512_224
+#define WOLFSSL_NOSHA512_224
+
+
 #define NO_HMAC
 #define WOLFSSL_AEAD_ONLY
 #define NO_RSA

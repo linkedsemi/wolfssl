@@ -36,7 +36,7 @@
     #include <wolfssl/wolfcrypt/async.h>
 #endif
 
-#ifdef LS_HASH
+#if defined(LS_HASH) || defined(LS_HASH_SHA512)
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
 #endif
 
@@ -171,8 +171,12 @@ int wolfCrypt_Init(void)
     if (initRefCount == 0) {
         WOLFSSL_ENTER("wolfCrypt_Init");
     
-    #ifdef LS_HASH
+    #if defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
         wc_LS_Hash_Init();
+    #endif
+
+    #if defined(LS_HASH_SHA512) && defined(CONFIG_SOC_LSQSH)
+        wc_LS_Hash_sha512_Init();
     #endif
 
     #if defined(__aarch64__) && defined(WOLFSSL_ARMASM_BARRIER_DETECT)

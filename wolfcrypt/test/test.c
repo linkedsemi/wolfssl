@@ -3925,7 +3925,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t blake2s_test(void)
 
 
 #ifdef WOLFSSL_SHA224
-#ifdef LS_HASH
+#if defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha224_test(void)
 {
     wc_Sha224 sha[3];
@@ -4060,7 +4060,7 @@ exit:
 
 
 #ifndef NO_SHA256
-#ifdef LS_HASH
+#if defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha256_test(void)
 {
     wc_Sha256 sha[4];
@@ -4390,6 +4390,78 @@ exit:
 
 
 #ifdef WOLFSSL_SHA512
+#if defined(LS_HASH_SHA512) && defined(CONFIG_SOC_LSQSH)
+WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha512_test(void)
+{
+    wc_Sha512 sha[3];
+    byte      hash[WC_SHA512_DIGEST_SIZE];
+    wc_test_ret_t ret = 0;
+    testVector a, b, c;
+    testVector test_sha[3];
+    int times = sizeof(test_sha) / sizeof(struct testVector), i,j;
+    WOLFSSL_ENTER("sha512_test");
+        __attribute__((aligned(4))) uint8_t a_input[] = "";
+    __attribute__((aligned(4))) uint8_t b_input[] = "abc";
+    __attribute__((aligned(4))) uint8_t c_input[] = "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu";
+
+    a.input  = a_input;
+    a.output = "\xcf\x83\xe1\x35\x7e\xef\xb8\xbd\xf1\x54\x28\x50\xd6\x6d\x80"
+               "\x07\xd6\x20\xe4\x05\x0b\x57\x15\xdc\x83\xf4\xa9\x21\xd3\x6c"
+               "\xe9\xce\x47\xd0\xd1\x3c\x5d\x85\xf2\xb0\xff\x83\x18\xd2\x87"
+               "\x7e\xec\x2f\x63\xb9\x31\xbd\x47\x41\x7a\x81\xa5\x38\x32\x7a"
+               "\xf9\x27\xda\x3e";
+    a.inLen  = XSTRLEN(a.input);
+    a.outLen = WC_SHA512_DIGEST_SIZE;
+
+    b.input  = b_input;
+    b.output = "\xdd\xaf\x35\xa1\x93\x61\x7a\xba\xcc\x41\x73\x49\xae\x20\x41"
+               "\x31\x12\xe6\xfa\x4e\x89\xa9\x7e\xa2\x0a\x9e\xee\xe6\x4b\x55"
+               "\xd3\x9a\x21\x92\x99\x2a\x27\x4f\xc1\xa8\x36\xba\x3c\x23\xa3"
+               "\xfe\xeb\xbd\x45\x4d\x44\x23\x64\x3c\xe8\x0e\x2a\x9a\xc9\x4f"
+               "\xa5\x4c\xa4\x9f";
+    b.inLen  = XSTRLEN(b.input);
+    b.outLen = WC_SHA512_DIGEST_SIZE;
+
+    c.input  = c_input;
+    c.output = "\x8e\x95\x9b\x75\xda\xe3\x13\xda\x8c\xf4\xf7\x28\x14\xfc\x14"
+               "\x3f\x8f\x77\x79\xc6\xeb\x9f\x7f\xa1\x72\x99\xae\xad\xb6\x88"
+               "\x90\x18\x50\x1d\x28\x9e\x49\x00\xf7\xe4\x33\x1b\x99\xde\xc4"
+               "\xb5\x43\x3a\xc7\xd3\x29\xee\xb6\xdd\x26\x54\x5e\x96\xe5\x5b"
+               "\x87\x4b\xe9\x09";
+    c.inLen  = XSTRLEN(c.input);
+    c.outLen = WC_SHA512_DIGEST_SIZE;
+
+    test_sha[0] = a;
+    test_sha[1] = b;
+    test_sha[2] = c;
+
+    for (i = 0; i < times; ++i) {
+        ret = wc_InitSha512_ex(&sha[i], HEAP_HINT, devId);
+        if (ret != 0)
+            return WC_TEST_RET_ENC_EC(ret);
+        ret = wc_Sha512Update(&sha[i], (byte*)test_sha[i].input,
+            (word32)test_sha[i].inLen);
+        if (ret != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+
+        ret = wc_Sha512Final(&sha[i], hash);
+        if (ret != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+
+        if (XMEMCMP(hash, test_sha[i].output, WC_SHA512_DIGEST_SIZE) != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+
+        if (XMEMCMP(hash, test_sha[i].output, WC_SHA384_DIGEST_SIZE) != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+    }
+exit:
+    for(j = 0; j < i; ++j)
+    {
+        wc_Sha512Free(&sha[j]);
+    }
+    return ret;
+}
+#else
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha512_test(void)
 {
     /*
@@ -4923,11 +4995,76 @@ exit:
     return ret;
 } /* sha512_256_test */
 #endif /* !defined(WOLFSSL_NOSHA512_256) && !FIPS ... */
-
+#endif /* LS_HASH_SHA512 */
 #endif /* WOLFSSL_SHA512 */
 
 
 #ifdef WOLFSSL_SHA384
+#if defined(LS_HASH_SHA512) && defined(CONFIG_SOC_LSQSH)
+WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha384_test(void)
+{
+    wc_Sha384 sha[3];
+    byte      hash[WC_SHA384_DIGEST_SIZE];
+    wc_test_ret_t ret = 0;
+    testVector a, b, c;
+    testVector test_sha[3];
+    int times = sizeof(test_sha) / sizeof(struct testVector), i, j;
+    WOLFSSL_ENTER("sha384_test");
+    __attribute__((aligned(4))) uint8_t a_input[] = "";
+    __attribute__((aligned(4))) uint8_t b_input[] = "abc";
+    __attribute__((aligned(4))) uint8_t c_input[] = "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu";
+
+    a.input = a_input;
+    a.output = "\x38\xb0\x60\xa7\x51\xac\x96\x38\x4c\xd9\x32\x7e\xb1\xb1\xe3"
+               "\x6a\x21\xfd\xb7\x11\x14\xbe\x07\x43\x4c\x0c\xc7\xbf\x63\xf6"
+               "\xe1\xda\x27\x4e\xde\xbf\xe7\x6f\x65\xfb\xd5\x1a\xd2\xf1\x48"
+               "\x98\xb9\x5b";
+    a.inLen  = XSTRLEN(a.input);
+    a.outLen = WC_SHA384_DIGEST_SIZE;
+
+    b.input = b_input;
+    b.output = "\xcb\x00\x75\x3f\x45\xa3\x5e\x8b\xb5\xa0\x3d\x69\x9a\xc6\x50"
+               "\x07\x27\x2c\x32\xab\x0e\xde\xd1\x63\x1a\x8b\x60\x5a\x43\xff"
+               "\x5b\xed\x80\x86\x07\x2b\xa1\xe7\xcc\x23\x58\xba\xec\xa1\x34"
+               "\xc8\x25\xa7";
+    b.inLen  = XSTRLEN(b.input);
+    b.outLen = WC_SHA384_DIGEST_SIZE;
+
+    c.input = c_input;
+    c.output = "\x09\x33\x0c\x33\xf7\x11\x47\xe8\x3d\x19\x2f\xc7\x82\xcd\x1b"
+               "\x47\x53\x11\x1b\x17\x3b\x3b\x05\xd2\x2f\xa0\x80\x86\xe3\xb0"
+               "\xf7\x12\xfc\xc7\xc7\x1a\x55\x7e\x2d\xb9\x66\xc3\xe9\xfa\x91"
+               "\x74\x60\x39";
+    c.inLen  = XSTRLEN(c.input);
+    c.outLen = WC_SHA384_DIGEST_SIZE;
+
+    test_sha[0] = a;
+    test_sha[1] = b;
+    test_sha[2] = c;
+
+    for (i = 0; i < times; ++i) {
+        ret = wc_InitSha384_ex(&sha[i], HEAP_HINT, devId);
+        if (ret != 0)
+            return WC_TEST_RET_ENC_EC(ret);
+        ret = wc_Sha384Update(&sha[i], (byte*)test_sha[i].input,
+            (word32)test_sha[i].inLen);
+        if (ret != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+        ret = wc_Sha384Final(&sha[i], hash);
+        if (ret != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+
+        if (XMEMCMP(hash, test_sha[i].output, WC_SHA384_DIGEST_SIZE) != 0)
+            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
+    }
+exit:
+    for(j = 0; j < i; ++j)
+    {
+        wc_Sha384Free(&sha[j]);
+    }
+    return ret;
+}
+#else
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha384_test(void)
 {
     wc_Sha384 sha, shaCopy;
@@ -5045,6 +5182,7 @@ exit:
 
     return ret;
 }
+#endif /* LS_HASH_SHA512 */
 #endif /* WOLFSSL_SHA384 */
 
 #ifdef WOLFSSL_SHA3
@@ -6203,7 +6341,7 @@ exit:
 #endif
 
 #ifdef WOLFSSL_SM3
-#ifdef LS_HASH
+#if defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sm3_test(void)
 {
     wc_Sha256 sm3[3];

@@ -227,7 +227,7 @@ on the specific device platform.
       !defined(WOLFSSL_RENESAS_RSIP)) \
       || defined(NO_WOLFSSL_RENESAS_FSPSM_HASH)) && \
     (!defined(WOLFSSL_HAVE_PSA) || defined(WOLFSSL_PSA_NO_HASH)) && \
-    !defined(WOLFSSL_RENESAS_RX64_HASH) || (!defined(LS_HASH) || !defined(CONFIG_SOC_LS1010))
+    !defined(WOLFSSL_RENESAS_RX64_HASH) && (!defined(LS_HASH) || !defined(CONFIG_SOC_LS1010))
 
 #if defined(WOLFSSL_X86_64_BUILD) && defined(USE_INTEL_SPEEDUP) && \
     (defined(HAVE_INTEL_AVX1) || defined(HAVE_INTEL_AVX2))

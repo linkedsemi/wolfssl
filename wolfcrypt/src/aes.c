@@ -1000,6 +1000,7 @@ block cipher mechanism that uses n-bit binary string parameter key with 128-bits
 
 #elif defined(WOLFSSL_RISCV_ASM)
 /* implemented in wolfcrypt/src/port/risc-v/riscv-64-aes.c */
+#elif defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
 
 #else
 
@@ -4174,6 +4175,38 @@ static WARN_UNUSED_RESULT int wc_AesDecrypt(
      !defined(NO_WOLFSSL_RENESAS_FSPSM_AES)
     /* implemented in wolfcrypt/src/port/renesas/renesas_fspsm_aes.c */
 
+#elif defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+    int wc_AesSetKey(Aes* aes, const byte* userKey, word32 keylen,
+            const byte* iv, int dir)
+    {
+        (void)dir;
+
+        if (aes == NULL || (keylen != 16 &&
+        #ifdef WOLFSSL_AES_192
+            keylen != 24 &&
+        #endif
+            keylen != 32)) {
+            return BAD_FUNC_ARG;
+        }
+
+#ifdef WC_DEBUG_CIPHER_LIFECYCLE
+        {
+            int ret = wc_debug_CipherLifecycleCheck(aes->CipherLifecycleTag, 0);
+            if (ret < 0)
+                return ret;
+        }
+#endif
+        aes->rounds = keylen/4 + 6;
+        uint8_t keysize = 0;
+        if (keylen == 16)
+            keysize = AES_KEY_128;
+        else if (keylen == 24)
+            keysize = AES_KEY_192;
+        else if (keylen == 32)
+            keysize = AES_KEY_256;
+        HAL_LSCRYPT_AES_Key_Config((uint32_t *)userKey, keysize);
+        return wc_AesSetIV(aes, iv);
+    }
 #else
     #define NEED_SOFTWARE_AES_SETKEY
 #endif
@@ -4819,6 +4852,25 @@ static void AesSetKey_C(Aes* aes, const byte* key, word32 keySz, int dir)
     #endif /* WOLFSSL_AES_DIRECT || WOLFSSL_AES_COUNTER */
 #endif /* wc_AesSetKey block */
 
+#if defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+    int wc_AesSetIV(Aes* aes, const byte* iv)
+    {
+            if (aes == NULL)
+            return BAD_FUNC_ARG;
+
+    #ifdef WC_DEBUG_CIPHER_LIFECYCLE
+        {
+            int ret = wc_debug_CipherLifecycleCheck(aes->CipherLifecycleTag, 0);
+            if (ret < 0)
+                return ret;
+        }
+    #endif
+
+        if (iv)
+            HAL_LSCRYPT_SET_IV((uint32_t *)iv);
+        return 0;
+    }
+#else
 
 /* wc_AesSetIV is shared between software and hardware */
 int wc_AesSetIV(Aes* aes, const byte* iv)
@@ -4848,6 +4900,7 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
 
     return 0;
 }
+#endif /* LS_CRYPT */
 
 #ifdef WOLFSSL_AESNI
 
@@ -5732,6 +5785,21 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
 #elif defined(WOLFSSL_HAVE_PSA) && !defined(WOLFSSL_PSA_NO_AES)
     /* implemented in wolfcrypt/src/port/psa/psa_aes.c */
 
+#elif defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+    int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz)
+    {
+        if ((in == NULL) || (out == NULL) || (aes == NULL))
+            return BAD_FUNC_ARG;
+
+        return HAL_LSCRYPT_AES_CBC_Encrypt(in, sz, out, &sz);
+    }
+    int wc_AesCbcDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
+    {
+        if ((in == NULL) || (out == NULL) || (aes == NULL))
+            return BAD_FUNC_ARG;
+
+        return HAL_LSCRYPT_AES_CBC_Decrypt(in, sz, out, &sz);
+    }
 #else
     /* Reminder: Some HW implementations may also define this as needed.
      * (e.g. for unsupported key length fallback)  */
@@ -11639,6 +11707,10 @@ int wc_AesInit(Aes* aes, void* heap, int devId)
         ret = wc_debug_CipherLifecycleInit(&aes->CipherLifecycleTag, aes->heap);
 #endif
 
+#if defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+    HAL_LSCRYPT_Init();
+#endif
+
     return ret;
 }
 
@@ -11894,6 +11966,22 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
 
     return AES_ECB_decrypt(aes, in, out, sz);
 }
+
+#elif defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+    int wc_AesEcbEncrypt(Aes* aes, byte* out, const byte* in, word32 sz)
+    {
+        if ((in == NULL) || (out == NULL) || (aes == NULL))
+            return BAD_FUNC_ARG;
+
+        return HAL_LSCRYPT_AES_ECB_Encrypt(in, sz, out, &sz);
+    }
+    int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
+    {
+        if ((in == NULL) || (out == NULL) || (aes == NULL))
+            return BAD_FUNC_ARG;
+
+        return HAL_LSCRYPT_AES_ECB_Decrypt(in, sz, out, &sz);
+    }
 
 #else
 

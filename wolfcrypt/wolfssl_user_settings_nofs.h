@@ -31,6 +31,12 @@ extern "C" {
 #undef  LS_HASH_SHA512
 #define LS_HASH_SHA512
 
+#undef LS_CRYPT
+#define LS_CRYPT
+
+#undef HAVE_AES_ECB
+#define HAVE_AES_ECB
+
 #undef  NO_OLD_SHA_NAMES
 #define NO_OLD_SHA_NAMES
 #undef  NO_OLD_WC_NAMES

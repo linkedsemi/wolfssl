@@ -34,6 +34,9 @@ extern "C" {
 #undef LS_CRYPT
 #define LS_CRYPT
 
+#undef LS_SM4
+#define LS_SM4
+
 #undef HAVE_AES_ECB
 #define HAVE_AES_ECB
 
@@ -62,6 +65,15 @@ extern "C" {
 
 #undef  WOLFSSL_SM3
 #define WOLFSSL_SM3
+
+#undef  WOLFSSL_SM4
+#define WOLFSSL_SM4
+
+#undef  WOLFSSL_SM4_ECB
+#define WOLFSSL_SM4_ECB
+
+#undef  WOLFSSL_SM4_CTR
+#define WOLFSSL_SM4_CTR
 
 #undef  WOLFSSL_SMALL_STACK
 #define WOLFSSL_SMALL_STACK

@@ -37,6 +37,9 @@ extern "C" {
 #undef  WOLFSSL_SM3
 #define WOLFSSL_SM3
 
+#undef  WOLFSSL_SM4
+#define WOLFSSL_SM4
+
 #undef  TFM_TIMING_RESISTANT
 #define TFM_TIMING_RESISTANT
 

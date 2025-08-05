@@ -414,7 +414,11 @@ const byte const_byte_array[] = "A+Gd\0\0\0";
     #include <wolfssl/wolfcrypt/sm3.h>
 #endif
 #ifdef WOLFSSL_SM4
+#if defined(LS_SM4) && defined(CONFIG_SOC_LS1010)
+    #include <wolfssl/wolfcrypt/port/linkedsemi/ls-sm4.h>
+#else
     #include <wolfssl/wolfcrypt/sm4.h>
+#endif
 #endif
 #ifdef HAVE_LIBZ
     #include <wolfssl/wolfcrypt/compress.h>
@@ -18383,6 +18387,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t camellia_test(void)
 
 #ifdef WOLFSSL_SM4
 #ifdef WOLFSSL_SM4_ECB
+#if defined(LS_SM4) && defined(CONFIG_SOC_LS1010)
 static int sm4_ecb_test(void)
 {
     /* draft-ribose-cfrg-sm4-10 A.2.1.1 */
@@ -18433,6 +18438,58 @@ static int sm4_ecb_test(void)
 
     return 0;
 }
+#else
+static int sm4_ecb_test(void)
+{
+    /* draft-ribose-cfrg-sm4-10 A.2.1.1 */
+    WOLFSSL_SMALL_STACK_STATIC const byte k1[] = {
+        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
+        0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10
+    };
+    WOLFSSL_SMALL_STACK_STATIC const byte p1[] = {
+        0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0xBB, 0xBB, 0xBB,
+        0xCC, 0xCC, 0xCC, 0xCC, 0xDD, 0xDD, 0xDD, 0xDD,
+        0xEE, 0xEE, 0xEE, 0xEE, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0xBB, 0xBB, 0xBB
+    };
+    WOLFSSL_SMALL_STACK_STATIC const byte c1_ecb[] = {
+        0x5E, 0xC8, 0x14, 0x3D, 0xE5, 0x09, 0xCF, 0xF7,
+        0xB5, 0x17, 0x9F, 0x8F, 0x47, 0x4B, 0x86, 0x19,
+        0x2F, 0x1D, 0x30, 0x5A, 0x7F, 0xB1, 0x7D, 0xF9,
+        0x85, 0xF8, 0x1C, 0x84, 0x82, 0x19, 0x23, 0x04
+    };
+
+    wc_Sm4 sm4;
+    byte enc[SM4_BLOCK_SIZE * 4];
+    byte dec[SM4_BLOCK_SIZE * 4];
+    int ret;
+
+    ret = wc_Sm4Init(&sm4, NULL, INVALID_DEVID);
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+
+    /* Encrypt and decrypt with ECB. */
+    ret = wc_Sm4SetKey(&sm4, k1, sizeof(k1));
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+
+    ret = wc_Sm4EcbEncrypt(&sm4, enc, p1, sizeof(p1));
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+    if (XMEMCMP(enc, c1_ecb, sizeof(c1_ecb)) != 0)
+        return WC_TEST_RET_ENC_NC;
+
+    ret = wc_Sm4EcbDecrypt(&sm4, dec, enc, sizeof(c1_ecb));
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+    if (XMEMCMP(dec, p1, sizeof(p1)) != 0)
+        return WC_TEST_RET_ENC_NC;
+
+    wc_Sm4Free(&sm4);
+
+    return 0;
+}
+#endif /* LS_SM4 */
 #endif
 
 #ifdef WOLFSSL_SM4_CBC
@@ -18523,6 +18580,74 @@ static int sm4_cbc_test(void)
 #endif
 
 #ifdef WOLFSSL_SM4_CTR
+#if defined(LS_SM4) && defined(CONFIG_SOC_LS1010)
+static int sm4_ctr_test(void)
+{
+    /* draft-ribose-cfrg-sm4-10 A.2.5.1 */
+    WOLFSSL_SMALL_STACK_STATIC const byte k1[] = {
+        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
+        0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10
+    };
+    WOLFSSL_SMALL_STACK_STATIC const byte i1[] = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
+    };
+    WOLFSSL_SMALL_STACK_STATIC const byte p2[] = {
+        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
+        0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB,
+        0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
+        0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD,
+        0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
+        0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB
+    };
+    WOLFSSL_SMALL_STACK_STATIC const byte c2_ctr[] = {
+        0xAC, 0x32, 0x36, 0xCB, 0x97, 0x0C, 0xC2, 0x07,
+        0x91, 0x36, 0x4C, 0x39, 0x5A, 0x13, 0x42, 0xD1,
+        0xA3, 0xCB, 0xC1, 0x87, 0x8C, 0x6F, 0x30, 0xCD,
+        0x07, 0x4C, 0xCE, 0x38, 0x5C, 0xDD, 0x70, 0xC7,
+        0xF2, 0x34, 0xBC, 0x0E, 0x24, 0xC1, 0x19, 0x80,
+        0xFD, 0x12, 0x86, 0x31, 0x0C, 0xE3, 0x7B, 0x92,
+        0x6E, 0x02, 0xFC, 0xD0, 0xFA, 0xA0, 0xBA, 0xF3,
+        0x8B, 0x29, 0x33, 0x85, 0x1D, 0x82, 0x45, 0x14
+    };
+
+    wc_Sm4 sm4;
+    byte enc[SM4_BLOCK_SIZE * 4];
+    byte dec[SM4_BLOCK_SIZE * 4];
+    int ret;
+
+    ret = wc_Sm4Init(&sm4, NULL, INVALID_DEVID);
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+
+    /* Encrypt and decrypt using encrypt with CTR. */
+    ret = wc_Sm4SetKey(&sm4, k1, sizeof(k1));
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+
+    ret = wc_Sm4SetIV(&sm4, i1);
+        if (ret != 0)
+            return WC_TEST_RET_ENC_EC(ret);
+    ret = wc_Sm4CtrEncrypt(&sm4, enc, p2, sizeof(p2));
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+    if (XMEMCMP(enc, c2_ctr, sizeof(c2_ctr)) != 0)
+        return WC_TEST_RET_ENC_NC;
+
+
+    ret = wc_Sm4CtrEncrypt(&sm4, dec, enc, sizeof(c2_ctr));
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+    if (XMEMCMP(dec, p2, sizeof(p2)) != 0)
+        return WC_TEST_RET_ENC_NC;
+
+    wc_Sm4Free(&sm4);
+
+    return 0;
+}
+#else
 static int sm4_ctr_test(void)
 {
     /* draft-ribose-cfrg-sm4-10 A.2.5.1 */
@@ -18613,6 +18738,7 @@ static int sm4_ctr_test(void)
 
     return 0;
 }
+#endif /* LS_SM4 */
 #endif
 
 #ifdef WOLFSSL_SM4_GCM

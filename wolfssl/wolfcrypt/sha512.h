@@ -77,7 +77,7 @@
     #include <wolfssl/wolfcrypt/port/st/stm32.h>
 #endif
 
-#if defined(LS_HASH_SHA512) && defined(CONFIG_SOC_LSQSH)
+#if defined(LS_HASH_SHA512)
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
 #endif
 
@@ -213,7 +213,7 @@ struct wc_Sha512 {
 #if defined(STM32_HASH_SHA512)
     STM32_HASH_Context stmCtx;
 #endif
-#if defined(LS_HASH_SHA512) && defined(CONFIG_SOC_LSQSH)
+#if defined(LS_HASH_SHA512)
     LS_HASH_Context lsCtx;
 #endif
 #endif /* WOLFSSL_PSOC6_CRYPTO */

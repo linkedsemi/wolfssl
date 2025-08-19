@@ -414,7 +414,7 @@ const byte const_byte_array[] = "A+Gd\0\0\0";
     #include <wolfssl/wolfcrypt/sm3.h>
 #endif
 #ifdef WOLFSSL_SM4
-#if defined(LS_SM4) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_SM4)
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-sm4.h>
 #else
     #include <wolfssl/wolfcrypt/sm4.h>
@@ -1746,27 +1746,56 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifdef WOLFSSL_SHA224
+#ifdef LS_HASH
+    if ( (ret = sha224_test()) != 0)
+        TEST_FAIL("LS hardware SHA-224  test failed!\n", ret);
+    else
+        TEST_PASS("LS hardware SHA-224  test passed!\n");
+#else
     if ( (ret = sha224_test()) != 0)
         TEST_FAIL("SHA-224  test failed!\n", ret);
     else
         TEST_PASS("SHA-224  test passed!\n");
+#endif /* LS_HASH */
 #endif
 
 #ifndef NO_SHA256
+#ifdef LS_HASH
+    if ( (ret = sha256_test()) != 0)
+        TEST_FAIL("LS hardware SHA-256  test failed!\n", ret);
+    else
+        TEST_PASS("LS hardware SHA-256  test passed!\n");
+#else
     if ( (ret = sha256_test()) != 0)
         TEST_FAIL("SHA-256  test failed!\n", ret);
     else
         TEST_PASS("SHA-256  test passed!\n");
+#endif /* LS_HASH */
 #endif
 
 #ifdef WOLFSSL_SHA384
+#ifdef LS_HASH_SHA512
+    if ( (ret = sha384_test()) != 0)
+        TEST_FAIL("LS hardware SHA-384  test failed!\n", ret);
+    else
+        TEST_PASS("LS hardware SHA-384  test passed!\n");
+#else
     if ( (ret = sha384_test()) != 0)
         TEST_FAIL("SHA-384  test failed!\n", ret);
     else
         TEST_PASS("SHA-384  test passed!\n");
+#endif /* LS_HASH_SHA512 */
 #endif
 
 #ifdef WOLFSSL_SHA512
+#ifdef LS_HASH_SHA512
+    if ((ret = sha512_test()) != 0) {
+        TEST_FAIL("LS hardware SHA-512  test failed!\n", ret);
+    }
+    else {
+        TEST_PASS("LS hardware SHA-512  test passed!\n");
+    }
+#else
     if ((ret = sha512_test()) != 0) {
         TEST_FAIL("SHA-512  test failed!\n", ret);
     }
@@ -1792,6 +1821,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_PASS("SHA-512/256  test passed!\n");
 #endif /* !defined(WOLFSSL_NOSHA512_256) & !FIPS ... */
 
+#endif /* LS_HASH_SHA512 */
 #endif /* WOLFSSL_SHA512 */
 
 #ifdef WOLFSSL_SHA3
@@ -1816,10 +1846,17 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifdef WOLFSSL_SM3
+#ifdef LS_HASH
+    if ( (ret = sm3_test()) != 0)
+        return err_sys("LS hardware SM-3     test failed!\n", ret);
+    else
+        TEST_PASS("LS hardware SM-3     test passed!\n");
+#else
     if ( (ret = sm3_test()) != 0)
         return err_sys("SM-3     test failed!\n", ret);
     else
         TEST_PASS("SM-3     test passed!\n");
+#endif /* LS_HASH */
 #endif
 
 #ifndef NO_HASH_WRAPPER
@@ -2070,32 +2107,61 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifndef NO_AES
+#ifdef LS_CRYPT
+    /* key sizes, ECB and Direct tests */
+    if ( (ret = aes_test()) != 0)
+        TEST_FAIL("LS hardware AES      test failed!\n", ret);
+    else
+        TEST_PASS("LS hardware AES      test passed!\n");
+#else
     /* key sizes, ECB and Direct tests */
     if ( (ret = aes_test()) != 0)
         TEST_FAIL("AES      test failed!\n", ret);
     else
         TEST_PASS("AES      test passed!\n");
+#endif /* LS_CRYPT */
 
 #if defined(WOLFSSL_AES_192)  && \
    !defined(WOLFSSL_RENESAS_FSPSM_CRYPTONLY)
+#ifdef LS_CRYPT
+    if ( (ret = aes192_test()) != 0)
+        TEST_FAIL("LS hardware AES192   test failed!\n", ret);
+    else
+        TEST_PASS("LS hardware AES192   test passed!\n");
+#else
     if ( (ret = aes192_test()) != 0)
         TEST_FAIL("AES192   test failed!\n", ret);
     else
         TEST_PASS("AES192   test passed!\n");
+#endif /* LS_CRYPT */
 #endif
 
 #if defined(WOLFSSL_AES_256)
+#ifdef LS_CRYPT
+    if ( (ret = aes256_test()) != 0)
+        TEST_FAIL("LS hardware AES256   test failed!\n", ret);
+    else
+        TEST_PASS("LS hardware AES256   test passed!\n");
+#else
     if ( (ret = aes256_test()) != 0)
         TEST_FAIL("AES256   test failed!\n", ret);
     else
         TEST_PASS("AES256   test passed!\n");
+#endif /* LS_CRYPT */
 #endif
 
 #ifdef HAVE_AES_CBC
+#ifdef LS_CRYPT
+    if ( (ret = aes_cbc_test()) != 0)
+        TEST_FAIL("LS hardware AES-CBC  test failed!\n", ret);
+    else
+        TEST_PASS("LS hardware AES-CBC  test passed!\n");
+#else
     if ( (ret = aes_cbc_test()) != 0)
         TEST_FAIL("AES-CBC  test failed!\n", ret);
     else
         TEST_PASS("AES-CBC  test passed!\n");
+#endif /* LS_CRYPT */
 #endif
 
 #ifdef WOLFSSL_AES_COUNTER
@@ -2198,10 +2264,17 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifdef WOLFSSL_SM4
+#ifdef LS_SM4
+    if ( (ret = sm4_test()) != 0)
+        return err_sys("LS hardware  SM-4  test failed!\n", ret);
+    else
+        TEST_PASS("LS hardware SM-4     test passed!\n");
+#else
     if ( (ret = sm4_test()) != 0)
         return err_sys("SM-4     test failed!\n", ret);
     else
         TEST_PASS("SM-4     test passed!\n");
+#endif
 #endif
 
 #if !defined(NO_RSA) && !defined(HAVE_RENESAS_SYNC)
@@ -3929,7 +4002,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t blake2s_test(void)
 
 
 #ifdef WOLFSSL_SHA224
-#if defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_HASH)
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha224_test(void)
 {
     wc_Sha224 sha[3];
@@ -4064,7 +4137,7 @@ exit:
 
 
 #ifndef NO_SHA256
-#if defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_HASH)
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha256_test(void)
 {
     wc_Sha256 sha[4];
@@ -4394,7 +4467,7 @@ exit:
 
 
 #ifdef WOLFSSL_SHA512
-#if defined(LS_HASH_SHA512) && defined(CONFIG_SOC_LSQSH)
+#ifdef LS_HASH_SHA512
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha512_test(void)
 {
     wc_Sha512 sha[3];
@@ -5004,7 +5077,7 @@ exit:
 
 
 #ifdef WOLFSSL_SHA384
-#if defined(LS_HASH_SHA512) && defined(CONFIG_SOC_LSQSH)
+#ifdef LS_HASH_SHA512
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha384_test(void)
 {
     wc_Sha384 sha[3];
@@ -6345,7 +6418,7 @@ exit:
 #endif
 
 #ifdef WOLFSSL_SM3
-#if defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_HASH)
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sm3_test(void)
 {
     wc_Sha256 sm3[3];
@@ -14532,7 +14605,7 @@ out:
 #endif /* WOLFSSL_AES_COUNTER */
 
 #ifdef HAVE_AES_ECB
-#if defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+#ifdef LS_CRYPT
 static wc_test_ret_t aes_ecb_test(Aes* enc, Aes* dec, byte* cipher, byte* plain)
 {
     wc_test_ret_t ret = 0;
@@ -14851,7 +14924,7 @@ out:
 
 #ifdef HAVE_AES_CBC
 
-#if defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+#ifdef LS_CRYPT
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes_cbc_test(void)
 {
     Aes *enc = NULL;
@@ -15586,7 +15659,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes_xts_test(void)
 #endif
 
 #ifdef WOLFSSL_AES_192
-#if defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+#ifdef LS_CRYPT
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes192_test(void)
 {
     wc_test_ret_t ret = 0;
@@ -15808,7 +15881,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes192_test(void)
 #endif /* WOLFSSL_AES_192 */
 
 #ifdef WOLFSSL_AES_256
-#if defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+#ifdef LS_CRYPT
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes256_test(void)
 {
 #ifdef HAVE_AES_CBC
@@ -18387,7 +18460,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t camellia_test(void)
 
 #ifdef WOLFSSL_SM4
 #ifdef WOLFSSL_SM4_ECB
-#if defined(LS_SM4) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_SM4)
 static int sm4_ecb_test(void)
 {
     /* draft-ribose-cfrg-sm4-10 A.2.1.1 */
@@ -18580,7 +18653,7 @@ static int sm4_cbc_test(void)
 #endif
 
 #ifdef WOLFSSL_SM4_CTR
-#if defined(LS_SM4) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_SM4)
 static int sm4_ctr_test(void)
 {
     /* draft-ribose-cfrg-sm4-10 A.2.5.1 */
@@ -18636,6 +18709,18 @@ static int sm4_ctr_test(void)
     if (XMEMCMP(enc, c2_ctr, sizeof(c2_ctr)) != 0)
         return WC_TEST_RET_ENC_NC;
 
+    ret = wc_Sm4Init(&sm4, NULL, INVALID_DEVID);
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+
+    /* Encrypt and decrypt using encrypt with CTR. */
+    ret = wc_Sm4SetKey(&sm4, k1, sizeof(k1));
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+
+    ret = wc_Sm4SetIV(&sm4, i1);
+        if (ret != 0)
+            return WC_TEST_RET_ENC_EC(ret);
 
     ret = wc_Sm4CtrEncrypt(&sm4, dec, enc, sizeof(c2_ctr));
     if (ret != 0)

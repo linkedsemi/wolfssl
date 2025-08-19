@@ -1000,7 +1000,7 @@ block cipher mechanism that uses n-bit binary string parameter key with 128-bits
 
 #elif defined(WOLFSSL_RISCV_ASM)
 /* implemented in wolfcrypt/src/port/risc-v/riscv-64-aes.c */
-#elif defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+#elif defined(LS_CRYPT)
 
 #else
 
@@ -4175,7 +4175,7 @@ static WARN_UNUSED_RESULT int wc_AesDecrypt(
      !defined(NO_WOLFSSL_RENESAS_FSPSM_AES)
     /* implemented in wolfcrypt/src/port/renesas/renesas_fspsm_aes.c */
 
-#elif defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+#elif defined(LS_CRYPT)
     int wc_AesSetKey(Aes* aes, const byte* userKey, word32 keylen,
             const byte* iv, int dir)
     {
@@ -4852,7 +4852,7 @@ static void AesSetKey_C(Aes* aes, const byte* key, word32 keySz, int dir)
     #endif /* WOLFSSL_AES_DIRECT || WOLFSSL_AES_COUNTER */
 #endif /* wc_AesSetKey block */
 
-#if defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_CRYPT)
     int wc_AesSetIV(Aes* aes, const byte* iv)
     {
             if (aes == NULL)
@@ -5785,7 +5785,7 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
 #elif defined(WOLFSSL_HAVE_PSA) && !defined(WOLFSSL_PSA_NO_AES)
     /* implemented in wolfcrypt/src/port/psa/psa_aes.c */
 
-#elif defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+#elif defined(LS_CRYPT)
     int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz)
     {
         if ((in == NULL) || (out == NULL) || (aes == NULL))
@@ -11707,7 +11707,7 @@ int wc_AesInit(Aes* aes, void* heap, int devId)
         ret = wc_debug_CipherLifecycleInit(&aes->CipherLifecycleTag, aes->heap);
 #endif
 
-#if defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_CRYPT)
     HAL_LSCRYPT_Init();
 #endif
 
@@ -11967,7 +11967,7 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
     return AES_ECB_decrypt(aes, in, out, sz);
 }
 
-#elif defined(LS_CRYPT) && defined(CONFIG_SOC_LS1010)
+#elif defined(LS_CRYPT)
     int wc_AesEcbEncrypt(Aes* aes, byte* out, const byte* in, word32 sz)
     {
         if ((in == NULL) || (out == NULL) || (aes == NULL))

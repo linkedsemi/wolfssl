@@ -171,11 +171,11 @@ int wolfCrypt_Init(void)
     if (initRefCount == 0) {
         WOLFSSL_ENTER("wolfCrypt_Init");
     
-    #if defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
+    #if defined(LS_HASH)
         wc_LS_Hash_Init();
     #endif
 
-    #if defined(LS_HASH_SHA512) && defined(CONFIG_SOC_LSQSH)
+    #if defined(LS_HASH_SHA512)
         wc_LS_Hash_sha512_Init();
     #endif
 

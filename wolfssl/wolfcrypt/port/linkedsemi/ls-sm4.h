@@ -1,7 +1,7 @@
 #ifndef _LS_SM4_H_
 #define _LS_SM4_H_
 
-#if defined(LS_SM4) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_SM4)
     #include <ls_hal_sm4.h>
     #define SM4_IV_SIZE 16
     #define SM4_BLOCK_SIZE 16

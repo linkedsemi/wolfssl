@@ -3,7 +3,7 @@
 #include <wolfssl/wolfcrypt/types.h>
 #include <wolfssl/wolfcrypt/port/linkedsemi/ls-sm4.h>
 
-#if defined(LS_SM4) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_SM4)
     int wc_Sm4Init(wc_Sm4* sm4, void* heap, int devId)
     {
         return HAL_SM4_Init();

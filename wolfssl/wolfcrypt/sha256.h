@@ -100,7 +100,7 @@
 #define WOLFSSL_NO_HASH_RAW
 #endif
 
-#if defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_HASH)
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
 #endif
 
@@ -186,7 +186,7 @@ struct wc_Sha256 {
     cy_stc_crypto_v2_sha256_buffers_t sha_buffers;
 #elif defined(WOLFSSL_HAVE_PSA) && !defined(WOLFSSL_PSA_NO_HASH)
     psa_hash_operation_t psa_ctx;
-#elif defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
+#elif defined(LS_HASH)
     LS_HASH_Context   lsCtx;
 #else
 #ifdef WC_64BIT_CPU

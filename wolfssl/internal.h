@@ -62,7 +62,7 @@
     #include <wolfssl/wolfcrypt/camellia.h>
 #endif
 #ifdef WOLFSSL_SM4
-#if defined(LS_SM4) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_SM4)
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-sm4.h>
 #else
     #include <wolfssl/wolfcrypt/sm4.h>

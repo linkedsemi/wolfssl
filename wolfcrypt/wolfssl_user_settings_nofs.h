@@ -28,8 +28,10 @@ extern "C" {
 #undef  LS_HASH
 #define LS_HASH
 
+#ifdef CONFIG_SOC_LSQSH
 #undef  LS_HASH_SHA512
 #define LS_HASH_SHA512
+#endif
 
 #undef LS_CRYPT
 #define LS_CRYPT

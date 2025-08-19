@@ -9,7 +9,7 @@
     } LS_HASH_Context;
 #endif
 
-#if defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_HASH)
     #include <ls_msp_sha.h>
     #include <ls_hal_sha.h>
     /* API's */
@@ -21,7 +21,7 @@
     int wc_LS_Hash_Final(LS_HASH_Context* lsCtx, uint8_t *digest);
 #endif /* LS_HASH */
 
-#if defined(LS_HASH_SHA512) && defined(CONFIG_SOC_LSQSH)
+#if defined(LS_HASH_SHA512)
     #include <ls_msp_sha512.h>
     #include <ls_hal_sha512.h>
     void wc_LS_Hash_sha512_Init();

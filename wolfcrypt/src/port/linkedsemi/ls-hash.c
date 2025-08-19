@@ -17,7 +17,7 @@
 
 #endif
 
-#if defined(LS_HASH) && defined(CONFIG_SOC_LS1010)
+#if defined(LS_HASH)
     void wc_LS_Hash_Init()
     {
         wc_InitMutex(&doneLock);
@@ -68,7 +68,7 @@
     }
 #endif /* LS_HASH */
 
-#if defined(LS_HASH_SHA512) && defined(CONFIG_SOC_LSQSH)
+#if defined(LS_HASH_SHA512)
     void wc_LS_Hash_sha512_Init()
     {
         wc_InitMutex(&doneLock);

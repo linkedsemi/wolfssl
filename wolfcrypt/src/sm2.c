@@ -42,6 +42,10 @@
     #include <wolfcrypt/src/misc.c>
 #endif
 
+#ifdef CONFIG_SOC_LSQSH
+    #include <wolfssl/wolfcrypt/port/linkedsemi/ls_otbn_ecc.h>
+#endif
+
 /* Maximum number of signature generations to attempt before giving up. */
 #define ECC_SM2_MAX_SIG_GEN     64
 
@@ -489,6 +493,15 @@ int wc_ecc_sm2_sign_hash_ex(const byte* hash, word32 hashSz, WC_RNG* rng,
     }
 #endif
 
+#if defined(CONFIG_SOC_LSQSH)
+    if ((err == MP_OKAY) && (key->dp->id == ECC_SM2P256V1))
+    {
+        err = ls_otbn_ecc_sign_hash_ex(hash, hashSz, r, s, NULL, NULL, key);
+        return err;
+    }
+#endif
+
+
 #ifndef WOLFSSL_SP_MATH
 #ifdef WOLFSSL_SMALL_STACK
     if (err == MP_OKAY) {
@@ -798,6 +811,12 @@ int wc_ecc_sm2_verify_hash_ex(mp_int *r, mp_int *s, const byte *hash,
         err = BAD_FUNC_ARG;
     }
 
+#if defined(CONFIG_SOC_LSQSH)
+    if(key->dp->id == ECC_SECP256R1 || key->dp->id == ECC_SECP384R1 || key->dp->id == ECC_SM2P256V1)
+    {
+        return ls_otbn_ecc_verify_hash_ex(r, s, hash, hashSz, res, key);
+    }
+#endif
 #if defined(WOLFSSL_HAVE_SP_ECC) && defined(WOLFSSL_SP_SM2)
     if ((err == MP_OKAY) && (key->dp->id == ECC_SM2P256V1)) {
         /* Use optimized code in SP to perform verification. */
@@ -921,7 +940,10 @@ int wc_ecc_sm2_verify_hash_ex(mp_int *r, mp_int *s, const byte *hash,
     if (err == MP_OKAY) {
         /* e' + x1' */
         err = mp_addmod(e, PO->x, order, t);
+        // mp_set(e,1);
+        // err = mp_add(e,PO->x,t);
     }
+    
     /* Calculated value must be same as r. */
     if (err == MP_OKAY && mp_cmp(t, r) == MP_EQ) {
         *res = 1;

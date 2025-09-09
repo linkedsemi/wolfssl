@@ -2362,9 +2362,6 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #if defined(HAVE_ECC)
-#ifdef LS_ECC
-
-#else
     PRIVATE_KEY_UNLOCK();
     if ( (ret = ecc_test()) != 0)
         TEST_FAIL("ECC      test failed!\n", ret);
@@ -2388,7 +2385,6 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         else
             TEST_PASS("ECC buffer test passed!\n");
     #endif
-#endif /* LS_ECC */
 #endif
 
 #if !defined(NO_ASN_TIME) && !defined(NO_RSA) && defined(WOLFSSL_TEST_CERT) && \
@@ -35493,7 +35489,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t ecc_test(void)
 #endif
 #if !defined(WOLFSSL_ATECC508A) && !defined(WOLFSSL_ATECC608A) && \
   !defined(WOLFSSL_STM32_PKA) && !defined(WOLFSSL_SILABS_SE_ACCEL) && \
-  !defined(WOLF_CRYPTO_CB_ONLY_ECC) && !defined(NO_ECC_SECP)
+  !defined(WOLF_CRYPTO_CB_ONLY_ECC) && !defined(NO_ECC_SECP) && !defined(CONFIG_SOC_LSQSH)
     ret = ecc_test_make_pub(&rng);
     if (ret != 0) {
         printf("ecc_test_make_pub failed!\n");
@@ -35507,7 +35503,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t ecc_test(void)
     ret = ecc_test_cert_gen(&rng);
     if (ret != 0) {
         printf("ecc_test_cert_gen failed!\n");
-        goto done;
+        goto done;-
     }
 #endif
 #if !defined(HAVE_FIPS) && !defined(HAVE_SELFTEST) && !defined(WOLFSSL_NO_MALLOC) && \

@@ -107,14 +107,14 @@ extern "C" {
 #undef  HAVE_ECC
 #define HAVE_ECC
 
-#undef  LS_ECC
-#define LS_ECC
-
 #undef  TFM_ECC256
 #define TFM_ECC256
 
 #undef  WOLFSSL_BASE64_ENCODE
 #define WOLFSSL_BASE64_ENCODE
+
+#undef  WOLFSSL_BASE16
+#define WOLFSSL_BASE16
 
 #undef  NO_RC4
 #define NO_RC4
@@ -171,7 +171,7 @@ extern "C" {
 #define NO_DES3
 
 #undef  WOLFSSL_STATIC_MEMORY
-#define WOLFSSL_STATIC_MEMORY
+// #define WOLFSSL_STATIC_MEMORY
 
 #undef  WOLFSSL_TLS13
 #define WOLFSSL_TLS13
@@ -201,6 +201,16 @@ extern "C" {
 
 #undef USE_CERT_BUFFERS_2048
 
+#define WOLFMEM_DEF_BUCKETS 20
+
+#undef WOLFSSL_VALIDATE_ECC_IMPORT
+#define  WOLFSSL_VALIDATE_ECC_IMPORT
+
+#undef  WOLFSSL_SM2
+#define WOLFSSL_SM2
+
+
+#define DEBUG_WOLFSSL
 #ifdef __cplusplus
 }
 #endif

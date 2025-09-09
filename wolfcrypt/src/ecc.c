@@ -172,6 +172,10 @@ ECC Curve Sizes:
     #include <wolfssl/wolfcrypt/cryptocb.h>
 #endif
 
+#ifdef CONFIG_SOC_LSQSH
+    #include <wolfssl/wolfcrypt/port/linkedsemi/ls_otbn_ecc.h>
+#endif
+
 #ifdef NO_INLINE
     #include <wolfssl/wolfcrypt/misc.h>
 #else
@@ -4743,7 +4747,15 @@ int wc_ecc_shared_secret(ecc_key* private_key, ecc_key* public_key, byte* out,
    err = KcapiEcc_SharedSecret(private_key, public_key, out, outlen);
 #elif defined(WOLFSSL_SE050)
    err = se050_ecc_shared_secret(private_key, public_key, out, outlen);
-#else
+#elif defined(CONFIG_SOC_LSQSH)
+    if(private_key->dp->id == ECC_SECP256R1 || private_key->dp->id == ECC_SECP384R1 || private_key->dp->id == ECC_SM2P256V1)
+    {
+        err = ls_otbn_ecc_shared_secret(private_key, public_key, out, outlen);
+    }else
+    {
+        err = wc_ecc_shared_secret_ex(private_key, &public_key->pubkey, out, outlen);
+    }
+#else   
    err = wc_ecc_shared_secret_ex(private_key, &public_key->pubkey, out, outlen);
 #endif /* WOLFSSL_ATECC508A */
 #endif /* !WOLF_CRYPTO_CB_ONLY_ECC */
@@ -5308,7 +5320,12 @@ int wc_ecc_gen_k(WC_RNG* rng, int size, mp_int* k, mp_int* order)
 #ifdef WOLFSSL_CHECK_MEM_ZERO
     wc_MemZero_Add("wc_ecc_gen_k buf", buf, size);
 #endif
-
+    // for(uint8_t i =0; i<size;i++)
+    // {
+    //     buf[i] = 0xfe + i;
+    // }
+    memset(buf,0,size);
+    buf[size-1] = 0x5;
     /* load random buffer data into k */
     if (err == 0)
         err = mp_read_unsigned_bin(k, buf, (word32)size);
@@ -5319,7 +5336,6 @@ int wc_ecc_gen_k(WC_RNG* rng, int size, mp_int* k, mp_int* order)
             err = mp_mod(k, order, k);
         }
     }
-
     /* quick sanity check to make sure we're not dealing with a 0 key */
     if (err == MP_OKAY) {
         if (mp_iszero(k) == MP_YES)
@@ -5860,7 +5876,16 @@ static int _ecc_make_key_ex(WC_RNG* rng, int keysize, ecc_key* key,
 
     key->type = ECC_PRIVATEKEY;
 
+
 #else
+
+#if defined(CONFIG_SOC_LSQSH)
+    if(key->dp->id == ECC_SECP256R1 || key->dp->id == ECC_SECP384R1 || key->dp->id == ECC_SM2P256V1)
+    {
+        err = ls_otbn_ecc_creat_key(key,curve_id,keysize);
+        return err;
+    }
+#endif
 
 #ifdef WOLFSSL_HAVE_SP_ECC
 
@@ -6406,7 +6431,8 @@ static int wc_ecc_get_curve_order_bit_count(const ecc_set_type* dp)
 #if defined(WOLFSSL_ATECC508A) || defined(WOLFSSL_ATECC608A) ||  \
     defined(PLUTON_CRYPTO_ECC) || defined(WOLFSSL_CRYPTOCELL) || \
     defined(WOLFSSL_SILABS_SE_ACCEL) || defined(WOLFSSL_KCAPI_ECC) || \
-    defined(WOLFSSL_SE050) || defined(WOLFSSL_XILINX_CRYPT_VERSAL)
+    defined(WOLFSSL_SE050) || defined(WOLFSSL_XILINX_CRYPT_VERSAL)\
+    ||defined(CONFIG_SOC_LSQSH)
 static int wc_ecc_sign_hash_hw(const byte* in, word32 inlen,
     mp_int* r, mp_int* s, byte* out, word32 *outlen, WC_RNG* rng,
     ecc_key* key)
@@ -6513,6 +6539,20 @@ static int wc_ecc_sign_hash_hw(const byte* in, word32 inlen,
             return err;
         }
         (void)rng;
+    #elif defined(CONFIG_SOC_LSQSH)
+        if(key->dp->id == ECC_SECP256R1 || key->dp->id == ECC_SECP384R1 || key->dp->id == ECC_SM2P256V1)
+        {
+            err = ls_otbn_ecc_sign_hash_ex(in, inlen, r, s, out, outlen, key);
+            if (err != MP_OKAY) {
+                return err;
+            }
+            (void)rng;
+        }
+        else
+        {
+            err = wc_ecc_sign_hash_ex(in, inlen, rng, key, r, s);
+            return err;
+        }
     #elif defined(WOLFSSL_XILINX_CRYPT_VERSAL)
 
 #ifdef WOLFSSL_SMALL_STACK
@@ -6799,7 +6839,8 @@ int wc_ecc_sign_hash(const byte* in, word32 inlen, byte* out, word32 *outlen,
 #if defined(WOLFSSL_ATECC508A) || defined(WOLFSSL_ATECC608A) || \
     defined(PLUTON_CRYPTO_ECC) || defined(WOLFSSL_CRYPTOCELL) || \
     defined(WOLFSSL_SILABS_SE_ACCEL) || defined(WOLFSSL_KCAPI_ECC) || \
-    defined(WOLFSSL_SE050) || defined(WOLFSSL_XILINX_CRYPT_VERSAL)
+    defined(WOLFSSL_SE050) || defined(WOLFSSL_XILINX_CRYPT_VERSAL)\
+    || defined(CONFIG_SOC_LSQSH)
     err = wc_ecc_sign_hash_hw(in, inlen, r, s, out, outlen, rng, key);
 #else
     err = wc_ecc_sign_hash_ex(in, inlen, rng, key, r, s);
@@ -9209,6 +9250,12 @@ int wc_ecc_verify_hash_ex(mp_int *r, mp_int *s, const byte* hash,
 #elif defined(WOLFSSL_PSOC6_CRYPTO)
     return psoc6_ecc_verify_hash_ex(r, s, hash, hashlen, res, key);
 #else
+#if defined(CONFIG_SOC_LSQSH)
+    if(key->dp->id == ECC_SECP256R1 || key->dp->id == ECC_SECP384R1 || key->dp->id == ECC_SM2P256V1)
+    {
+        return ls_otbn_ecc_verify_hash_ex(r, s, hash, hashlen, res, key);
+    }
+#endif
    int           err;
    word32        keySz = 0;
 #if defined(WOLFSSL_ATECC508A) || defined(WOLFSSL_ATECC608A)
@@ -15785,5 +15832,50 @@ int wc_ecc_set_nonblock(ecc_key *key, ecc_nb_ctx_t* ctx)
     return 0;
 }
 #endif /* WC_ECC_NONBLOCK */
+
+
+#ifdef CONFIG_SOC_LSQSH
+int wc_ecc_get_s_covers_n(struct ecc_key* key,mp_int * s)
+{
+    int err;
+    DECLARE_CURVE_SPECS(1);
+    ALLOC_CURVE_SPECS(1, err);
+    if (err == MP_OKAY)
+    {
+        err = wc_ecc_curve_load(key->dp, &curve, 8);
+        mp_sub(curve->order,s,s);
+        wc_ecc_curve_free(curve);
+        FREE_CURVE_SPECS();
+
+    }
+
+    return err;
+}
+
+int wc_sm2_get_digest(struct ecc_key* key,const uint8_t *input_hash,const uint16_t hashSz, uint8_t *digest)
+{
+    int err;
+    mp_int e[1],order[1];
+    XMEMSET(e, 0, sizeof(mp_int));
+    XMEMSET(order, 0, sizeof(mp_int));
+    err = mp_init_multi(e, order, NULL, NULL, NULL, NULL);
+    if (err == MP_OKAY) {
+        err = mp_read_radix(order, key->dp->order, MP_RADIX_HEX);
+    }
+    if (err == MP_OKAY) {
+        /* Convert hash to a number. */
+        err = mp_read_unsigned_bin(e, input_hash, hashSz);
+    }
+    if (err == MP_OKAY) {
+        /* Reduce the hash value to that of the order once. */
+        err = mp_mod(e, order, e);
+    }
+    mp_to_unsigned_bin_len(e,digest,key->dp->size);
+    mp_clear(e);
+    mp_clear(order);
+    return 0;
+}
+
+#endif
 
 #endif /* HAVE_ECC */

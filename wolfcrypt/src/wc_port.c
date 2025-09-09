@@ -40,6 +40,10 @@
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
 #endif
 
+#if defined(HAVE_ECC) && defined(CONFIG_SOC_LSQSH)
+    #include <wolfssl/wolfcrypt/port/linkedsemi/ls_otbn_ecc.h>
+#endif
+
 #ifdef FREESCALE_LTC_TFM
     #include <wolfssl/wolfcrypt/port/nxp/ksdk_port.h>
 #endif
@@ -177,6 +181,10 @@ int wolfCrypt_Init(void)
 
     #if defined(LS_HASH_SHA512)
         wc_LS_Hash_sha512_Init();
+    #endif
+
+    #if defined(HAVE_ECC) && defined(CONFIG_SOC_LSQSH)
+        wc_LS_Otbn_Module_Init();
     #endif
 
     #if defined(__aarch64__) && defined(WOLFSSL_ARMASM_BARRIER_DETECT)

@@ -6,16 +6,16 @@
 void wc_LS_Otbn_Module_Init(void);
 void wc_LS_Otbn_Module_DeInit(void);
 
-extern const uint32_t p256_checksum;
-extern const uint32_t p384_checksum;
-extern const uint32_t sm2_checksum;
+// extern const uint32_t p256_checksum;
+// extern const uint32_t p384_checksum;
+// extern const uint32_t sm2_checksum;
 
 
 #define LS_OTBN_TRUE  0x00000739
 #define LS_OTBN_FALSE 0x000001d4
 
-extern const uint8_t p256_imem[4304];
-extern const uint8_t p256_dmem[224];
+// extern const uint8_t p256_imem[4304];
+// extern const uint8_t p256_dmem[224];
 #define LS_OTBN_ECDSA_P256_IMEM_SIZE    4304
 #define LS_OTBN_ECDSA_P256_DMEM_SIZE    224
 #define LS_OTBN_ECDSA_P256_DMEM_END     0x260
@@ -42,8 +42,8 @@ extern const uint8_t p256_dmem[224];
 #define LS_OTBN_ECDSA_P256_MODE_KEYGEN        0x000003d4
 #define LS_OTBN_ECDSA_P256_MODE_SHARED_KEY    0x000005ec
 
-extern const uint8_t p384_imem[5572];
-extern const uint8_t p384_dmem[1152];
+// extern const uint8_t p384_imem[5572];
+// extern const uint8_t p384_dmem[1152];
 #define LS_OTBN_ECDSA_P384_IMEM_SIZE    5572
 #define LS_OTBN_ECDSA_P384_DMEM_SIZE    1152
 #define LS_OTBN_ECDSA_P384_DMEM_END     0x00000c00
@@ -70,8 +70,8 @@ extern const uint8_t p384_dmem[1152];
 #define LS_OTBN_ECDSA_P384_MODE_SHARED_KEY    0x000005ec
 
 /* SM2 */
-extern const uint8_t sm2_imem[2716];
-extern const uint8_t sm2_dmem[320];
+// extern const uint8_t sm2_imem[2716];
+// extern const uint8_t sm2_dmem[320];
 #define LS_OTBN_SM2_IMEM_SIZE    2716
 #define LS_OTBN_SM2_DMEM_SIZE    320
 #define LS_OTBN_SM2_DMEM_END     0x464

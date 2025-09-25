@@ -44,7 +44,7 @@ int ls_otbn_fireware_init(struct ecc_key* key, int curve_id)
     uint32_t dmem_size;
     uint32_t *imem_image;
     uint32_t *dmem_image;
-    uint32_t check_sum;
+    // uint32_t check_sum;
     uint32_t dmem_end;
 
     if(!HAL_OTBN_In_Idle_State())

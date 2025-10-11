@@ -2778,6 +2778,31 @@ WOLFSSL_X509_EXTENSION *wolfSSL_X509_delete_ext(WOLFSSL_X509 *x509, int loc)
     return NULL;
 }
 
+#ifdef __ZEPHYR__
+WOLFSSL_X509_EXTENSION* wolfSSL_X509V3_EXT_conf_nid(
+        WOLF_LHASH_OF(CONF_VALUE)* conf, WOLFSSL_X509V3_CTX* ctx, int nid,
+        char* value)
+{
+    WOLFSSL_CONF *ctmp;
+    WOLFSSL_X509_EXTENSION *ret;
+
+    if ((ctmp = wolfSSL_NCONF_new(NULL)) == NULL)
+        return NULL;
+
+    ctmp = NULL;
+    conf = NULL;
+    // CONF_set_nconf(ctmp, conf);
+    ret = wolfSSL_X509V3_EXT_nconf_nid(ctmp, ctx, nid, value);
+    if (ret == NULL) {
+        printk("wolfSSL_X509V3_EXT_nconf_nid NULL\n");
+    } else {
+        printk("wolfSSL_X509V3_EXT_nconf_nid create\n");
+    }
+    // CONF_set_nconf(ctmp, NULL);
+    NCONF_free(ctmp);
+    return ret;
+}
+#else
 /* currently LHASH is not implemented (and not needed for Apache port) */
 WOLFSSL_X509_EXTENSION* wolfSSL_X509V3_EXT_conf_nid(
         WOLF_LHASH_OF(CONF_VALUE)* conf, WOLFSSL_X509V3_CTX* ctx, int nid,
@@ -2796,7 +2821,7 @@ WOLFSSL_X509_EXTENSION* wolfSSL_X509V3_EXT_conf_nid(
     (void)value;
     return NULL;
 }
-
+#endif
 void wolfSSL_X509V3_set_ctx_nodb(WOLFSSL_X509V3_CTX* ctx)
 {
     WOLFSSL_STUB("wolfSSL_X509V3_set_ctx_nodb");
@@ -2865,6 +2890,16 @@ static WOLFSSL_X509_EXTENSION* createExtFromStr(int nid, const char *value)
             gn->type = ASN_DNS_TYPE;
             break;
         }
+#ifdef __ZEPHYR__
+        case WC_NID_basic_constraints:  // nid=133
+            if (wolfSSL_ASN1_STRING_set(&ext->value, value, -1)
+                    != WOLFSSL_SUCCESS) {
+                WOLFSSL_MSG("wolfSSL_ASN1_STRING_set error for basic constraints");
+                goto err_cleanup;
+            }
+            ext->value.type = BASIC_CA_OID;
+            break;
+#endif
         case WC_NID_key_usage:
             if (wolfSSL_ASN1_STRING_set(&ext->value, value, -1)
                     != WOLFSSL_SUCCESS) {

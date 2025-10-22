@@ -173,7 +173,7 @@ ECC Curve Sizes:
 #endif
 
 #ifdef CONFIG_SOC_LSQSH
-    #include <wolfssl/wolfcrypt/port/linkedsemi/ls_otbn_ecc.h>
+    #include "ls_otbn_ecc.h"
 #endif
 
 #ifdef NO_INLINE

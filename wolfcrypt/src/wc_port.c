@@ -41,7 +41,7 @@
 #endif
 
 #if defined(HAVE_ECC) && defined(CONFIG_SOC_LSQSH)
-    #include <wolfssl/wolfcrypt/port/linkedsemi/ls_otbn_ecc.h>
+    #include "ls_otbn_ecc.h"
 #endif
 
 #ifdef FREESCALE_LTC_TFM

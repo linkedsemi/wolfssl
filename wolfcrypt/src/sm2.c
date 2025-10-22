@@ -43,7 +43,7 @@
 #endif
 
 #ifdef CONFIG_SOC_LSQSH
-    #include <wolfssl/wolfcrypt/port/linkedsemi/ls_otbn_ecc.h>
+    #include "ls_otbn_ecc.h"
 #endif
 
 /* Maximum number of signature generations to attempt before giving up. */

@@ -17,7 +17,6 @@
 #endif
 
 #include "ls_otbn_ecc.h"
-#include <wolfssl/wolfcrypt/port/linkedsemi/ls_otbn_ecc.h>
 
 
 struct current_otbn
@@ -36,7 +35,6 @@ extern int wc_ecc_get_s_covers_n(struct ecc_key* key,mp_int * s);
 int wc_sm2_get_digest(struct ecc_key* key,const uint8_t *input_hash, const uint16_t hashSz, uint8_t *digest);
 void xor_mult_bit(unsigned char *result, const unsigned char *a, const unsigned char *b, uint16_t num_byte);
 int ls_otbn_get_key_pair(int curve_id, struct ecc_key* key, uint8_t *rnd);
-ls_otbn_curve_id wc_get_otbn_curve_id(int wc_curve);
 
 int ls_otbn_fireware_init(struct ecc_key* key, int curve_id)
 {
@@ -44,7 +42,7 @@ int ls_otbn_fireware_init(struct ecc_key* key, int curve_id)
     uint32_t dmem_size;
     uint32_t *imem_image;
     uint32_t *dmem_image;
-    // uint32_t check_sum;
+    // uint32_t check_sum; 
     uint32_t dmem_end;
 
     if(!HAL_OTBN_In_Idle_State())
@@ -802,27 +800,6 @@ void wc_LS_OTBN_IRQHandler()
     }
 }
 #endif
-
-ls_otbn_curve_id wc_get_otbn_curve_id(int wc_curve)
-{
-    ls_otbn_curve_id id = LS_OTBN_CURVE_MAX;
-    switch (wc_curve)
-    {
-    case ECC_SECP256R1:
-        id = LS_OTBN_CURVE_ECC_P256;
-        break;
-    case ECC_SECP384R1:
-        id = LS_OTBN_CURVE_ECC_P384;
-        break;
-    case ECC_SM2P256V1:
-        id = LS_OTBN_CURVE_SM2;
-        break;
-    default:
-        break;
-    }
-
-    return id;
-}
 
 extern void HAL_OTBN_SYSC_IRQHandler(void);
 extern void HAL_LSOTBN_MSP_Init(void);

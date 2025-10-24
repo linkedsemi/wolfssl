@@ -31,11 +31,11 @@ struct current_otbn
 
 }otbn_info;
 void wc_ls_otbn_cmd(enum HAL_OTBN_CMD cmd);
-extern int wc_ecc_get_s_covers_n(struct ecc_key* key,mp_int * s);
+int wc_ecc_get_s_covers_n(struct ecc_key* key,mp_int * s);
 int wc_sm2_get_digest(struct ecc_key* key,const uint8_t *input_hash, const uint16_t hashSz, uint8_t *digest);
 void xor_mult_bit(unsigned char *result, const unsigned char *a, const unsigned char *b, uint16_t num_byte);
 int ls_otbn_get_key_pair(int curve_id, struct ecc_key* key, uint8_t *rnd);
-
+int ls_trng_get_random(uint8_t *buf, uint16_t need_size);
 int ls_otbn_fireware_init(struct ecc_key* key, int curve_id)
 {
     uint32_t imem_size;
@@ -101,38 +101,6 @@ int ls_otbn_fireware_init(struct ecc_key* key, int curve_id)
 
     return 0;
 }
-
-#include "ls_hal_trng.h"
-int ls_get_random_value(uint8_t *buf, uint16_t need_size)
-{
-    for(uint8_t i =0; i<need_size;i++)
-    {
-        buf[i] = 0xfe + i;
-    }
-    // HAL_StatusTypeDef res = HAL_TRNG_Init();
-    // //printf("trng init res: %d\n", res);
-    // if (res != HAL_OK) {
-    //     //printf("TRNG init failed!\n");
-    //     return WC_HW_E;
-    // }
-
-    // uint32_t v;
-    // for (uint32_t i = 0; i < need_size; ++i) {
-    //     if (HAL_TRNG_GenerateRandomNumber(&v) != HAL_OK) {
-    //         // LOG_I("TRNG gen error at i=%u\n", i);
-    //         break;
-    //     }else
-    //     {
-    //         memcpy(&buf[i],(uint8_t *)&v,1);
-    //     }
-    //     // LOG_I("0x%08x", v);
-    // }
-
-
-    // HAL_TRNG_DeInit();
-    return 0;
-}
-
 
 /*
 * in : input digest
@@ -238,7 +206,7 @@ int ls_otbn_ecc_sign_hash_ex(const byte* in, word32 inLen, MATH_INT_T* r, MATH_I
         break;
     }
 
-    err = ls_get_random_value(random, ECC_MAXSIZE);
+    err = ls_trng_get_random(random, ECC_MAXSIZE);
     if(err != 0)
     {
         goto exit;
@@ -529,7 +497,7 @@ int ls_otbn_ecc_creat_key(struct ecc_key* key, int curve_id, int keySize)
         goto exit;
     }
 
-    err = ls_get_random_value(buf, keySize);
+    err = ls_trng_get_random(buf, keySize);
     if(err != 0)
     {
         //printf("RND register error\r\n");

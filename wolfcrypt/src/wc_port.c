@@ -36,11 +36,11 @@
     #include <wolfssl/wolfcrypt/async.h>
 #endif
 
-#if defined(LS_HASH) || defined(LS_HASH_SHA512)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT) || defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
 #endif
 
-#if defined(HAVE_ECC) && defined(CONFIG_SOC_LSQSH)
+#if defined(HAVE_ECC) && defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-otbn-ecc.h>
 #endif
 
@@ -175,15 +175,15 @@ int wolfCrypt_Init(void)
     if (initRefCount == 0) {
         WOLFSSL_ENTER("wolfCrypt_Init");
     
-    #if defined(LS_HASH)
+    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
         wc_LS_Hash_Init();
     #endif
 
-    #if defined(LS_HASH_SHA512)
+    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
         wc_LS_Hash_sha512_Init();
     #endif
 
-    #if defined(HAVE_ECC) && defined(CONFIG_SOC_LSQSH)
+    #if defined(HAVE_ECC) && defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
         wc_LS_Otbn_Module_Init();
     #endif
 

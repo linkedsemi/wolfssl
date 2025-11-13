@@ -3,7 +3,7 @@
 #include <wolfssl/wolfcrypt/types.h>
 #include <wolfssl/wolfcrypt/port/linkedsemi/ls-sm4.h>
 
-#if defined(LS_SM4)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT)
     int wc_Sm4Init(wc_Sm4* sm4, void* heap, int devId)
     {
         return HAL_SM4_Init();

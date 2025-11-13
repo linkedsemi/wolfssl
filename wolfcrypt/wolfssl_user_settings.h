@@ -28,20 +28,6 @@ extern "C" {
 #undef  WOLFSSL_ZEPHYR
 #define WOLFSSL_ZEPHYR
 
-#undef  LS_HASH
-#define LS_HASH
-
-#ifdef CONFIG_SOC_LSQSH
-#undef  LS_HASH_SHA512
-#define LS_HASH_SHA512
-#endif
-
-#undef  WOLFSSL_SM3
-#define WOLFSSL_SM3
-
-#undef  WOLFSSL_SM4
-#define WOLFSSL_SM4
-
 #undef  TFM_TIMING_RESISTANT
 #define TFM_TIMING_RESISTANT
 

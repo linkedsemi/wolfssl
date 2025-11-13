@@ -95,7 +95,7 @@
     #endif
 #endif
 #ifdef WOLFSSL_SM4
-#if defined(LS_SM4)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT)
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-sm4.h>
 #else
     #include <wolfssl/wolfcrypt/sm4.h>

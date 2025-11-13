@@ -172,7 +172,7 @@ ECC Curve Sizes:
     #include <wolfssl/wolfcrypt/cryptocb.h>
 #endif
 
-#ifdef CONFIG_SOC_LSQSH
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-otbn-ecc.h>
 #endif
 
@@ -4747,7 +4747,7 @@ int wc_ecc_shared_secret(ecc_key* private_key, ecc_key* public_key, byte* out,
    err = KcapiEcc_SharedSecret(private_key, public_key, out, outlen);
 #elif defined(WOLFSSL_SE050)
    err = se050_ecc_shared_secret(private_key, public_key, out, outlen);
-#elif defined(CONFIG_SOC_LSQSH)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
     if(private_key->dp->id == ECC_SECP256R1 || private_key->dp->id == ECC_SECP384R1 || private_key->dp->id == ECC_SM2P256V1)
     {
         err = ls_otbn_ecc_shared_secret(private_key, public_key, out, outlen);
@@ -5879,8 +5879,8 @@ static int _ecc_make_key_ex(WC_RNG* rng, int keysize, ecc_key* key,
 
 #else
 
-#if defined(CONFIG_SOC_LSQSH)
-    if(key->dp->id == ECC_SECP256R1 || key->dp->id == ECC_SECP384R1 || key->dp->id == ECC_SM2P256V1)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
+    if((key->dp->id == ECC_SECP256R1 || key->dp->id == ECC_SECP384R1|| key->dp->id == ECC_SM2P256V1) && (key->dp->size == keysize))
     {
         err = ls_otbn_ecc_creat_key(key,curve_id,keysize);
         return err;
@@ -6432,7 +6432,7 @@ static int wc_ecc_get_curve_order_bit_count(const ecc_set_type* dp)
     defined(PLUTON_CRYPTO_ECC) || defined(WOLFSSL_CRYPTOCELL) || \
     defined(WOLFSSL_SILABS_SE_ACCEL) || defined(WOLFSSL_KCAPI_ECC) || \
     defined(WOLFSSL_SE050) || defined(WOLFSSL_XILINX_CRYPT_VERSAL)\
-    ||defined(CONFIG_SOC_LSQSH)
+    ||defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
 static int wc_ecc_sign_hash_hw(const byte* in, word32 inlen,
     mp_int* r, mp_int* s, byte* out, word32 *outlen, WC_RNG* rng,
     ecc_key* key)
@@ -6539,7 +6539,7 @@ static int wc_ecc_sign_hash_hw(const byte* in, word32 inlen,
             return err;
         }
         (void)rng;
-    #elif defined(CONFIG_SOC_LSQSH)
+    #elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
         if(key->dp->id == ECC_SECP256R1 || key->dp->id == ECC_SECP384R1 || key->dp->id == ECC_SM2P256V1)
         {
             err = ls_otbn_ecc_sign_hash_ex(in, inlen, r, s, out, outlen, key);
@@ -6840,7 +6840,7 @@ int wc_ecc_sign_hash(const byte* in, word32 inlen, byte* out, word32 *outlen,
     defined(PLUTON_CRYPTO_ECC) || defined(WOLFSSL_CRYPTOCELL) || \
     defined(WOLFSSL_SILABS_SE_ACCEL) || defined(WOLFSSL_KCAPI_ECC) || \
     defined(WOLFSSL_SE050) || defined(WOLFSSL_XILINX_CRYPT_VERSAL)\
-    || defined(CONFIG_SOC_LSQSH)
+    || defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
     err = wc_ecc_sign_hash_hw(in, inlen, r, s, out, outlen, rng, key);
 #else
     err = wc_ecc_sign_hash_ex(in, inlen, rng, key, r, s);
@@ -9250,7 +9250,7 @@ int wc_ecc_verify_hash_ex(mp_int *r, mp_int *s, const byte* hash,
 #elif defined(WOLFSSL_PSOC6_CRYPTO)
     return psoc6_ecc_verify_hash_ex(r, s, hash, hashlen, res, key);
 #else
-#if defined(CONFIG_SOC_LSQSH)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
     if(key->dp->id == ECC_SECP256R1 || key->dp->id == ECC_SECP384R1 || key->dp->id == ECC_SM2P256V1)
     {
         return ls_otbn_ecc_verify_hash_ex(r, s, hash, hashlen, res, key);
@@ -15834,7 +15834,7 @@ int wc_ecc_set_nonblock(ecc_key *key, ecc_nb_ctx_t* ctx)
 #endif /* WC_ECC_NONBLOCK */
 
 
-#ifdef CONFIG_SOC_LSQSH
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT
 int wc_ecc_get_s_covers_n(struct ecc_key* key,mp_int * s)
 {
     int err;

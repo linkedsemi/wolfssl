@@ -1,7 +1,7 @@
 #ifndef _LS_SM4_H_
 #define _LS_SM4_H_
 
-#if defined(LS_SM4)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT)
     #include <ls_hal_sm4.h>
     #define SM4_IV_SIZE 16
     #define SM4_BLOCK_SIZE 16
@@ -15,6 +15,6 @@
     int wc_Sm4EcbEncrypt(wc_Sm4* sm4, byte* out, const byte* in, word32 sz);
     int wc_Sm4EcbDecrypt(wc_Sm4* sm4, byte* out, const byte* in, word32 sz);
     int wc_Sm4CtrEncrypt(wc_Sm4* sm4, byte* out, const byte* in, word32 sz);
-#endif /* LS_SM4 */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT */
 
 #endif

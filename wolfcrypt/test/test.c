@@ -414,7 +414,7 @@ const byte const_byte_array[] = "A+Gd\0\0\0";
     #include <wolfssl/wolfcrypt/sm3.h>
 #endif
 #ifdef WOLFSSL_SM4
-#if defined(LS_SM4)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT)
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-sm4.h>
 #else
     #include <wolfssl/wolfcrypt/sm4.h>
@@ -1746,7 +1746,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifdef WOLFSSL_SHA224
-#ifdef LS_HASH
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
     if ( (ret = sha224_test()) != 0)
         TEST_FAIL("LS hardware SHA-224  test failed!\n", ret);
     else
@@ -1756,11 +1756,11 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_FAIL("SHA-224  test failed!\n", ret);
     else
         TEST_PASS("SHA-224  test passed!\n");
-#endif /* LS_HASH */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
 #endif
 
 #ifndef NO_SHA256
-#ifdef LS_HASH
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
     if ( (ret = sha256_test()) != 0)
         TEST_FAIL("LS hardware SHA-256  test failed!\n", ret);
     else
@@ -1770,11 +1770,11 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_FAIL("SHA-256  test failed!\n", ret);
     else
         TEST_PASS("SHA-256  test passed!\n");
-#endif /* LS_HASH */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
 #endif
 
 #ifdef WOLFSSL_SHA384
-#ifdef LS_HASH_SHA512
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT
     if ( (ret = sha384_test()) != 0)
         TEST_FAIL("LS hardware SHA-384  test failed!\n", ret);
     else
@@ -1784,11 +1784,11 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_FAIL("SHA-384  test failed!\n", ret);
     else
         TEST_PASS("SHA-384  test passed!\n");
-#endif /* LS_HASH_SHA512 */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT */
 #endif
 
 #ifdef WOLFSSL_SHA512
-#ifdef LS_HASH_SHA512
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT
     if ((ret = sha512_test()) != 0) {
         TEST_FAIL("LS hardware SHA-512  test failed!\n", ret);
     }
@@ -1821,7 +1821,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_PASS("SHA-512/256  test passed!\n");
 #endif /* !defined(WOLFSSL_NOSHA512_256) & !FIPS ... */
 
-#endif /* LS_HASH_SHA512 */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT */
 #endif /* WOLFSSL_SHA512 */
 
 #ifdef WOLFSSL_SHA3
@@ -1846,7 +1846,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifdef WOLFSSL_SM3
-#ifdef LS_HASH
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
     if ( (ret = sm3_test()) != 0)
         return err_sys("LS hardware SM-3     test failed!\n", ret);
     else
@@ -1856,7 +1856,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         return err_sys("SM-3     test failed!\n", ret);
     else
         TEST_PASS("SM-3     test passed!\n");
-#endif /* LS_HASH */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
 #endif
 
 #ifndef NO_HASH_WRAPPER
@@ -2107,7 +2107,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifndef NO_AES
-#ifdef LS_CRYPT
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
     /* key sizes, ECB and Direct tests */
     if ( (ret = aes_test()) != 0)
         TEST_FAIL("LS hardware AES      test failed!\n", ret);
@@ -2119,11 +2119,11 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_FAIL("AES      test failed!\n", ret);
     else
         TEST_PASS("AES      test passed!\n");
-#endif /* LS_CRYPT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 
 #if defined(WOLFSSL_AES_192)  && \
    !defined(WOLFSSL_RENESAS_FSPSM_CRYPTONLY)
-#ifdef LS_CRYPT
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
     if ( (ret = aes192_test()) != 0)
         TEST_FAIL("LS hardware AES192   test failed!\n", ret);
     else
@@ -2133,11 +2133,11 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_FAIL("AES192   test failed!\n", ret);
     else
         TEST_PASS("AES192   test passed!\n");
-#endif /* LS_CRYPT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 #endif
 
 #if defined(WOLFSSL_AES_256)
-#ifdef LS_CRYPT
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
     if ( (ret = aes256_test()) != 0)
         TEST_FAIL("LS hardware AES256   test failed!\n", ret);
     else
@@ -2147,11 +2147,11 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_FAIL("AES256   test failed!\n", ret);
     else
         TEST_PASS("AES256   test passed!\n");
-#endif /* LS_CRYPT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 #endif
 
 #ifdef HAVE_AES_CBC
-#ifdef LS_CRYPT
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
     if ( (ret = aes_cbc_test()) != 0)
         TEST_FAIL("LS hardware AES-CBC  test failed!\n", ret);
     else
@@ -2161,7 +2161,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_FAIL("AES-CBC  test failed!\n", ret);
     else
         TEST_PASS("AES-CBC  test passed!\n");
-#endif /* LS_CRYPT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 #endif
 
 #ifdef WOLFSSL_AES_COUNTER
@@ -2264,7 +2264,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifdef WOLFSSL_SM4
-#ifdef LS_SM4
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT
     if ( (ret = sm4_test()) != 0)
         return err_sys("LS hardware  SM-4  test failed!\n", ret);
     else
@@ -3998,7 +3998,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t blake2s_test(void)
 
 
 #ifdef WOLFSSL_SHA224
-#if defined(LS_HASH)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha224_test(void)
 {
     wc_Sha224 sha[3];
@@ -4128,12 +4128,12 @@ exit:
 
     return ret;
 }
-#endif /* LS_HASH */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
 #endif
 
 
 #ifndef NO_SHA256
-#if defined(LS_HASH)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha256_test(void)
 {
     wc_Sha256 sha[4];
@@ -4458,12 +4458,12 @@ exit:
 #endif
     return ret;
 }
-#endif /* LS_HASH */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
 #endif
 
 
 #ifdef WOLFSSL_SHA512
-#ifdef LS_HASH_SHA512
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha512_test(void)
 {
     wc_Sha512 sha[3];
@@ -5068,12 +5068,12 @@ exit:
     return ret;
 } /* sha512_256_test */
 #endif /* !defined(WOLFSSL_NOSHA512_256) && !FIPS ... */
-#endif /* LS_HASH_SHA512 */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT */
 #endif /* WOLFSSL_SHA512 */
 
 
 #ifdef WOLFSSL_SHA384
-#ifdef LS_HASH_SHA512
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha384_test(void)
 {
     wc_Sha384 sha[3];
@@ -5255,7 +5255,7 @@ exit:
 
     return ret;
 }
-#endif /* LS_HASH_SHA512 */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT */
 #endif /* WOLFSSL_SHA384 */
 
 #ifdef WOLFSSL_SHA3
@@ -6414,7 +6414,7 @@ exit:
 #endif
 
 #ifdef WOLFSSL_SM3
-#if defined(LS_HASH)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sm3_test(void)
 {
     wc_Sha256 sm3[3];
@@ -6637,7 +6637,7 @@ exit:
 
     return ret;
 }
-#endif /* LS_HASH */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
 #endif
 
 #ifndef NO_HASH_WRAPPER
@@ -14601,7 +14601,7 @@ out:
 #endif /* WOLFSSL_AES_COUNTER */
 
 #ifdef HAVE_AES_ECB
-#ifdef LS_CRYPT
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
 static wc_test_ret_t aes_ecb_test(Aes* enc, Aes* dec, byte* cipher, byte* plain)
 {
     wc_test_ret_t ret = 0;
@@ -14840,7 +14840,7 @@ static wc_test_ret_t aes_ecb_test(Aes* enc, Aes* dec, byte* cipher, byte* plain)
 out:
     return ret;
 }
-#endif /* LS_CRYPT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 #endif /* HAVE_AES_ECB */
 
 #ifdef WOLFSSL_AES_DIRECT
@@ -14920,7 +14920,7 @@ out:
 
 #ifdef HAVE_AES_CBC
 
-#ifdef LS_CRYPT
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes_cbc_test(void)
 {
     Aes *enc = NULL;
@@ -15494,7 +15494,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes_cbc_test(void)
 
     return ret;
 }
-#endif /* LS_CRYPT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 #endif /* HAVE_AES_CBC */
 
 #if defined(HAVE_AES_ECB) || defined(WOLFSSL_AES_DIRECT)
@@ -15655,7 +15655,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes_xts_test(void)
 #endif
 
 #ifdef WOLFSSL_AES_192
-#ifdef LS_CRYPT
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes192_test(void)
 {
     wc_test_ret_t ret = 0;
@@ -15873,11 +15873,11 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes192_test(void)
 
     return ret;
 }
-#endif /* LS_CRYPT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 #endif /* WOLFSSL_AES_192 */
 
 #ifdef WOLFSSL_AES_256
-#ifdef LS_CRYPT
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes256_test(void)
 {
 #ifdef HAVE_AES_CBC
@@ -16190,7 +16190,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes256_test(void)
 
     return ret;
 }
-#endif /* LS_CRYPT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 #endif /* WOLFSSL_AES_256 */
 
 
@@ -18456,7 +18456,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t camellia_test(void)
 
 #ifdef WOLFSSL_SM4
 #ifdef WOLFSSL_SM4_ECB
-#if defined(LS_SM4)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT)
 static int sm4_ecb_test(void)
 {
     /* draft-ribose-cfrg-sm4-10 A.2.1.1 */
@@ -18558,7 +18558,7 @@ static int sm4_ecb_test(void)
 
     return 0;
 }
-#endif /* LS_SM4 */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT */
 #endif
 
 #ifdef WOLFSSL_SM4_CBC
@@ -18649,7 +18649,7 @@ static int sm4_cbc_test(void)
 #endif
 
 #ifdef WOLFSSL_SM4_CTR
-#if defined(LS_SM4)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT)
 static int sm4_ctr_test(void)
 {
     /* draft-ribose-cfrg-sm4-10 A.2.5.1 */
@@ -18819,7 +18819,7 @@ static int sm4_ctr_test(void)
 
     return 0;
 }
-#endif /* LS_SM4 */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT */
 #endif
 
 #ifdef WOLFSSL_SM4_GCM
@@ -35293,7 +35293,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t ecc_test(void)
 #endif
 
 #ifndef HAVE_FIPS
-    ret = wc_InitRng_ex(&rng, HEAP_HINT, devId);
+    ret = wc_InitRng_ex(&rng, HEAP_HINT, devId);//ghdrhdh
 #else
     ret = wc_InitRng(&rng);
 #endif
@@ -35489,7 +35489,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t ecc_test(void)
 #endif
 #if !defined(WOLFSSL_ATECC508A) && !defined(WOLFSSL_ATECC608A) && \
   !defined(WOLFSSL_STM32_PKA) && !defined(WOLFSSL_SILABS_SE_ACCEL) && \
-  !defined(WOLF_CRYPTO_CB_ONLY_ECC) && !defined(NO_ECC_SECP) && !defined(CONFIG_SOC_LSQSH)
+  !defined(WOLF_CRYPTO_CB_ONLY_ECC) && !defined(NO_ECC_SECP) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
     ret = ecc_test_make_pub(&rng);
     if (ret != 0) {
         printf("ecc_test_make_pub failed!\n");

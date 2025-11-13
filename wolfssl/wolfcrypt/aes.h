@@ -155,7 +155,7 @@ WOLFSSL_LOCAL void GHASH(Gcm* gcm, const byte* a, word32 aSz, const byte* c,
     #include <wolfssl/wolfcrypt/port/maxim/maxq10xx.h>
 #endif
 
-#if defined(LS_CRYPT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
     #include <ls_hal_crypt.h>
 #endif
 

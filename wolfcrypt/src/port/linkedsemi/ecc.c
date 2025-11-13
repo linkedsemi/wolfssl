@@ -15,10 +15,13 @@
 #include <zephyr/irq.h>
 #include <zephyr/kernel.h>
 #endif
-
 #include "ls_otbn_ecc.h"
 
-
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_DELEGATION_CLIENT)
+#define CACHE_ALIGN_32 __attribute__((aligned(32)))
+#else
+#define CACHE_ALIGN_32
+#endif
 struct current_otbn
 {
     enum ecc_curve_ids cur_curve;
@@ -34,9 +37,13 @@ void wc_ls_otbn_cmd(enum HAL_OTBN_CMD cmd);
 int wc_ecc_get_s_covers_n(struct ecc_key* key,mp_int * s);
 int wc_sm2_get_digest(struct ecc_key* key,const uint8_t *input_hash, const uint16_t hashSz, uint8_t *digest);
 void xor_mult_bit(unsigned char *result, const unsigned char *a, const unsigned char *b, uint16_t num_byte);
-int ls_otbn_get_key_pair(int curve_id, struct ecc_key* key, uint8_t *rnd);
-int ls_trng_get_random(uint8_t *buf, uint16_t need_size);
-int ls_otbn_fireware_init(struct ecc_key* key, int curve_id)
+
+int ls_otbn_get_key_pair(uint32_t curve, uint32_t curve_size, uint8_t *private_key, uint8_t *public_x, uint8_t *public_y);
+int ls_otbn_sign_hash(uint32_t curve, uint32_t curve_size, uint8_t *private_key, uint8_t *msg, uint8_t *r, uint8_t *s);
+int ls_otbn_verify_hash(uint32_t curve, uint32_t curve_size, uint8_t *r, uint8_t *s, uint8_t *msg, uint8_t *pub_x, uint8_t *pub_y);
+int ls_otbn_shared_secret(uint32_t curve, uint32_t curve_size, uint8_t *private_key, uint8_t *public_x, uint8_t *public_y);
+int ls_wolfssl_get_random(uint8_t *buf, uint16_t need_size);
+int ls_otbn_fireware_init(int curve_id)
 {
     uint32_t imem_size;
     uint32_t dmem_size;
@@ -96,7 +103,6 @@ int ls_otbn_fireware_init(struct ecc_key* key, int curve_id)
         //     while(1);
         //     return WC_HW_E;
         // }
-        memcpy(&otbn_info.ecc_type,key->dp,sizeof(ecc_set_type));
     }
 
     return 0;
@@ -115,30 +121,17 @@ int ls_otbn_ecc_sign_hash_ex(const byte* in, word32 inLen, MATH_INT_T* r, MATH_I
                            byte* out, word32 *outLen, struct ecc_key* key)
 {
     int err;
-
-    uint32_t remote_random_addr;
-    uint32_t remote_mode_addr;
-    uint32_t mode;
-    
-    uint32_t remote_addr_d0;
-    uint32_t remote_addr_d1;
-    uint32_t remote_addr_r;
-    uint32_t remote_addr_s;
-    uint32_t remote_addr_msg;
-
     uint32_t curve;
     uint32_t curve_size;
-    uint8_t random[ECC_MAXSIZE];
-    uint8_t d0[ECC_MAXSIZE];
-    uint8_t r_buf[ECC_MAXSIZE];
-    uint8_t s_buf[ECC_MAXSIZE];
-    uint8_t msg[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t d0[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t r_buf[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t s_buf[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t msg[ECC_MAXSIZE];
 
     //printf("ls_otbn_ecc_sign_hash_ex\r\n");
     if (in == NULL || r == NULL || s == NULL || key == NULL) {
         return ECC_BAD_ARG_E;
     }
-    wc_LockMutex(&otbn_info.doneLock);
 
     curve = key->dp->id;
     curve_size = key->dp->size;
@@ -162,115 +155,30 @@ int ls_otbn_ecc_sign_hash_ex(const byte* in, word32 inLen, MATH_INT_T* r, MATH_I
         mp_reverse(msg,curve_size);
     }
 
-
-    err = ls_otbn_fireware_init(key,key->dp->id);
-    if(err != 0)
-    {
-        //printf("OTBN loading error,please detect curve_id or OTBN status\r\n");
-        goto exit;
-    }
-    switch (curve)
-    {
-    case ECC_SECP256R1:
-        remote_mode_addr = LS_OTBN_ECDSA_P256_MODE_OFFSET;
-        remote_random_addr = LS_OTBN_ECDSA_P256_RANDOM_SEED_OFFSET;
-        mode = LS_OTBN_ECDSA_P256_MODE_SIGN;
-        remote_addr_d0 = LS_OTBN_ECDSA_P256_D0_OFFSET;
-        remote_addr_r = LS_OTBN_ECDSA_P256_R_OFFSET;
-        remote_addr_s = LS_OTBN_ECDSA_P256_S_OFFSET;
-        remote_addr_msg = LS_OTBN_ECDSA_P256_MSG_OFFSET;
-        remote_addr_d1 = LS_OTBN_ECDSA_P256_D1_OFFSET;
-        break;
-    case ECC_SECP384R1:
-        remote_mode_addr = LS_OTBN_ECDSA_P384_MODE_OFFSET;
-        remote_random_addr = LS_OTBN_ECDSA_P384_RANDOM_SEED_OFFSET;
-        mode = LS_OTBN_ECDSA_P384_MODE_SIGN;
-        remote_addr_d0 = LS_OTBN_ECDSA_P384_D0_OFFSET;
-        remote_addr_r = LS_OTBN_ECDSA_P384_R_OFFSET;
-        remote_addr_s = LS_OTBN_ECDSA_P384_S_OFFSET;
-        remote_addr_msg = LS_OTBN_ECDSA_P384_MSG_OFFSET;
-        remote_addr_d1 = LS_OTBN_ECDSA_P384_D1_OFFSET;
-        break;
-    case ECC_SM2P256V1:
-        remote_mode_addr = LS_OTBN_SM2_MODE_OFFSET;
-        remote_random_addr = LS_OTBN_SM2_RANDOM_SEED_OFFSET;
-        mode = LS_OTBN_SM2_MODE_SIGN;
-        remote_addr_d0 = LS_OTBN_SM2_D0_OFFSET;
-        remote_addr_r = LS_OTBN_SM2_R_OFFSET;
-        remote_addr_s = LS_OTBN_SM2_S_OFFSET;
-        remote_addr_msg = LS_OTBN_SM2_MSG_OFFSET;
-        remote_addr_d1 = LS_OTBN_SM2_D1_OFFSET;
-        break;
-    default:
-        while(1);
-        break;
-    }
-
-    err = ls_trng_get_random(random, ECC_MAXSIZE);
-    if(err != 0)
-    {
-        goto exit;
-    }
-
-    if(HAL_OTBN_DMEM_Write(remote_random_addr, (uint32_t *)random, 32))
-    {
-        err = WC_HW_E;
-        goto exit;
-    }
-    if(HAL_OTBN_DMEM_Write(remote_mode_addr, (uint32_t *)&mode, 4))
-    {
-        err = WC_HW_E;
-        goto exit;
-    }
-
-    if(HAL_OTBN_DMEM_Set(remote_addr_d1,0,curve_size))
-    {
-        err = WC_HW_E;
-        goto exit;
-    }
-
     mp_to_unsigned_bin_len(key->k,d0,curve_size);
     mp_reverse(d0,curve_size);
-    if(HAL_OTBN_DMEM_Write(remote_addr_d0, (uint32_t *)d0, curve_size))
-    {
-        err = WC_HW_E;
+
+    err = ls_otbn_sign_hash(curve,curve_size,d0,msg,r_buf,s_buf);
+    if(err){
         goto exit;
     }
-
-    if(HAL_OTBN_DMEM_Write(remote_addr_msg, (uint32_t *)msg, curve_size))
-    {
-        err = WC_HW_E;
-        goto exit;
-    }
-
-    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
-
-    err = HAL_OTBN_Error_Bit_Get();
-    if(err)
-    {
-        //printf("errors detected during an operation 0x%x\r\n",err);
-        err = WC_HW_E;
-        goto exit;
-    }
-    
-
-    HAL_OTBN_DMEM_Read(remote_addr_r, (uint32_t *)r_buf, otbn_info.ecc_type.size);
-    HAL_OTBN_DMEM_Read(remote_addr_s, (uint32_t *)s_buf, otbn_info.ecc_type.size);
-
-    mp_reverse(r_buf,otbn_info.ecc_type.size);
-    mp_reverse(s_buf,otbn_info.ecc_type.size);
+    mp_reverse(r_buf,curve_size);
+    mp_reverse(s_buf,curve_size);
 
     if(out != NULL)
     {
-        memcpy(out,r_buf,otbn_info.ecc_type.size);
-        memcpy(out+otbn_info.ecc_type.size,s_buf,otbn_info.ecc_type.size);
+        memcpy(out,r_buf,curve_size);
+        memcpy(out+curve_size,s_buf,curve_size);
     }
 
-    mp_read_unsigned_bin(r,r_buf,otbn_info.ecc_type.size);
-    mp_read_unsigned_bin(s,s_buf,otbn_info.ecc_type.size);
+    mp_read_unsigned_bin(r,r_buf,curve_size);
+    mp_read_unsigned_bin(s,s_buf,curve_size);
 
 exit:
-    wc_UnLockMutex(&otbn_info.doneLock);
+    if(err)
+    {
+        //printf("err :ls_otbn_ecc_sign_hash_ex\n");
+    }
     return err;
 }
 
@@ -278,37 +186,20 @@ int ls_otbn_ecc_verify_hash_ex(mp_int *r, mp_int *s, const byte* hash,
                     word32 hashlen, int* res, ecc_key* key)
 {
     int err = MP_OKAY;
-    
-    uint32_t remote_random_addr;
-    uint32_t remote_mode_addr;
-    uint32_t mode;
-
-    uint32_t remote_addr_d0;
-    uint32_t remote_addr_d1;
-    uint32_t remote_addr_r;
-    uint32_t remote_addr_s;
-    uint32_t remote_addr_msg;
-    uint32_t remote_addr_qx;
-    uint32_t remote_addr_qy;
-    uint32_t remote_addr_r_x;
-
     uint32_t curve;
     uint32_t curve_size;
     // uint8_t d0[ECC_MAXSIZE];
-    uint8_t buf[ECC_MAXSIZE];
-    uint8_t x_r[ECC_MAXSIZE];
-    uint8_t msg[ECC_MAXSIZE];
-    
+    CACHE_ALIGN_32 uint8_t msg[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t r_buf[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t s_buf[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t pub_x[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t pub_y[ECC_MAXSIZE];
     *res  = 0;
-
-
     if (r == NULL || s == NULL || hash == NULL || res == NULL || key == NULL ||
             key->dp == NULL) {
         return ECC_BAD_ARG_E;
     }
-
-    wc_LockMutex(&otbn_info.doneLock);
-    
+    //printf("ls_otbn_ecc_verify_hash_ex\r\n");
     curve_size = wc_ecc_size(key);
     curve = key->dp->id;
     memset(msg,0,curve_size);
@@ -331,140 +222,28 @@ int ls_otbn_ecc_verify_hash_ex(mp_int *r, mp_int *s, const byte* hash,
             mp_reverse(msg,curve_size);
         }
     }
+    mp_to_unsigned_bin_len(key->pubkey.x,pub_x,curve_size);
+    mp_reverse(pub_x,curve_size);
+    mp_to_unsigned_bin_len(key->pubkey.y,pub_y,curve_size);
+    mp_reverse(pub_y,curve_size);
+    mp_to_unsigned_bin_len(r,r_buf,curve_size);
+    mp_reverse(r_buf,curve_size);
+    mp_to_unsigned_bin_len(s,s_buf,curve_size);
+    mp_reverse(s_buf,curve_size);
 
-    err = ls_otbn_fireware_init(key,key->dp->id);
-    if(err != 0)
-    {
-        //printf("OTBN loading error,please detect curve_id or OTBN status\r\n");
-        goto exit;
-    }
-
-    switch (curve)
-    {
-    case ECC_SECP256R1:
-        remote_mode_addr = LS_OTBN_ECDSA_P256_MODE_OFFSET;
-        remote_random_addr = LS_OTBN_ECDSA_P256_RANDOM_SEED_OFFSET;
-        mode = LS_OTBN_ECDSA_P256_MODE_VERIFY;
-        remote_addr_d0 = LS_OTBN_ECDSA_P256_D0_OFFSET;
-        remote_addr_r = LS_OTBN_ECDSA_P256_R_OFFSET;
-        remote_addr_s = LS_OTBN_ECDSA_P256_S_OFFSET;
-        remote_addr_msg = LS_OTBN_ECDSA_P256_MSG_OFFSET;
-        remote_addr_d1 = LS_OTBN_ECDSA_P256_D1_OFFSET;
-        remote_addr_qx = LS_OTBN_ECDSA_P256_X_OFFSET;
-        remote_addr_qy = LS_OTBN_ECDSA_P256_Y_OFFSET;
-        remote_addr_r_x = LS_OTBN_ECDSA_P256_X_R_OFFSET;
-        break;
-    case ECC_SECP384R1:
-        remote_mode_addr = LS_OTBN_ECDSA_P384_MODE_OFFSET;
-        remote_random_addr = LS_OTBN_ECDSA_P384_RANDOM_SEED_OFFSET;
-        mode = LS_OTBN_ECDSA_P384_MODE_VERIFY;
-        remote_addr_d0 = LS_OTBN_ECDSA_P384_D0_OFFSET;
-        remote_addr_r = LS_OTBN_ECDSA_P384_R_OFFSET;
-        remote_addr_s = LS_OTBN_ECDSA_P384_S_OFFSET;
-        remote_addr_msg = LS_OTBN_ECDSA_P384_MSG_OFFSET;
-        remote_addr_d1 = LS_OTBN_ECDSA_P384_D1_OFFSET;
-        remote_addr_qx = LS_OTBN_ECDSA_P384_X_OFFSET;
-        remote_addr_qy = LS_OTBN_ECDSA_P384_Y_OFFSET;
-        remote_addr_r_x = LS_OTBN_ECDSA_P384_X_R_OFFSET;
-        break;
-    case ECC_SM2P256V1:
-        remote_mode_addr = LS_OTBN_SM2_MODE_OFFSET;
-        remote_random_addr = LS_OTBN_SM2_RANDOM_SEED_OFFSET;
-        mode = LS_OTBN_SM2_MODE_VERIFY;
-        remote_addr_d0 = LS_OTBN_SM2_D0_OFFSET;
-        remote_addr_r = LS_OTBN_SM2_R_OFFSET;
-        remote_addr_s = LS_OTBN_SM2_S_OFFSET;
-        remote_addr_msg = LS_OTBN_SM2_MSG_OFFSET;
-        remote_addr_d1 = LS_OTBN_SM2_D1_OFFSET;
-        remote_addr_qx = LS_OTBN_SM2_X_OFFSET;
-        remote_addr_qy = LS_OTBN_SM2_Y_OFFSET;
-        remote_addr_r_x = LS_OTBN_SM2_X_R_OFFSET;
-        break;
-    default:
-        while(1);
-        break;
-    }
-
-    if(HAL_OTBN_DMEM_Write(remote_mode_addr, (uint32_t *)&mode, 4))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \r\n");
-        err = WC_HW_E;
-        goto exit;
-    }
-
-    mp_to_unsigned_bin_len(key->pubkey.x,buf,curve_size);
-    mp_reverse(buf,curve_size);
-    if(HAL_OTBN_DMEM_Write(remote_addr_qx, (uint32_t *)buf, curve_size))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \r\n");
-        err = WC_HW_E;
-        goto exit;
-    }
-
-    mp_to_unsigned_bin_len(key->pubkey.y,buf,curve_size);
-    mp_reverse(buf,curve_size);
-    if(HAL_OTBN_DMEM_Write(remote_addr_qy, (uint32_t *)buf, curve_size))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \r\n");
-        err = WC_HW_E;
-        goto exit;
-    }
-
-    mp_to_unsigned_bin_len(r,buf,curve_size);
-    mp_reverse(buf,curve_size);
-    if(HAL_OTBN_DMEM_Write(remote_addr_r, (uint32_t *)buf, curve_size))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \r\n");
-        err = WC_HW_E;
-        goto exit;
-    }
-
-    mp_to_unsigned_bin_len(s,buf,curve_size);
-    mp_reverse(buf,curve_size);
-    if(HAL_OTBN_DMEM_Write(remote_addr_s, (uint32_t *)buf, curve_size))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \r\n");
-        err = WC_HW_E;
-        goto exit;
-    }
-
-    if(HAL_OTBN_DMEM_Write(remote_addr_msg, (uint32_t *)msg, curve_size))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \r\n");
-        err = WC_HW_E;
-        goto exit;
-    }
-
-
-    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
-
-    err = HAL_OTBN_Error_Bit_Get();
+    err = ls_otbn_verify_hash(curve,curve_size,r_buf,s_buf,msg,pub_x,pub_y);
     if(err)
     {
-        //printf("errors detected during an operation 0x%x\r\n",err);
-        err = WC_HW_E;
         goto exit;
     }
-    
-    err |= HAL_OTBN_DMEM_Read(remote_addr_r_x, (uint32_t *)x_r, curve_size);
-
-    mp_to_unsigned_bin_len(r,buf,curve_size);
-    mp_reverse(buf,curve_size);
-    if(memcmp(x_r,buf,curve_size))
+    if(memcmp(s_buf,r_buf,curve_size))
     {
         *res  = 0;//invalid
     }else
     {
         *res = 1;//valid
     }
-
-    if(err)
-    {
-        err = WC_HW_E;
-    }
-
 exit:
-    wc_UnLockMutex(&otbn_info.doneLock);
     return err;
 }
 
@@ -472,24 +251,15 @@ exit:
 int ls_otbn_ecc_creat_key(struct ecc_key* key, int curve_id, int keySize)
 {
     int err = 0; 
-    uint8_t buf[ECC_MAXSIZE];
-
-    wc_LockMutex(&otbn_info.doneLock);
+    CACHE_ALIGN_32 uint8_t private_key[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t public_x[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t public_y[ECC_MAXSIZE];
 
     if(curve_id == ECC_CURVE_DEF)
     {
         curve_id = key->dp->id;
     }
     //printf("ls_otbn_get_key_pair, curve_id = %d\r\n",curve_id);
-
-    err = ls_otbn_fireware_init(key,curve_id);
-
-    if(err != 0)
-    {
-        //printf("OTBN loading error,please detect curve_id or OTBN status\r\n");
-        goto exit;
-    }
-
     if(keySize > ECC_MAXSIZE)
     {
         //printf("keySize too big\r\n");
@@ -497,138 +267,44 @@ int ls_otbn_ecc_creat_key(struct ecc_key* key, int curve_id, int keySize)
         goto exit;
     }
 
-    err = ls_trng_get_random(buf, keySize);
-    if(err != 0)
-    {
-        //printf("RND register error\r\n");
-        goto exit;
-    }
-
-    err = ls_otbn_get_key_pair(curve_id,key,buf);
+    err = ls_otbn_get_key_pair(curve_id,keySize,private_key,public_x,public_y);
     if(err != 0)
     {
         //printf("OTBN operation error\r\n");
         goto exit;
     }
+    mp_reverse(private_key,keySize);
+    mp_reverse(public_x,keySize);
+    mp_reverse(public_y,keySize);
 
-    key->type = ECC_PRIVATEKEY;
-
-exit:
-
-    wc_UnLockMutex(&otbn_info.doneLock);
-    return err;
-}
-
-
-
-int ls_otbn_get_key_pair(int curve_id, struct ecc_key* key, uint8_t *rnd)
-{
-    int err = 0;
-    uint32_t remote_random_addr;
-    uint32_t remote_mode_addr;
-    uint32_t mode;
-
-    uint32_t remote_addr_d0;
-    uint32_t remote_addr_x;
-    uint32_t remote_addr_y;
-    uint8_t private_key[ECC_MAXSIZE];
-    uint8_t public_x[ECC_MAXSIZE];
-    uint8_t public_y[ECC_MAXSIZE];
-
-    switch (curve_id)
-    {
-    case ECC_SECP256R1:
-        remote_mode_addr = LS_OTBN_ECDSA_P256_MODE_OFFSET;
-        remote_random_addr = LS_OTBN_ECDSA_P256_RANDOM_SEED_OFFSET;
-        mode = LS_OTBN_ECDSA_P256_MODE_KEYGEN;
-        remote_addr_d0 = LS_OTBN_ECDSA_P256_D0_OFFSET;
-        remote_addr_x = LS_OTBN_ECDSA_P256_X_OFFSET;
-        remote_addr_y = LS_OTBN_ECDSA_P256_Y_OFFSET;
-        break;
-    case ECC_SECP384R1:
-        remote_mode_addr = LS_OTBN_ECDSA_P384_MODE_OFFSET;
-        remote_random_addr = LS_OTBN_ECDSA_P384_RANDOM_SEED_OFFSET;
-        mode = LS_OTBN_ECDSA_P384_MODE_KEYGEN;
-        remote_addr_d0 = LS_OTBN_ECDSA_P384_D0_OFFSET;
-        remote_addr_x = LS_OTBN_ECDSA_P384_X_OFFSET;
-        remote_addr_y = LS_OTBN_ECDSA_P384_Y_OFFSET;
-        break;
-    case ECC_SM2P256V1:
-        remote_mode_addr = LS_OTBN_SM2_MODE_OFFSET;
-        remote_random_addr = LS_OTBN_SM2_RANDOM_SEED_OFFSET;
-        mode = LS_OTBN_SM2_MODE_KEYGEN;
-        remote_addr_d0 = LS_OTBN_SM2_D0_OFFSET;
-        remote_addr_x = LS_OTBN_SM2_X_OFFSET;
-        remote_addr_y = LS_OTBN_SM2_Y_OFFSET;
-        break;
-    default:
-        while(1);
-        break;
-    }
-    if(HAL_OTBN_DMEM_Write(remote_random_addr, (uint32_t *)rnd, 32))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write  8\r\n");
-        return WC_HW_E;
-    }
-    if(HAL_OTBN_DMEM_Write(remote_mode_addr, &mode, 4))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write  9 \r\n");
-        return WC_HW_E;
-    }
-
-    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
-
-    err = HAL_OTBN_Error_Bit_Get();
-    if(err)
-    {
-        //printf("errors detected during an operation 0x%x",err);
-        return WC_HW_E;
-    }
-    
-
-    HAL_OTBN_DMEM_Read(remote_addr_d0, (uint32_t *)private_key, key->dp->size);
-    HAL_OTBN_DMEM_Read(remote_addr_x, (uint32_t *)public_x, key->dp->size);
-    HAL_OTBN_DMEM_Read(remote_addr_y, (uint32_t *)public_y, key->dp->size);
-
-
-    mp_reverse(private_key,otbn_info.ecc_type.size);
-    mp_reverse(public_x,otbn_info.ecc_type.size);
-    mp_reverse(public_y,otbn_info.ecc_type.size);
-
-    mp_read_unsigned_bin(key->k,private_key,otbn_info.ecc_type.size);
-    mp_read_unsigned_bin(key->pubkey.x,public_x,otbn_info.ecc_type.size);
-    mp_read_unsigned_bin(key->pubkey.y,public_y,otbn_info.ecc_type.size);
+    mp_read_unsigned_bin(key->k,private_key,keySize);
+    mp_read_unsigned_bin(key->pubkey.x,public_x,keySize);
+    mp_read_unsigned_bin(key->pubkey.y,public_y,keySize);
     
     // key->pubkey.z->used = 1;
     err = mp_set(key->pubkey.z, 1);
     key->type = ECC_PRIVATEKEY;
 
+exit:
+    if(err)
+    {
+        //printf("err :ls_otbn_ecc_creat_key\n");
+    }
     return err;
 }
-
 
 int ls_otbn_ecc_shared_secret(ecc_key* private_key, ecc_key* public_key,
     byte* out, word32* outlen)
 {
     int err;
-    uint32_t remote_mode_addr;
-    uint32_t mode;
 
-    uint32_t remote_addr_d0;
-    uint32_t remote_addr_d1;
-    uint32_t remote_addr_x;
-    uint32_t remote_addr_y;
-    uint32_t remote_addr_ok;
-    
     uint32_t curve;
     uint32_t curve_size;
     // uint8_t random[ECC_MAXSIZE];
-    uint8_t d0[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t d0[ECC_MAXSIZE];
     // uint8_t priv_key[ECC_MAXSIZE];
-    uint8_t pub_key_x[ECC_MAXSIZE];
-    uint8_t pub_key_y[ECC_MAXSIZE];
-    uint32_t is_ok;
-
+    CACHE_ALIGN_32 uint8_t pub_key_x[ECC_MAXSIZE];
+    CACHE_ALIGN_32 uint8_t pub_key_y[ECC_MAXSIZE];
 
     if(private_key == NULL || public_key == NULL || (private_key->dp->id != public_key->dp->id)
         || out == NULL ||  outlen == NULL)
@@ -636,119 +312,34 @@ int ls_otbn_ecc_shared_secret(ecc_key* private_key, ecc_key* public_key,
         //printf("input key id error");
         return ECC_BAD_ARG_E;
     }
-    wc_LockMutex(&otbn_info.doneLock);
 
-    err = ls_otbn_fireware_init(private_key,private_key->dp->id);
-    if(err != 0)
-    {
-        //printf("OTBN loading error,please detect curve_id or OTBN status\r\n");
-        goto exit;
-    }
     curve = private_key->dp->id;
     curve_size = private_key->dp->size;
 
-    switch (curve)
-    {
-    case ECC_SECP256R1:
-        remote_mode_addr = LS_OTBN_ECDSA_P256_MODE_OFFSET;
-        mode = LS_OTBN_ECDSA_P256_MODE_SHARED_KEY;
-        remote_addr_d0 = LS_OTBN_ECDSA_P256_D0_OFFSET;
-        remote_addr_d1 = LS_OTBN_ECDSA_P256_D1_OFFSET;
-        remote_addr_x = LS_OTBN_ECDSA_P256_X_OFFSET;
-        remote_addr_y = LS_OTBN_ECDSA_P256_Y_OFFSET;
-        remote_addr_ok = LS_OTBN_ECDSA_P256_OK;
-        break;
-    case ECC_SECP384R1:
-        remote_mode_addr = LS_OTBN_ECDSA_P384_MODE_OFFSET;
-        mode = LS_OTBN_ECDSA_P384_MODE_SHARED_KEY;
-        remote_addr_d0 = LS_OTBN_ECDSA_P384_D0_OFFSET;
-        remote_addr_d1 = LS_OTBN_ECDSA_P384_D1_OFFSET;
-        remote_addr_x = LS_OTBN_ECDSA_P384_X_OFFSET;
-        remote_addr_y = LS_OTBN_ECDSA_P384_Y_OFFSET;
-        remote_addr_ok = 0;/*not have*/
-        break;
-    case ECC_SM2P256V1:
-        remote_mode_addr = LS_OTBN_SM2_MODE_OFFSET;
-        mode = LS_OTBN_SM2_MODE_SHARED_KEY;
-        remote_addr_d0 = LS_OTBN_SM2_D0_OFFSET;
-        remote_addr_d1 = LS_OTBN_SM2_D1_OFFSET;
-        remote_addr_x = LS_OTBN_SM2_X_OFFSET;
-        remote_addr_y = LS_OTBN_SM2_Y_OFFSET;
-        remote_addr_ok = LS_OTBN_SM2_OK;
-        break;
-    default:
-        while(1);
-        break;
-    }
-
-
-    if(HAL_OTBN_DMEM_Write(remote_mode_addr, (uint32_t *)&mode, 4))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \r\n");
-        err = WC_HW_E;
-        goto exit;
-    }
-
-    HAL_OTBN_DMEM_Set(remote_addr_d1,0,curve_size);
-
     mp_to_unsigned_bin_len(private_key->k,d0,curve_size);
     mp_reverse(d0,curve_size);
-    if(HAL_OTBN_DMEM_Write(remote_addr_d0, (uint32_t *)d0, curve_size))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write 4 \r\n");
-        err = WC_HW_E;
-        goto exit;
-    }
-
     mp_to_unsigned_bin_len(public_key->pubkey.x,pub_key_x,curve_size);
     mp_reverse(pub_key_x,curve_size);
-    if(HAL_OTBN_DMEM_Write(remote_addr_x, (uint32_t *)pub_key_x, curve_size))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write 4 \r\n");
-        err = WC_HW_E;
-        goto exit;
-    }
-
     mp_to_unsigned_bin_len(public_key->pubkey.y,pub_key_y,curve_size);
     mp_reverse(pub_key_y,curve_size);
-    if(HAL_OTBN_DMEM_Write(remote_addr_y, (uint32_t *)pub_key_y, curve_size))
-    {
-        //printf("errors HAL_OTBN_DMEM_Write 4 \r\n");
-        err = WC_HW_E;
-        goto exit;
-    }
 
-    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
-
-    err = HAL_OTBN_Error_Bit_Get();
+    err = ls_otbn_shared_secret(curve,curve_size,d0,pub_key_x,pub_key_y);
     if(err)
     {
-        //printf("errors detected during an operation 0x%x\r\n",err);
-        err = WC_HW_E;
         goto exit;
     }
 
-    if(curve  != ECC_SECP384R1)
-    {
-        err |= HAL_OTBN_DMEM_Read(remote_addr_ok, (uint32_t *)&is_ok, 4);
-        if(err == 0 && is_ok == LS_OTBN_FALSE)
-        {
-            //printf("inpiut public key is not on curve");
-            return PUBLIC_KEY_E;
-        }
-    }
+    mp_reverse(pub_key_x,curve_size);
+    mp_reverse(pub_key_y,curve_size);
 
-    err |= HAL_OTBN_DMEM_Read(remote_addr_x, (uint32_t *)pub_key_x, otbn_info.ecc_type.size);
-    err |= HAL_OTBN_DMEM_Read(remote_addr_y, (uint32_t *)pub_key_y, otbn_info.ecc_type.size);
-
-    mp_reverse(pub_key_x,otbn_info.ecc_type.size);
-    mp_reverse(pub_key_y,otbn_info.ecc_type.size);
-
-    xor_mult_bit(out,pub_key_x,pub_key_y,otbn_info.ecc_type.size);
-    *outlen = otbn_info.ecc_type.size;
+    xor_mult_bit(out,pub_key_x,pub_key_y,curve_size);
+    *outlen = curve_size;
 
 exit:
-    wc_UnLockMutex(&otbn_info.doneLock);
+    if(err)
+    {
+        //printf("err :ls_otbn_ecc_shared_secret");
+    }
     return err;
 }
 
@@ -774,6 +365,9 @@ extern void HAL_LSOTBN_MSP_Init(void);
 extern void HAL_LSOTBN_MSP_DeInit(void);
 void wc_LS_Otbn_Module_Init(void)
 {
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_DELEGATION_CLIENT)
+    return;
+#endif
     // Supports both Zephyr and bare-metal operation
 #if defined(WOLFSSL_ZEPHYR)
     uint32_t EDN_URND_BUS_IN = 0;
@@ -829,3 +423,447 @@ void wc_ls_otbn_cmd(enum HAL_OTBN_CMD cmd)
 #endif
 
 }
+
+
+#if !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_DELEGATION_CLIENT)
+int ls_otbn_get_key_pair(uint32_t curve, uint32_t curve_size, uint8_t *private_key, uint8_t *public_x, uint8_t *public_y)
+{
+    int err = 0;
+    uint32_t remote_random_addr;
+    uint32_t remote_mode_addr;
+    uint32_t mode;
+
+    uint32_t remote_addr_d0;
+    uint32_t remote_addr_x;
+    uint32_t remote_addr_y;
+    uint8_t random[ECC_MAXSIZE];
+
+    wc_LockMutex(&otbn_info.doneLock);
+    err = ls_otbn_fireware_init(curve);
+    if(err != 0)
+    {
+        //printf("OTBN loading error,please detect curve_id or OTBN status\r\n");
+        goto exit;
+    }
+    err = ls_wolfssl_get_random(random, curve_size);
+    if(err != 0)
+    {
+        //printf("RND register error\r\n");
+        goto exit;
+    }
+    switch (curve)
+    {
+    case ECC_SECP256R1:
+        remote_mode_addr = LS_OTBN_ECDSA_P256_MODE_OFFSET;
+        remote_random_addr = LS_OTBN_ECDSA_P256_RANDOM_SEED_OFFSET;
+        mode = LS_OTBN_ECDSA_P256_MODE_KEYGEN;
+        remote_addr_d0 = LS_OTBN_ECDSA_P256_D0_OFFSET;
+        remote_addr_x = LS_OTBN_ECDSA_P256_X_OFFSET;
+        remote_addr_y = LS_OTBN_ECDSA_P256_Y_OFFSET;
+        break;
+    case ECC_SECP384R1:
+        remote_mode_addr = LS_OTBN_ECDSA_P384_MODE_OFFSET;
+        remote_random_addr = LS_OTBN_ECDSA_P384_RANDOM_SEED_OFFSET;
+        mode = LS_OTBN_ECDSA_P384_MODE_KEYGEN;
+        remote_addr_d0 = LS_OTBN_ECDSA_P384_D0_OFFSET;
+        remote_addr_x = LS_OTBN_ECDSA_P384_X_OFFSET;
+        remote_addr_y = LS_OTBN_ECDSA_P384_Y_OFFSET;
+        break;
+    case ECC_SM2P256V1:
+        remote_mode_addr = LS_OTBN_SM2_MODE_OFFSET;
+        remote_random_addr = LS_OTBN_SM2_RANDOM_SEED_OFFSET;
+        mode = LS_OTBN_SM2_MODE_KEYGEN;
+        remote_addr_d0 = LS_OTBN_SM2_D0_OFFSET;
+        remote_addr_x = LS_OTBN_SM2_X_OFFSET;
+        remote_addr_y = LS_OTBN_SM2_Y_OFFSET;
+        break;
+    default:
+        while(1);
+        break;
+    }
+
+    if(HAL_OTBN_DMEM_Write(remote_random_addr, (uint32_t *)random, curve_size))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write  8\r\n");
+        return WC_HW_E;
+    }
+    if(HAL_OTBN_DMEM_Write(remote_mode_addr, &mode, 4))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write  9 \r\n");
+        return WC_HW_E;
+    }
+
+    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
+
+    err = HAL_OTBN_Error_Bit_Get();
+    if(err)
+    {
+        //printf("errors detected during an operation 0x%x",err);
+        return WC_HW_E;
+    }
+    
+    HAL_OTBN_DMEM_Read(remote_addr_d0, (uint32_t *)private_key, curve_size);
+    HAL_OTBN_DMEM_Read(remote_addr_x, (uint32_t *)public_x, curve_size);
+    HAL_OTBN_DMEM_Read(remote_addr_y, (uint32_t *)public_y, curve_size);
+
+    wc_UnLockMutex(&otbn_info.doneLock);
+
+exit:
+    return err;
+}
+
+
+int ls_otbn_sign_hash(uint32_t curve, uint32_t curve_size, uint8_t *private_key, uint8_t *msg, uint8_t *r, uint8_t *s)
+{
+    int err;
+    uint32_t remote_random_addr;
+    uint32_t remote_mode_addr;
+    uint32_t mode;
+    
+    uint32_t remote_addr_d0;
+    uint32_t remote_addr_d1;
+    uint32_t remote_addr_r;
+    uint32_t remote_addr_s;
+    uint32_t remote_addr_msg;
+    uint8_t random[ECC_MAXSIZE];
+
+    wc_LockMutex(&otbn_info.doneLock);
+
+    err = ls_otbn_fireware_init(curve);
+    if(err != 0)
+    {
+        //printf("OTBN loading error,please detect curve_id or OTBN status\r\n");
+        goto exit;
+    }
+    switch (curve)
+    {
+    case ECC_SECP256R1:
+        remote_mode_addr = LS_OTBN_ECDSA_P256_MODE_OFFSET;
+        remote_random_addr = LS_OTBN_ECDSA_P256_RANDOM_SEED_OFFSET;
+        mode = LS_OTBN_ECDSA_P256_MODE_SIGN;
+        remote_addr_d0 = LS_OTBN_ECDSA_P256_D0_OFFSET;
+        remote_addr_r = LS_OTBN_ECDSA_P256_R_OFFSET;
+        remote_addr_s = LS_OTBN_ECDSA_P256_S_OFFSET;
+        remote_addr_msg = LS_OTBN_ECDSA_P256_MSG_OFFSET;
+        remote_addr_d1 = LS_OTBN_ECDSA_P256_D1_OFFSET;
+        break;
+    case ECC_SECP384R1:
+        remote_mode_addr = LS_OTBN_ECDSA_P384_MODE_OFFSET;
+        remote_random_addr = LS_OTBN_ECDSA_P384_RANDOM_SEED_OFFSET;
+        mode = LS_OTBN_ECDSA_P384_MODE_SIGN;
+        remote_addr_d0 = LS_OTBN_ECDSA_P384_D0_OFFSET;
+        remote_addr_r = LS_OTBN_ECDSA_P384_R_OFFSET;
+        remote_addr_s = LS_OTBN_ECDSA_P384_S_OFFSET;
+        remote_addr_msg = LS_OTBN_ECDSA_P384_MSG_OFFSET;
+        remote_addr_d1 = LS_OTBN_ECDSA_P384_D1_OFFSET;
+        break;
+    case ECC_SM2P256V1:
+        remote_mode_addr = LS_OTBN_SM2_MODE_OFFSET;
+        remote_random_addr = LS_OTBN_SM2_RANDOM_SEED_OFFSET;
+        mode = LS_OTBN_SM2_MODE_SIGN;
+        remote_addr_d0 = LS_OTBN_SM2_D0_OFFSET;
+        remote_addr_r = LS_OTBN_SM2_R_OFFSET;
+        remote_addr_s = LS_OTBN_SM2_S_OFFSET;
+        remote_addr_msg = LS_OTBN_SM2_MSG_OFFSET;
+        remote_addr_d1 = LS_OTBN_SM2_D1_OFFSET;
+        break;
+    default:
+        while(1);
+        break;
+    }
+
+    err = ls_wolfssl_get_random(random, ECC_MAXSIZE);
+    if(err != 0)
+    {
+        goto exit;
+    }
+
+    if(HAL_OTBN_DMEM_Write(remote_random_addr, (uint32_t *)random, 32))
+    {
+        err = WC_HW_E;
+        goto exit;
+    }
+    if(HAL_OTBN_DMEM_Write(remote_mode_addr, (uint32_t *)&mode, 4))
+    {
+        err = WC_HW_E;
+        goto exit;
+    }
+
+    if(HAL_OTBN_DMEM_Set(remote_addr_d1,0,curve_size))
+    {
+        err = WC_HW_E;
+        goto exit;
+    }
+
+
+    if(HAL_OTBN_DMEM_Write(remote_addr_d0, (uint32_t *)private_key, curve_size))
+    {
+        err = WC_HW_E;
+        goto exit;
+    }
+
+    if(HAL_OTBN_DMEM_Write(remote_addr_msg, (uint32_t *)msg, curve_size))
+    {
+        err = WC_HW_E;
+        goto exit;
+    }
+
+    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
+
+    err = HAL_OTBN_Error_Bit_Get();
+    if(err)
+    {
+        //printf("errors detected during an operation 0x%x\r\n",err);
+        err = WC_HW_E;
+        goto exit;
+    }
+    
+
+    HAL_OTBN_DMEM_Read(remote_addr_r, (uint32_t *)r, curve_size);
+    HAL_OTBN_DMEM_Read(remote_addr_s, (uint32_t *)s, curve_size);
+
+exit:
+    wc_UnLockMutex(&otbn_info.doneLock);
+    return err;
+}
+
+
+int ls_otbn_verify_hash(uint32_t curve, uint32_t curve_size, uint8_t *r, uint8_t *s, uint8_t *msg, uint8_t *pub_x, uint8_t *pub_y)
+{
+    int err = MP_OKAY;
+    uint32_t remote_random_addr;
+    uint32_t remote_mode_addr;
+    uint32_t mode;
+
+    uint32_t remote_addr_d0;
+    uint32_t remote_addr_d1;
+    uint32_t remote_addr_r;
+    uint32_t remote_addr_s;
+    uint32_t remote_addr_msg;
+    uint32_t remote_addr_qx;
+    uint32_t remote_addr_qy;
+    uint32_t remote_addr_r_x;
+
+    wc_LockMutex(&otbn_info.doneLock);
+
+    err = ls_otbn_fireware_init(curve);
+    if(err != 0)
+    {
+        //printf("OTBN loading error,please detect curve_id or OTBN status\r\n");
+        goto exit;
+    }
+
+    switch (curve)
+    {
+    case ECC_SECP256R1:
+        remote_mode_addr = LS_OTBN_ECDSA_P256_MODE_OFFSET;
+        remote_random_addr = LS_OTBN_ECDSA_P256_RANDOM_SEED_OFFSET;
+        mode = LS_OTBN_ECDSA_P256_MODE_VERIFY;
+        remote_addr_d0 = LS_OTBN_ECDSA_P256_D0_OFFSET;
+        remote_addr_r = LS_OTBN_ECDSA_P256_R_OFFSET;
+        remote_addr_s = LS_OTBN_ECDSA_P256_S_OFFSET;
+        remote_addr_msg = LS_OTBN_ECDSA_P256_MSG_OFFSET;
+        remote_addr_d1 = LS_OTBN_ECDSA_P256_D1_OFFSET;
+        remote_addr_qx = LS_OTBN_ECDSA_P256_X_OFFSET;
+        remote_addr_qy = LS_OTBN_ECDSA_P256_Y_OFFSET;
+        remote_addr_r_x = LS_OTBN_ECDSA_P256_X_R_OFFSET;
+        break;
+    case ECC_SECP384R1:
+        remote_mode_addr = LS_OTBN_ECDSA_P384_MODE_OFFSET;
+        remote_random_addr = LS_OTBN_ECDSA_P384_RANDOM_SEED_OFFSET;
+        mode = LS_OTBN_ECDSA_P384_MODE_VERIFY;
+        remote_addr_d0 = LS_OTBN_ECDSA_P384_D0_OFFSET;
+        remote_addr_r = LS_OTBN_ECDSA_P384_R_OFFSET;
+        remote_addr_s = LS_OTBN_ECDSA_P384_S_OFFSET;
+        remote_addr_msg = LS_OTBN_ECDSA_P384_MSG_OFFSET;
+        remote_addr_d1 = LS_OTBN_ECDSA_P384_D1_OFFSET;
+        remote_addr_qx = LS_OTBN_ECDSA_P384_X_OFFSET;
+        remote_addr_qy = LS_OTBN_ECDSA_P384_Y_OFFSET;
+        remote_addr_r_x = LS_OTBN_ECDSA_P384_X_R_OFFSET;
+        break;
+    case ECC_SM2P256V1:
+        remote_mode_addr = LS_OTBN_SM2_MODE_OFFSET;
+        remote_random_addr = LS_OTBN_SM2_RANDOM_SEED_OFFSET;
+        mode = LS_OTBN_SM2_MODE_VERIFY;
+        remote_addr_d0 = LS_OTBN_SM2_D0_OFFSET;
+        remote_addr_r = LS_OTBN_SM2_R_OFFSET;
+        remote_addr_s = LS_OTBN_SM2_S_OFFSET;
+        remote_addr_msg = LS_OTBN_SM2_MSG_OFFSET;
+        remote_addr_d1 = LS_OTBN_SM2_D1_OFFSET;
+        remote_addr_qx = LS_OTBN_SM2_X_OFFSET;
+        remote_addr_qy = LS_OTBN_SM2_Y_OFFSET;
+        remote_addr_r_x = LS_OTBN_SM2_X_R_OFFSET;
+        break;
+    default:
+        while(1);
+        break;
+    }
+
+    if(HAL_OTBN_DMEM_Write(remote_mode_addr, (uint32_t *)&mode, 4))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        err = WC_HW_E;
+        goto exit;
+    }
+    if(HAL_OTBN_DMEM_Write(remote_addr_qx, (uint32_t *)pub_x, curve_size))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        err = WC_HW_E;
+        goto exit;
+    }
+    if(HAL_OTBN_DMEM_Write(remote_addr_qy, (uint32_t *)pub_y, curve_size))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        err = WC_HW_E;
+        goto exit;
+    }
+    if(HAL_OTBN_DMEM_Write(remote_addr_r, (uint32_t *)r, curve_size))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        err = WC_HW_E;
+        goto exit;
+    }
+    if(HAL_OTBN_DMEM_Write(remote_addr_s, (uint32_t *)s, curve_size))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        err = WC_HW_E;
+        goto exit;
+    }
+    if(HAL_OTBN_DMEM_Write(remote_addr_msg, (uint32_t *)msg, curve_size))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        err = WC_HW_E;
+        goto exit;
+    }
+
+    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
+
+    err = HAL_OTBN_Error_Bit_Get();
+    if(err)
+    {
+        printf("errors detected during an operation 0x%x\n",err);
+        err = WC_HW_E;
+        goto exit;
+    }
+    
+    err = HAL_OTBN_DMEM_Read(remote_addr_r_x, (uint32_t *)s, curve_size);
+
+exit:
+    wc_UnLockMutex(&otbn_info.doneLock);
+    return err;
+}
+
+int ls_otbn_shared_secret(uint32_t curve, uint32_t curve_size, uint8_t *private_key, uint8_t *public_x, uint8_t *public_y)
+{
+    int err;
+    uint32_t remote_mode_addr;
+    uint32_t mode;
+
+    uint32_t remote_addr_d0;
+    uint32_t remote_addr_d1;
+    uint32_t remote_addr_x;
+    uint32_t remote_addr_y;
+    uint32_t remote_addr_ok;
+    uint32_t is_ok;
+
+    wc_LockMutex(&otbn_info.doneLock);
+    
+    err = ls_otbn_fireware_init(curve);
+    if(err != 0)
+    {
+        //printf("OTBN loading error,please detect curve_id or OTBN status\n");
+        goto exit;
+    }
+
+    switch (curve)
+    {
+    case ECC_SECP256R1:
+        remote_mode_addr = LS_OTBN_ECDSA_P256_MODE_OFFSET;
+        mode = LS_OTBN_ECDSA_P256_MODE_SHARED_KEY;
+        remote_addr_d0 = LS_OTBN_ECDSA_P256_D0_OFFSET;
+        remote_addr_d1 = LS_OTBN_ECDSA_P256_D1_OFFSET;
+        remote_addr_x = LS_OTBN_ECDSA_P256_X_OFFSET;
+        remote_addr_y = LS_OTBN_ECDSA_P256_Y_OFFSET;
+        remote_addr_ok = LS_OTBN_ECDSA_P256_OK;
+        break;
+    case ECC_SECP384R1:
+        remote_mode_addr = LS_OTBN_ECDSA_P384_MODE_OFFSET;
+        mode = LS_OTBN_ECDSA_P384_MODE_SHARED_KEY;
+        remote_addr_d0 = LS_OTBN_ECDSA_P384_D0_OFFSET;
+        remote_addr_d1 = LS_OTBN_ECDSA_P384_D1_OFFSET;
+        remote_addr_x = LS_OTBN_ECDSA_P384_X_OFFSET;
+        remote_addr_y = LS_OTBN_ECDSA_P384_Y_OFFSET;
+        remote_addr_ok = 0;/*not have*/
+        break;
+    case ECC_SM2P256V1:
+        remote_mode_addr = LS_OTBN_SM2_MODE_OFFSET;
+        mode = LS_OTBN_SM2_MODE_SHARED_KEY;
+        remote_addr_d0 = LS_OTBN_SM2_D0_OFFSET;
+        remote_addr_d1 = LS_OTBN_SM2_D1_OFFSET;
+        remote_addr_x = LS_OTBN_SM2_X_OFFSET;
+        remote_addr_y = LS_OTBN_SM2_Y_OFFSET;
+        remote_addr_ok = LS_OTBN_SM2_OK;
+        break;
+    default:
+        while(1);
+        break;
+    }
+
+    if(HAL_OTBN_DMEM_Write(remote_mode_addr, (uint32_t *)&mode, 4))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write 2 \r\n");
+        err = WC_HW_E;
+        goto exit;
+    }
+
+    HAL_OTBN_DMEM_Set(remote_addr_d1,0,curve_size);
+
+    if(HAL_OTBN_DMEM_Write(remote_addr_d0, (uint32_t *)private_key, curve_size))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write 4 \r\n");
+        err = WC_HW_E;
+        goto exit;
+    }
+    if(HAL_OTBN_DMEM_Write(remote_addr_x, (uint32_t *)public_x, curve_size))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write 4 \r\n");
+        err = WC_HW_E;
+        goto exit;
+    }
+    if(HAL_OTBN_DMEM_Write(remote_addr_y, (uint32_t *)public_y, curve_size))
+    {
+        //printf("errors HAL_OTBN_DMEM_Write 4 \n");
+        err = WC_HW_E;
+        goto exit;
+    }
+
+    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
+
+    err = HAL_OTBN_Error_Bit_Get();
+    if(err)
+    {
+        //printf("errors detected during an operation 0x%x\n",err);
+        err = WC_HW_E;
+        goto exit;
+    }
+
+    if(curve  != ECC_SECP384R1)
+    {
+        err |= HAL_OTBN_DMEM_Read(remote_addr_ok, (uint32_t *)&is_ok, 4);
+        if(err == 0 && is_ok == LS_OTBN_FALSE)
+        {
+            //printf("inpiut public key is not on curve\n");
+            return PUBLIC_KEY_E;
+        }
+    }
+
+    err |= HAL_OTBN_DMEM_Read(remote_addr_x, (uint32_t *)public_x, curve_size);
+    err |= HAL_OTBN_DMEM_Read(remote_addr_y, (uint32_t *)public_y, curve_size);
+
+exit:
+    wc_UnLockMutex(&otbn_info.doneLock);
+
+    return err;
+}
+
+#endif //!WOLFSSL_LINKEDSEMI_OTBN_DELEGATION_CLIENT

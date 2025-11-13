@@ -272,7 +272,7 @@
         return ret;
     }
 
-#elif defined(LS_HASH_SHA512)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
     int wc_InitSha512_ex(wc_Sha512* sha512, void* heap, int devId)
     {
         if (sha512 == NULL)
@@ -1282,7 +1282,7 @@ int wc_Sha512Update(wc_Sha512* sha512, const byte* data, word32 len)
 #elif defined(MAX3266X_SHA)
     /* Functions defined in wolfcrypt/src/port/maxim/max3266x.c */
 #elif defined(STM32_HASH_SHA512)
-#elif defined(LS_HASH_SHA512)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
 #else
 
 static WC_INLINE int Sha512Final(wc_Sha512* sha512)
@@ -1446,7 +1446,7 @@ static WC_INLINE int Sha512Final(wc_Sha512* sha512)
 #elif defined(MAX3266X_SHA)
     /* Functions defined in wolfcrypt/src/port/maxim/max3266x.c */
 #elif defined(STM32_HASH_SHA512)
-#elif defined(LS_HASH_SHA512)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
 #else
 
 static int Sha512FinalRaw(wc_Sha512* sha512, byte* hash, size_t digestSz)
@@ -1756,7 +1756,7 @@ int wc_Sha512Transform(wc_Sha512* sha, const unsigned char* data)
         return ret;
     }
 
-#elif (defined(LS_HASH_SHA512))
+#elif (defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT))
     int wc_InitSha384_ex(wc_Sha384* sha384, void* heap, int devId)
     {
         if (sha384 == NULL)

@@ -4,7 +4,7 @@
 #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
 #include <stdio.h>
 
-#if defined(LS_HASH) || defined(LS_HASH_SHA512)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT) || defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
 
     int fflush(FILE *stream)
     {
@@ -17,7 +17,7 @@
 
 #endif
 
-#if defined(LS_HASH)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
     void wc_LS_Hash_Init()
     {
         wc_InitMutex(&doneLock);
@@ -66,9 +66,9 @@
         wc_UnLockMutex(&doneLock);
         return ret;
     }
-#endif /* LS_HASH */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
 
-#if defined(LS_HASH_SHA512)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
     void wc_LS_Hash_sha512_Init()
     {
         wc_InitMutex(&doneLock);
@@ -107,4 +107,4 @@
         lsCtx->start_calc_symbol = false;
         wc_UnLockMutex(&doneLock);
     }
-#endif /* LS_HASH_SHA512 */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT */

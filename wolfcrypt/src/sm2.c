@@ -42,7 +42,7 @@
     #include <wolfcrypt/src/misc.c>
 #endif
 
-#ifdef CONFIG_SOC_LSQSH
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-otbn-ecc.h>
 #endif
 
@@ -493,7 +493,7 @@ int wc_ecc_sm2_sign_hash_ex(const byte* hash, word32 hashSz, WC_RNG* rng,
     }
 #endif
 
-#if defined(CONFIG_SOC_LSQSH)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
     if ((err == MP_OKAY) && (key->dp->id == ECC_SM2P256V1))
     {
         err = ls_otbn_ecc_sign_hash_ex(hash, hashSz, r, s, NULL, NULL, key);
@@ -811,7 +811,7 @@ int wc_ecc_sm2_verify_hash_ex(mp_int *r, mp_int *s, const byte *hash,
         err = BAD_FUNC_ARG;
     }
 
-#if defined(CONFIG_SOC_LSQSH)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
     if(key->dp->id == ECC_SECP256R1 || key->dp->id == ECC_SECP384R1 || key->dp->id == ECC_SM2P256V1)
     {
         return ls_otbn_ecc_verify_hash_ex(r, s, hash, hashSz, res, key);

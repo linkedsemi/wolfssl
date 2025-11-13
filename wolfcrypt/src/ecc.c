@@ -5320,12 +5320,6 @@ int wc_ecc_gen_k(WC_RNG* rng, int size, mp_int* k, mp_int* order)
 #ifdef WOLFSSL_CHECK_MEM_ZERO
     wc_MemZero_Add("wc_ecc_gen_k buf", buf, size);
 #endif
-    // for(uint8_t i =0; i<size;i++)
-    // {
-    //     buf[i] = 0xfe + i;
-    // }
-    memset(buf,0,size);
-    buf[size-1] = 0x5;
     /* load random buffer data into k */
     if (err == 0)
         err = mp_read_unsigned_bin(k, buf, (word32)size);

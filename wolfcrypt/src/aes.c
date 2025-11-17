@@ -6555,7 +6555,7 @@ static WC_INLINE void IncCtr(byte* ctr, word32 ctrSz)
 #endif /* HAVE_AESGCM || HAVE_AESCCM */
 
 
-#ifdef HAVE_AESGCM
+#if defined(HAVE_AESGCM) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
 
 #ifdef WOLFSSL_AESGCM_STREAM
     /* Access initialization counter data. */

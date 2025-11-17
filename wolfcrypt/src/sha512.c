@@ -2300,6 +2300,7 @@ int wc_Sha512_224Update(wc_Sha512* sha, const byte* data, word32 len)
 
 #elif defined(WOLFSSL_SE050) && defined(WOLFSSL_SE050_HASH)
 #elif defined(STM32_HASH_SHA512_224)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
 
 #else
 int wc_Sha512_224FinalRaw(wc_Sha512* sha, byte* hash)
@@ -2439,6 +2440,7 @@ int wc_Sha512_256Update(wc_Sha512* sha, const byte* data, word32 len)
 
 #elif defined(WOLFSSL_SE050) && defined(WOLFSSL_SE050_HASH)
 #elif defined(STM32_HASH_SHA512_256)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
 #else
 int wc_Sha512_256FinalRaw(wc_Sha512* sha, byte* hash)
 {

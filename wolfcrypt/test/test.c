@@ -1886,7 +1886,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_PASS("BLAKE2s  test passed!\n");
 #endif
 
-#ifndef NO_HMAC
+#if !defined(NO_HMAC) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
     #if !defined(NO_MD5) && !(defined(HAVE_FIPS) && defined(HAVE_FIPS_VERSION) \
                               && (HAVE_FIPS_VERSION >= 5))
         if ( (ret = hmac_md5_test()) != 0)
@@ -1958,7 +1958,8 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
     PRIVATE_KEY_LOCK();
 #endif /* WOLFSSL_WOLFSSH */
 
-#if defined(WOLFSSL_HAVE_PRF) && !defined(NO_HMAC) && defined(WOLFSSL_SHA384)
+#if defined(WOLFSSL_HAVE_PRF) && !defined(NO_HMAC) && defined(WOLFSSL_SHA384) \
+  && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
     PRIVATE_KEY_UNLOCK();
     if ( (ret = prf_test()) != 0)
         TEST_FAIL("PRF         test failed!\n", ret);
@@ -1968,7 +1969,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifdef WOLFSSL_HAVE_PRF
-#if defined (HAVE_HKDF) && !defined(NO_HMAC)
+#if defined (HAVE_HKDF) && !defined(NO_HMAC) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
 #ifdef WOLFSSL_BASE16
     PRIVATE_KEY_UNLOCK();
     if ( (ret = tls12_kdf_test()) != 0)
@@ -1980,7 +1981,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif /* WOLFSSL_HAVE_HKDF && !NO_HMAC */
 #endif /* WOLFSSL_HAVE_PRF */
 
-#ifdef WOLFSSL_TLS13
+#if defined(WOLFSSL_TLS13) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
     PRIVATE_KEY_UNLOCK();
     if ( (ret = tls13_kdf_test()) != 0)
         TEST_FAIL("TLSv1.3 KDF test failed!\n", ret);
@@ -2024,7 +2025,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 
 #if defined(HAVE_AESGCM) && defined(WOLFSSL_AES_128) && \
    !defined(WOLFSSL_AFALG_XILINX_AES) && !defined(WOLFSSL_XILINX_CRYPT) && \
-   !defined(WOLFSSL_RENESAS_FSPSM_CRYPTONLY)
+   !defined(WOLFSSL_RENESAS_FSPSM_CRYPTONLY) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
     if ( (ret = gmac_test()) != 0)
         TEST_FAIL("GMAC     test failed!\n", ret);
     else
@@ -2178,7 +2179,7 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_PASS("AES-OFB   test passed!\n");
 #endif
 
-#ifdef HAVE_AESGCM
+#if defined(HAVE_AESGCM) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
     #if !defined(WOLFSSL_AFALG) && !defined(WOLFSSL_DEVCRYPTO)
     if ( (ret = aesgcm_test()) != 0)
         TEST_FAIL("AES-GCM  test failed!\n", ret);

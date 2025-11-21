@@ -157,6 +157,11 @@ WOLFSSL_LOCAL void GHASH(Gcm* gcm, const byte* a, word32 aSz, const byte* c,
 
 #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
     #include <ls_hal_crypt.h>
+    #include <reg_crypt_type.h>
+    #include <field_manipulate.h>
+    typedef struct Aes Aes;
+    WOLFSSL_API int wc_AesSetKeyDirect(Aes* aes, const byte* key, word32 len,
+                                const byte* iv, int dir);
 #endif
 
 

@@ -2210,21 +2210,35 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         TEST_PASS("AES-OFB   test passed!\n");
 #endif
 
-#if defined(HAVE_AESGCM) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+#if defined(HAVE_AESGCM)
     #if !defined(WOLFSSL_AFALG) && !defined(WOLFSSL_DEVCRYPTO)
     if ( (ret = aesgcm_test()) != 0)
-        TEST_FAIL("AES-GCM  test failed!\n", ret);
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
+            TEST_FAIL("AES-GCM LS hardware   test failed!\n", ret);
+        #else
+            TEST_FAIL("AES-GCM software   test failed!\n", ret);
+        #endif
+    }
     #endif
     #if !defined(WOLFSSL_AFALG_XILINX_AES) && !defined(WOLFSSL_XILINX_CRYPT) && \
         !defined(WOLFSSL_RENESAS_FSPSM_CRYPTONLY) && \
         !defined(WOLFSSL_KCAPI_AES) && !(defined(WOLF_CRYPTO_CB) && \
             (defined(HAVE_INTEL_QA_SYNC) || defined(HAVE_CAVIUM_OCTEON_SYNC)))
     if ((ret = aesgcm_default_test()) != 0) {
-        TEST_FAIL("AES-GCM  test failed!\n", ret);
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
+            TEST_FAIL("AES-GCM LS hardware   test failed!\n", ret);
+        #else
+            TEST_FAIL("AES-GCM software   test failed!\n", ret);
+        #endif
     }
     #endif
     if (ret == 0) {
-        TEST_PASS("AES-GCM  test passed!\n");
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
+            TEST_PASS("AES-GCM LS hardware   test passed!\n");
+        #else
+            TEST_PASS("AES-GCM software   test passed!\n");
+        #endif
     }
 #endif
 

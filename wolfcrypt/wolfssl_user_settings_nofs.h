@@ -79,7 +79,7 @@ extern "C" {
 #define WC_RSA_BLINDING
 
 #undef  HAVE_AESGCM
-// #define HAVE_AESGCM
+#define HAVE_AESGCM
 
 #undef  WOLFSSL_SHA512
 #define WOLFSSL_SHA512

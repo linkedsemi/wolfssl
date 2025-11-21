@@ -7032,7 +7032,7 @@ static WC_INLINE void IncCtr(byte* ctr, word32 ctrSz)
 #endif /* HAVE_AESGCM || HAVE_AESCCM */
 
 
-#if defined(HAVE_AESGCM) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+#if defined(HAVE_AESGCM)
 
 #ifdef WOLFSSL_AESGCM_STREAM
     /* Access initialization counter data. */
@@ -7248,6 +7248,36 @@ void GCM_generate_m0_avx2(const unsigned char *h, unsigned char *m)
 #endif
 #endif /* WOLFSSL_AESNI && GCM_TABLE_4BIT && WC_C_DYNAMIC_FALLBACK */
 
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
+    /* Hardware LS AES - GCM SetKey */
+    int wc_AesGcmSetKey(Aes* aes, const byte* key, word32 len)
+    {
+        int  ret;
+        byte iv[WC_AES_BLOCK_SIZE];
+
+        if (!((len == 16) || (len == 24) || (len == 32)))
+            return BAD_FUNC_ARG;
+
+        if (aes == NULL || key == NULL) {
+            return BAD_FUNC_ARG;
+        }
+
+        XMEMSET(iv, 0, WC_AES_BLOCK_SIZE);
+
+        ret = wc_AesSetKey(aes, key, len, iv, AES_ENCRYPTION);
+        ret = wc_AesSetKeyLocal(aes, key, len, iv, AES_ENCRYPTION, 1);
+
+        if (ret == 0) {
+            VECTOR_REGISTERS_PUSH;
+            /* AES-NI code generates its own H value, but generate it here too, to
+            * assure pure-C fallback is always usable.
+            */
+            ret = wc_AesEcbEncrypt(aes, aes->gcm.H, iv, WC_AES_BLOCK_SIZE);
+            VECTOR_REGISTERS_POP;
+        }
+        return ret;
+    }
+#else
 /* Software AES - GCM SetKey */
 int wc_AesGcmSetKey(Aes* aes, const byte* key, word32 len)
 {
@@ -7362,6 +7392,7 @@ int wc_AesGcmSetKey(Aes* aes, const byte* key, word32 len)
 #endif
     return ret;
 }
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 
 
 #ifdef WOLFSSL_AESNI
@@ -9102,6 +9133,117 @@ WARN_UNUSED_RESULT int AES_GCM_encrypt_C(
 #else
 static
 #endif
+
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
+    WARN_UNUSED_RESULT int AES_GCM_encrypt_C(
+                        Aes* aes, byte* out, const byte* in, word32 sz,
+                        const byte* iv, word32 ivSz,
+                        byte* authTag, word32 authTagSz,
+                        const byte* authIn, word32 authInSz)
+    {
+        int ret = 0;
+        word32 blocks = sz / WC_AES_BLOCK_SIZE;
+        word32 partial = sz % WC_AES_BLOCK_SIZE;
+        const byte* p = in;
+        byte* c = out;
+        ALIGN16 byte counter[WC_AES_BLOCK_SIZE];
+        ALIGN16 byte initialCounter[WC_AES_BLOCK_SIZE];
+        ALIGN16 byte scratch[WC_AES_BLOCK_SIZE];
+
+        if (ivSz == GCM_NONCE_MID_SZ) {
+            /* Counter is IV with bottom 4 bytes set to: 0x00,0x00,0x00,0x01. */
+            XMEMCPY(counter, iv, ivSz);
+            XMEMSET(counter + GCM_NONCE_MID_SZ, 0,
+                                            WC_AES_BLOCK_SIZE - GCM_NONCE_MID_SZ - 1);
+            counter[WC_AES_BLOCK_SIZE - 1] = 1;
+        }
+        else {
+            /* Counter is GHASH of IV. */
+            GHASH(&aes->gcm, NULL, 0, iv, ivSz, counter, WC_AES_BLOCK_SIZE);
+        }
+        XMEMCPY(initialCounter, counter, WC_AES_BLOCK_SIZE);
+
+    #if defined(HAVE_AES_ECB) && !defined(WOLFSSL_PIC32MZ_CRYPT)
+        /* some hardware acceleration can gain performance from doing AES encryption
+        * of the whole buffer at once */
+        if (c != p && blocks > 0) { /* can not handle inline encryption */
+            while (blocks--) {
+                IncrementGcmCounter(counter);
+                XMEMCPY(c, counter, WC_AES_BLOCK_SIZE);
+                c += WC_AES_BLOCK_SIZE;
+            }
+
+            /* reset number of blocks and then do encryption */
+            blocks = sz / WC_AES_BLOCK_SIZE;
+            wc_AesEcbEncrypt(aes, out, out, WC_AES_BLOCK_SIZE * blocks);
+            xorbuf(out, p, WC_AES_BLOCK_SIZE * blocks);
+            p += WC_AES_BLOCK_SIZE * blocks;
+        }
+        else
+    #endif /* HAVE_AES_ECB && !WOLFSSL_PIC32MZ_CRYPT */
+        {
+            while (blocks--) {
+                IncrementGcmCounter(counter);
+            #if !defined(WOLFSSL_PIC32MZ_CRYPT)
+                ret = wc_AesEcbEncrypt(aes, scratch, counter, WC_AES_BLOCK_SIZE);
+                if (ret != 0)
+                    return ret;
+                xorbufout(c, scratch, p, WC_AES_BLOCK_SIZE);
+            #endif
+                p += WC_AES_BLOCK_SIZE;
+                c += WC_AES_BLOCK_SIZE;
+            }
+        }
+
+        if (partial != 0) {
+            IncrementGcmCounter(counter);
+            ret = wc_AesEcbEncrypt(aes, scratch, counter, WC_AES_BLOCK_SIZE);
+            if (ret != 0)
+                return ret;
+            xorbufout(c, scratch, p, partial);
+        }
+        if (authTag) {
+            GHASH(&aes->gcm, authIn, authInSz, out, sz, authTag, authTagSz);
+            ret = wc_AesEcbEncrypt(aes, scratch, initialCounter, WC_AES_BLOCK_SIZE);
+            if (ret != 0)
+                return ret;
+            xorbuf(authTag, scratch, authTagSz);
+        }
+
+        return ret;
+    }
+
+    /* Hardware LS AES - GCM Encrypt */
+    int wc_AesGcmEncrypt(Aes* aes, byte* out, const byte* in, word32 sz,
+                    const byte* iv, word32 ivSz,
+                    byte* authTag, word32 authTagSz,
+                    const byte* authIn, word32 authInSz)
+    {
+        int ret;
+
+        /* argument checks */
+        if (aes == NULL || authTagSz > WC_AES_BLOCK_SIZE || ivSz == 0 ||
+            ((authTagSz > 0) && (authTag == NULL)) ||
+            ((authInSz > 0) && (authIn == NULL)))
+        {
+            return BAD_FUNC_ARG;
+        }
+
+        if (authTagSz < WOLFSSL_MIN_AUTH_TAG_SZ) {
+            WOLFSSL_MSG("GcmEncrypt authTagSz too small error");
+            return BAD_FUNC_ARG;
+        }
+
+        VECTOR_REGISTERS_PUSH;
+
+        ret = AES_GCM_encrypt_C(aes, out, in, sz, iv, ivSz, authTag, authTagSz,
+                                    authIn, authInSz);
+
+        VECTOR_REGISTERS_POP;
+
+        return ret;
+    }
+#else
 WARN_UNUSED_RESULT int AES_GCM_encrypt_C(
                       Aes* aes, byte* out, const byte* in, word32 sz,
                       const byte* iv, word32 ivSz,
@@ -9336,6 +9478,7 @@ int wc_AesGcmEncrypt(Aes* aes, byte* out, const byte* in, word32 sz,
 
     return ret;
 }
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 #endif
 
 
@@ -9650,6 +9793,133 @@ int WARN_UNUSED_RESULT AES_GCM_decrypt_C(
 #else
 static
 #endif
+
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
+    int WARN_UNUSED_RESULT AES_GCM_decrypt_C(
+                        Aes* aes, byte* out, const byte* in, word32 sz,
+                        const byte* iv, word32 ivSz,
+                        const byte* authTag, word32 authTagSz,
+                        const byte* authIn, word32 authInSz)
+    {
+        int ret;
+        word32 blocks = sz / WC_AES_BLOCK_SIZE;
+        word32 partial = sz % WC_AES_BLOCK_SIZE;
+        const byte* c = in;
+        byte* p = out;
+        ALIGN16 byte counter[WC_AES_BLOCK_SIZE];
+        ALIGN16 byte scratch[WC_AES_BLOCK_SIZE];
+        ALIGN16 byte Tprime[WC_AES_BLOCK_SIZE];
+        ALIGN16 byte EKY0[WC_AES_BLOCK_SIZE];
+        sword32 res;
+
+        if (ivSz == GCM_NONCE_MID_SZ) {
+            /* Counter is IV with bottom 4 bytes set to: 0x00,0x00,0x00,0x01. */
+            XMEMCPY(counter, iv, ivSz);
+            XMEMSET(counter + GCM_NONCE_MID_SZ, 0,
+                                            WC_AES_BLOCK_SIZE - GCM_NONCE_MID_SZ - 1);
+            counter[WC_AES_BLOCK_SIZE - 1] = 1;
+        }
+        else {
+            /* Counter is GHASH of IV. */
+            GHASH(&aes->gcm, NULL, 0, iv, ivSz, counter, WC_AES_BLOCK_SIZE);
+        }
+
+        /* Calc the authTag again using received auth data and the cipher text */
+        GHASH(&aes->gcm, authIn, authInSz, in, sz, Tprime, sizeof(Tprime));
+        ret = wc_AesEcbEncrypt(aes, EKY0, counter, WC_AES_BLOCK_SIZE);
+        if (ret != 0)
+            return ret;
+        xorbuf(Tprime, EKY0, sizeof(Tprime));
+
+    #if defined(HAVE_AES_ECB) && !defined(WOLFSSL_PIC32MZ_CRYPT)
+        /* some hardware acceleration can gain performance from doing AES encryption
+        * of the whole buffer at once */
+        if (c != p && blocks > 0) { /* can not handle inline decryption */
+            while (blocks--) {
+                IncrementGcmCounter(counter);
+                XMEMCPY(p, counter, WC_AES_BLOCK_SIZE);
+                p += WC_AES_BLOCK_SIZE;
+            }
+
+            /* reset number of blocks and then do encryption */
+            blocks = sz / WC_AES_BLOCK_SIZE;
+
+            wc_AesEcbEncrypt(aes, out, out, WC_AES_BLOCK_SIZE * blocks);
+            xorbuf(out, c, WC_AES_BLOCK_SIZE * blocks);
+            c += WC_AES_BLOCK_SIZE * blocks;
+        }
+        else
+    #endif /* HAVE_AES_ECB && !PIC32MZ */
+        {
+            while (blocks--) {
+                IncrementGcmCounter(counter);
+            #if !defined(WOLFSSL_PIC32MZ_CRYPT)
+                ret = wc_AesEcbEncrypt(aes, scratch, counter, WC_AES_BLOCK_SIZE);
+                if (ret != 0)
+                    return ret;
+                xorbufout(p, scratch, c, WC_AES_BLOCK_SIZE);
+            #endif
+                p += WC_AES_BLOCK_SIZE;
+                c += WC_AES_BLOCK_SIZE;
+            }
+        }
+
+        if (partial != 0) {
+            IncrementGcmCounter(counter);
+            ret = wc_AesEcbEncrypt(aes, scratch, counter, WC_AES_BLOCK_SIZE);
+            if (ret != 0)
+                return ret;
+            xorbuf(scratch, c, partial);
+            XMEMCPY(p, scratch, partial);
+        }
+
+    #ifndef WC_AES_GCM_DEC_AUTH_EARLY
+        /* ConstantCompare returns the cumulative bitwise or of the bitwise xor of
+        * the pairwise bytes in the strings.
+        */
+        res = ConstantCompare(authTag, Tprime, (int)authTagSz);
+        /* convert positive retval from ConstantCompare() to all-1s word, in
+        * constant time.
+        */
+        res = 0 - (sword32)(((word32)(0 - res)) >> 31U);
+        /* now use res as a mask for constant time return of ret, unless tag
+        * mismatch, whereupon AES_GCM_AUTH_E is returned.
+        */
+        ret = (ret & ~res) | (res & WC_NO_ERR_TRACE(AES_GCM_AUTH_E));
+    #endif
+        return ret;
+    }
+
+    /* Hardware LS AES - GCM Decrypt */
+    int wc_AesGcmDecrypt(Aes* aes, byte* out, const byte* in, word32 sz,
+                        const byte* iv, word32 ivSz,
+                        const byte* authTag, word32 authTagSz,
+                        const byte* authIn, word32 authInSz)
+    {
+        int ret;
+
+        /* argument checks */
+        /* If the sz is non-zero, both in and out must be set. If sz is 0,
+        * in and out are don't cares, as this is is the GMAC case. */
+        if (aes == NULL || iv == NULL || (sz != 0 && (in == NULL || out == NULL)) ||
+            authTag == NULL || authTagSz > WC_AES_BLOCK_SIZE || authTagSz == 0 ||
+            ivSz == 0) {
+
+            return BAD_FUNC_ARG;
+        }
+
+        VECTOR_REGISTERS_PUSH;
+
+        {
+            ret = AES_GCM_decrypt_C(aes, out, in, sz, iv, ivSz, authTag, authTagSz,
+                                                                authIn, authInSz);
+        }
+
+        VECTOR_REGISTERS_POP;
+
+        return ret;
+    }
+#else
 int WARN_UNUSED_RESULT AES_GCM_decrypt_C(
                       Aes* aes, byte* out, const byte* in, word32 sz,
                       const byte* iv, word32 ivSz,
@@ -9926,6 +10196,7 @@ int wc_AesGcmDecrypt(Aes* aes, byte* out, const byte* in, word32 sz,
 
     return ret;
 }
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 #endif
 #endif /* HAVE_AES_DECRYPT || HAVE_AESGCM_DECRYPT */
 

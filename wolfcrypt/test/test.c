@@ -2310,17 +2310,22 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifdef WOLFSSL_SM4
-#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT
     if ( (ret = sm4_test()) != 0)
-        return err_sys("LS hardware  SM-4  test failed!\n", ret);
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT
+            return err_sys("SM-4 LS hardware   test failed!\n", ret);
+        #else
+            return err_sys("SM-4 software   test failed!\n", ret);
+        #endif
+    }
     else
-        TEST_PASS("LS hardware SM-4     test passed!\n");
-#else
-    if ( (ret = sm4_test()) != 0)
-        return err_sys("SM-4     test failed!\n", ret);
-    else
-        TEST_PASS("SM-4     test passed!\n");
-#endif
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT
+            TEST_PASS("SM-4 LS hardware   test passed!\n");
+        #else
+            TEST_PASS("SM-4 software   test passed!\n");
+        #endif
+    }
 #endif
 
 #if !defined(NO_RSA) && !defined(HAVE_RENESAS_SYNC)

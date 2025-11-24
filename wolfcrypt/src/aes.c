@@ -6792,7 +6792,6 @@ int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz)
                 return BAD_FUNC_ARG;
             }
 
-//  消耗aes->tmp中剩余的任何未使用的字节
             /* consume any unused bytes left in aes->tmp */
             processed = min(aes->left, sz);
             xorbufout(out, in, (byte*)aes->tmp + WC_AES_BLOCK_SIZE - aes->left,
@@ -6810,18 +6809,14 @@ int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz)
                 word32 blocks = sz / WC_AES_BLOCK_SIZE;
                 byte* counter = (byte*)aes->reg;
                 byte* c = out;
-                //预生成计数器序列
                 while (blocks--) {
                     XMEMCPY(c, counter, WC_AES_BLOCK_SIZE);
                     c += WC_AES_BLOCK_SIZE;
                     IncrementAesCounter(counter);
                 }
-//重置区块数量，然后进行加密操作
                 /* reset number of blocks and then do encryption */
                 blocks = sz / WC_AES_BLOCK_SIZE;
-//对counter进行加密
                 wc_AesEcbEncrypt(aes, out, out, WC_AES_BLOCK_SIZE * blocks);
-//out和in异或操作，结果存在out
                 xorbuf(out, in, WC_AES_BLOCK_SIZE * blocks);
                 in += WC_AES_BLOCK_SIZE * blocks;
                 out += WC_AES_BLOCK_SIZE * blocks;
@@ -6830,11 +6825,8 @@ int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz)
             else
         #endif
             {
-    // 尽可能多地执行块大小操作
                 /* do as many block size ops as possible */
                 while (sz >= WC_AES_BLOCK_SIZE) {
-                    printk("尽可能多的执行块大小操作");
-                    // ret = wc_AesEncrypt(aes, (byte*)aes->reg, scratch);
                     ret = wc_AesEcbEncrypt(aes, scratch, (byte*)aes->reg, WC_AES_BLOCK_SIZE);
                     if (ret != 0)
                         break;
@@ -6850,7 +6842,6 @@ int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz)
                 }
                 ForceZero(scratch, WC_AES_BLOCK_SIZE);
             }
-//将未使用的字节数量存储在aes->left
             /* handle non block size remaining and store unused byte count in left */
             if ((ret == 0) && sz) {
                 ret = wc_AesEcbEncrypt(aes, (byte*)aes->tmp, (byte*)aes->reg, WC_AES_BLOCK_SIZE);

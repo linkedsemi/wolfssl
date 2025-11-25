@@ -75,7 +75,7 @@
     #include "reg_sha512_type.h"
     #include <core_rv32.h>
 
-    __attribute__((aligned(32))) static uint32_t buffer[0x20];
+    __attribute__((aligned(4))) static uint32_t buffer[0x20];
     struct k_sem sha384_sha512_sem;
     #define SHA384_SHA512_WAIT_TIMEOUT_MS 100000
     static uint32_t total_cnt;
@@ -124,7 +124,7 @@
         while ((LS_SHA512->STATUS & 0x1) != 0x1) ;
         REG_FIELD_WR(LS_SHA512->CTRL, SHA512_CTRL_BLOCK_NUM, (block_number - 1));
         LS_SHA512->ADDR = addr;
-        assert(((uint32_t)addr % 32) == 0);
+        assert(((uint32_t)addr % 4) == 0);
         csi_dcache_clean_range((uint32_t *)addr, block_number*LS_SHA512_BLOCK_SIZE);
 
         LS_SHA512->INTR_MSK = SHA512_INTR_CALC_END_MASK;

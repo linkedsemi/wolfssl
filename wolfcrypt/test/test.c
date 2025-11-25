@@ -576,7 +576,9 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  md5_test(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  md4_test(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha_test(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha224_test(void);
+WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha224_test_dma(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha256_test(void);
+WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha256_test_dma(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha512_test(void);
 #if !defined(WOLFSSL_NOSHA512_224) && \
    (!defined(HAVE_FIPS) || FIPS_VERSION_GE(5, 3)) && !defined(HAVE_SELFTEST)
@@ -592,6 +594,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  shake128_test(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  shake256_test(void);
 #ifdef WOLFSSL_SM3
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sm3_test(void);
+WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sm3_test_dma(void);
 #endif
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  hash_test(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  hmac_md5_test(void);
@@ -1762,6 +1765,13 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
             TEST_PASS("SHA-224 software   test passed!\n");
         #endif
     }
+
+#if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT && defined(CONFIG_DMA)
+    if ( (ret = sha224_test_dma()) != 0)
+        TEST_FAIL("SHA-224 dma LS hardware   test failed!\n", ret);
+    else
+        TEST_PASS("SHA-224 dma LS hardware   test passed!\n");
+#endif
 #endif
 
 #ifndef NO_SHA256
@@ -1781,6 +1791,13 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
             TEST_PASS("SHA-256 software   test passed!\n");
         #endif
     }
+
+#if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT && defined(CONFIG_DMA)
+    if ( (ret = sha256_test_dma()) != 0)
+        TEST_FAIL("SHA-256 dma LS hardware   test failed!\n", ret);
+    else
+        TEST_PASS("SHA-256 dma LS hardware   test passed!\n");
+#endif
 #endif
 
 #ifdef WOLFSSL_SHA384
@@ -1874,6 +1891,13 @@ else {
             TEST_PASS("SM-3 software   test passed!\n");
         #endif
     }
+
+#if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT && defined(CONFIG_DMA)
+    if ( (ret = sm3_test_dma()) != 0)
+        TEST_FAIL("SM-3 dma LS hardware   test failed!\n", ret);
+    else
+        TEST_PASS("SM-3 dma LS hardware   test passed!\n");
+#endif
 #endif
 
 #ifndef NO_HASH_WRAPPER
@@ -4124,6 +4148,39 @@ exit:
     }
     return ret;
 }
+
+WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha224_test_dma(void)
+{
+    wc_Sha224 sha;
+    byte      hash[WC_SHA224_DIGEST_SIZE];
+    byte      hash_output[WC_SHA224_DIGEST_SIZE] = 
+                {0xF0,0x62,0x1E,0x96,0x01,0xDE,0x98,0xB4,0x8F,0xFF,0xBC,0x7A,0x16,0xFD,
+                 0xF2,0xDE,0xA1,0x48,0xF7,0x49,0x51,0xD5,0xC4,0xEF,0x73,0xA2,0xD6,0x0E};
+    wc_test_ret_t ret = 0;
+
+    WOLFSSL_ENTER("sha224_test_dma");
+
+    #define test_len 16257
+    __attribute__((aligned(32))) uint8_t big_buffer[test_len];
+    memset(big_buffer, 0x2, sizeof(big_buffer));
+
+    ret = wc_InitSha224_ex_dma(&sha, HEAP_HINT, devId);
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+    ret = wc_Sha224Update_dma(&sha, big_buffer, sizeof(big_buffer));
+    if (ret != 0)
+        goto exit;
+    ret = wc_Sha224Final_dma(&sha, hash);
+    if (ret != 0)
+        goto exit;
+
+    if (XMEMCMP(hash, hash_output, WC_SHA224_DIGEST_SIZE) != 0)
+        goto exit;
+
+exit:
+    wc_Sha224Free(&sha);
+    return ret;
+}
 #else
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha224_test(void)
 {
@@ -4278,6 +4335,43 @@ exit:
     {
         wc_Sha256Free(&sha[j]);
     }
+    return ret;
+}
+
+WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha256_test_dma(void)
+{
+    wc_Sha256 sha;
+    byte      hash[WC_SHA256_DIGEST_SIZE];
+    byte      hash_output[WC_SHA256_DIGEST_SIZE] = 
+                 {0x79,0x14,0x3E,0x04,0xBF,0xB7,0x6E,0xCE,0xF7,0xD6,0xDF,0xDF,0x69,0xEB,0x3A,0xD2,
+                  0xDE,0x49,0xA5,0xBC,0x41,0xD0,0x25,0xFC,0x0C,0x5D,0x52,0x30,0x2C,0x46,0xB6,0x7B};
+    wc_test_ret_t ret = 0;
+
+    #define test_len 16257
+    __attribute__((aligned(32))) uint8_t big_buffer[test_len];
+
+    memset(big_buffer, 0x2, sizeof(big_buffer));
+    WOLFSSL_ENTER("sha256_test_dma");
+
+    ret = wc_InitSha256_ex_dma(&sha, HEAP_HINT, devId);
+    if (ret != 0)
+        return WC_TEST_RET_ENC_EC(ret);
+
+    ret = wc_Sha256Update_dma(&sha, big_buffer, sizeof(big_buffer));
+    if (ret != 0) {
+        goto exit;
+    }
+
+    ret = wc_Sha256Final_dma(&sha, hash);
+    if (ret != 0)
+        goto exit;
+
+    if (XMEMCMP(hash, hash_output, WC_SHA256_DIGEST_SIZE) != 0) {
+        goto exit;
+    }
+
+exit:
+    wc_Sha256Free(&sha);
     return ret;
 }
 #else
@@ -6541,6 +6635,38 @@ exit:
          wc_Sha256Free(&sm3[j]);
     }
 
+    return ret;
+}
+
+WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sm3_test_dma(void)
+{
+    wc_Sha256 sm3;
+    byte   hash[WC_SM3_DIGEST_SIZE];
+    uint8_t   hash_output[WC_SM3_DIGEST_SIZE] = 
+                {0xF0,0x69,0x89,0xD9,0xEC,0x31,0xB9,0xD0,0x0C,0x87,0x0A,0x73,0xE7,0xB6,0x76,0x20,
+                 0xEC,0xAC,0xE0,0x39,0x53,0x5A,0x4A,0xBC,0xA2,0x11,0x95,0x9C,0xF1,0xE9,0xCA,0xAA};
+
+    #define test_len 16257
+    __attribute__((aligned(32))) uint8_t big_buffer[test_len];
+
+    memset(big_buffer, 0x2, sizeof(big_buffer));
+    wc_test_ret_t ret = 0;
+    WOLFSSL_ENTER("sm3_test_dma");
+
+    wc_LSSHA_SM3_Init_dma(&sm3.lsCtx);
+
+    ret = wc_LS_Hash_Update_dma(&sm3.lsCtx, big_buffer, sizeof(big_buffer));
+    if (ret != 0) {
+        goto exit;
+    }
+    ret = wc_LS_Hash_Final_dma(&sm3.lsCtx, hash);
+    if (ret != 0)
+        goto exit;
+    /* Check hashes match expected. */
+    if (XMEMCMP(hash, hash_output, WC_SM3_DIGEST_SIZE) != 0)
+        goto exit;
+exit:
+    wc_Sha256Free(&sm3);
     return ret;
 }
 #else

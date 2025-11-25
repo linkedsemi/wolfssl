@@ -102,6 +102,14 @@
 
 #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
+    typedef struct wc_Sha256 wc_Sha224;
+    typedef struct wc_Sha256 wc_Sha256;
+    WOLFSSL_API int wc_InitSha224_ex_dma(wc_Sha224* sha224, void* heap, int devId);
+    WOLFSSL_API int wc_Sha224Update_dma(wc_Sha224* sha224, const byte* data, word32 len);
+    WOLFSSL_API int wc_Sha224Final_dma(wc_Sha224* sha224, byte* hash);
+    WOLFSSL_API int wc_InitSha256_ex_dma(wc_Sha256* sha, void* heap, int devId);
+    WOLFSSL_API int wc_Sha256Update_dma(wc_Sha256* sha, const byte* data, word32 len);
+    WOLFSSL_API int wc_Sha256Final_dma(wc_Sha256* sha256, byte* hash);
 #endif
 
 #if defined(_MSC_VER)

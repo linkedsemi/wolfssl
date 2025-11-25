@@ -1746,31 +1746,41 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifdef WOLFSSL_SHA224
-#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
     if ( (ret = sha224_test()) != 0)
-        TEST_FAIL("LS hardware SHA-224  test failed!\n", ret);
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
+            TEST_FAIL("SHA-224 LS hardware   test failed!\n", ret);
+        #else
+            TEST_FAIL("SHA-224 software   test failed!\n", ret);
+        #endif
+    }
     else
-        TEST_PASS("LS hardware SHA-224  test passed!\n");
-#else
-    if ( (ret = sha224_test()) != 0)
-        TEST_FAIL("SHA-224  test failed!\n", ret);
-    else
-        TEST_PASS("SHA-224  test passed!\n");
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
+            TEST_PASS("SHA-224 LS hardware   test passed!\n");
+        #else
+            TEST_PASS("SHA-224 software   test passed!\n");
+        #endif
+    }
 #endif
 
 #ifndef NO_SHA256
-#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
     if ( (ret = sha256_test()) != 0)
-        TEST_FAIL("LS hardware SHA-256  test failed!\n", ret);
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
+            TEST_FAIL("SHA-256 LS hardware   test failed!\n", ret);
+        #else
+            TEST_FAIL("SHA-256 software   test failed!\n", ret);
+        #endif
+    }
     else
-        TEST_PASS("LS hardware SHA-256  test passed!\n");
-#else
-    if ( (ret = sha256_test()) != 0)
-        TEST_FAIL("SHA-256  test failed!\n", ret);
-    else
-        TEST_PASS("SHA-256  test passed!\n");
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
+            TEST_PASS("SHA-256 LS hardware   test passed!\n");
+        #else
+            TEST_PASS("SHA-256 software   test passed!\n");
+        #endif
+    }
 #endif
 
 #ifdef WOLFSSL_SHA384
@@ -1848,17 +1858,22 @@ else {
 #endif
 
 #ifdef WOLFSSL_SM3
-#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
     if ( (ret = sm3_test()) != 0)
-        return err_sys("LS hardware SM-3     test failed!\n", ret);
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
+            return err_sys("SM-3 LS hardware   test failed!\n", ret);
+        #else
+            return err_sys("SM-3 software   test failed!\n", ret);
+        #endif
+    }
     else
-        TEST_PASS("LS hardware SM-3     test passed!\n");
-#else
-    if ( (ret = sm3_test()) != 0)
-        return err_sys("SM-3     test failed!\n", ret);
-    else
-        TEST_PASS("SM-3     test passed!\n");
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT
+            TEST_PASS("SM-3 LS hardware   test passed!\n");
+        #else
+            TEST_PASS("SM-3 software   test passed!\n");
+        #endif
+    }
 #endif
 
 #ifndef NO_HASH_WRAPPER

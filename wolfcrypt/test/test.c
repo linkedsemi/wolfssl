@@ -1774,35 +1774,39 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #endif
 
 #ifdef WOLFSSL_SHA384
-#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT
     if ( (ret = sha384_test()) != 0)
-        TEST_FAIL("LS hardware SHA-384  test failed!\n", ret);
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT
+            TEST_FAIL("SHA-384 LS hardware   test failed!\n", ret);
+        #else
+            TEST_FAIL("SHA-384 software   test failed!\n", ret);
+        #endif
+    }
     else
-        TEST_PASS("LS hardware SHA-384  test passed!\n");
-#else
-    if ( (ret = sha384_test()) != 0)
-        TEST_FAIL("SHA-384  test failed!\n", ret);
-    else
-        TEST_PASS("SHA-384  test passed!\n");
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT */
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT
+            TEST_PASS("SHA-384 LS hardware   test passed!\n");
+        #else
+            TEST_PASS("SHA-384 software   test passed!\n");
+        #endif
+    }
 #endif
 
 #ifdef WOLFSSL_SHA512
-#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT
-    if ((ret = sha512_test()) != 0) {
-        TEST_FAIL("LS hardware SHA-512  test failed!\n", ret);
-    }
-    else {
-        TEST_PASS("LS hardware SHA-512  test passed!\n");
-    }
-#else
-    if ((ret = sha512_test()) != 0) {
-        TEST_FAIL("SHA-512  test failed!\n", ret);
-    }
-    else {
-        TEST_PASS("SHA-512  test passed!\n");
-    }
-
+if ((ret = sha512_test()) != 0) {
+    #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT
+        TEST_FAIL("SHA-512 LS hardware   test failed!\n", ret);
+    #else
+        TEST_FAIL("SHA-512 software   test failed!\n", ret);
+    #endif
+}
+else {
+    #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT
+        TEST_PASS("SHA-512 LS hardware   test passed!\n");
+    #else
+        TEST_PASS("SHA-512 software test passed!\n");
+    #endif
+}
 #if !defined(WOLFSSL_NOSHA512_224) && \
    (!defined(HAVE_FIPS) || FIPS_VERSION_GE(5, 3)) && !defined(HAVE_SELFTEST)
     if ((ret = sha512_224_test()) != 0) {
@@ -1820,8 +1824,6 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
     else
         TEST_PASS("SHA-512/256  test passed!\n");
 #endif /* !defined(WOLFSSL_NOSHA512_256) & !FIPS ... */
-
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT */
 #endif /* WOLFSSL_SHA512 */
 
 #ifdef WOLFSSL_SHA3

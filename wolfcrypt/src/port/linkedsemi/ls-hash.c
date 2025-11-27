@@ -4,7 +4,7 @@
 #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
 #include <stdio.h>
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT) || defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT) || defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
     #include "qsh.h"
     int fflush(FILE *stream)
     {
@@ -17,7 +17,7 @@
 
 #endif
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
     struct k_sem dma_sem;
     struct k_sem sha224_sha256_sm3_sem;
     void LSSHA224_SHA256_SM3_IRQHandler(void);
@@ -75,9 +75,9 @@
         wc_UnLockMutex(&doneLock);
         return ret;
     }
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT */
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT) && defined(CONFIG_DMA)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT) && defined(CONFIG_DMA)
     #include <zephyr/drivers/dma.h>
     #include <zephyr/drivers/dma/dma_dw.h>
     #include <soc_dma.h>
@@ -366,7 +366,7 @@
     }
 #endif /*CONFIG_MBEDTLS_SHA224_SHA256_SM3_LINKEDSEMI_HARDWARE_ALT && CONFIG_DMA */
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
     #include "field_manipulate.h"
     #include <zephyr/cache.h>
     #include "reg_sha512_type.h"
@@ -525,4 +525,4 @@
         lsCtx->start_calc_symbol = false;
         wc_UnLockMutex(&doneLock);
     }
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT */

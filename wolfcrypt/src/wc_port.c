@@ -36,7 +36,7 @@
     #include <wolfssl/wolfcrypt/async.h>
 #endif
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT) || defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT) || defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
 #endif
 
@@ -175,11 +175,11 @@ int wolfCrypt_Init(void)
     if (initRefCount == 0) {
         WOLFSSL_ENTER("wolfCrypt_Init");
     
-    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
+    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
         wc_LS_Hash_Init();
     #endif
 
-    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
+    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
         wc_LS_Hash_sha512_Init();
     #endif
 

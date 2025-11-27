@@ -227,7 +227,7 @@ on the specific device platform.
       !defined(WOLFSSL_RENESAS_RSIP)) \
       || defined(NO_WOLFSSL_RENESAS_FSPSM_HASH)) && \
     (!defined(WOLFSSL_HAVE_PSA) || defined(WOLFSSL_PSA_NO_HASH)) && \
-    !defined(WOLFSSL_RENESAS_RX64_HASH) && (!defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT))
+    !defined(WOLFSSL_RENESAS_RX64_HASH) && (!defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT))
 
 #if defined(WOLFSSL_X86_64_BUILD) && defined(USE_INTEL_SPEEDUP) && \
     (defined(HAVE_INTEL_AVX1) || defined(HAVE_INTEL_AVX2))
@@ -1069,7 +1069,7 @@ static int InitSha256(wc_Sha256* sha256)
 #elif defined(WOLFSSL_RENESAS_RX64_HASH)
 
     /* implemented in wolfcrypt/src/port/Renesas/renesas_rx64_hw_sha.c */
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
 int wc_InitSha256_ex(wc_Sha256* sha256, void* heap, int devId)
     {
         if (sha256 == NULL)
@@ -2096,7 +2096,7 @@ static int Transform_Sha256(wc_Sha256* sha256, const byte* data)
 
     /* implemented in wolfcrypt/src/port/Renesas/renesas_fspsm_sha.c */
 
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
     int wc_InitSha224_ex(wc_Sha224* sha224, void* heap, int devId)
     {
         if (sha224 == NULL)

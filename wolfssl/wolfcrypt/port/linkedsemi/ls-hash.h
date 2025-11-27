@@ -3,13 +3,13 @@
 #include <stdlib.h>
 #include <reg_sha_type.h>
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT) || defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT) || defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
     typedef struct {
         bool start_calc_symbol;
     } LS_HASH_Context;
 #endif
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
     #include <ls_msp_sha.h>
     #include <ls_hal_sha.h>
     /* API's */
@@ -26,9 +26,9 @@
     int wc_LS_Hash_Update_dma(LS_HASH_Context* lsCtx, const uint8_t *input, uint32_t ilen);
     int wc_LS_Hash_Final_dma(LS_HASH_Context* lsCtx, uint8_t *output);
 #endif
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_HASH_ALT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT */
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
     #include <ls_msp_sha512.h>
     #include <ls_hal_sha512.h>
     void wc_LS_Hash_sha512_Init();
@@ -36,6 +36,6 @@
     void wc_LSSHA_SHA384_Init(LS_HASH_Context* lsCtx);
     void wc_LS_Hash_SHA512_Update(LS_HASH_Context* lsCtx, uint32_t *addr, uint32_t length);
     void wc_LS_Hash_SHA512_Final(LS_HASH_Context* lsCtx, uint8_t *digest);
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA512_ALT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT */
 
 #endif

@@ -198,6 +198,8 @@ extern "C" {
 #undef WOLFSSL_AES_COUNTER
 #define WOLFSSL_AES_COUNTER
 
+#undef WOLFSSL_AES_DIRECT
+#define WOLFSSL_AES_DIRECT
 
 #define DEBUG_WOLFSSL
 #ifdef __cplusplus

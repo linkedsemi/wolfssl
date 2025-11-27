@@ -6434,18 +6434,6 @@ int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz)
                 return BAD_FUNC_ARG;
             }
 
-        #ifdef WOLF_CRYPTO_CB
-            #ifndef WOLF_CRYPTO_CB_FIND
-            if (aes->devId != INVALID_DEVID)
-            #endif
-            {
-                int crypto_cb_ret = wc_CryptoCb_AesCtrEncrypt(aes, out, in, sz);
-                if (crypto_cb_ret != WC_NO_ERR_TRACE(CRYPTOCB_UNAVAILABLE))
-                    return crypto_cb_ret;
-                /* fall-through when unavailable */
-            }
-        #endif
-
             /* consume any unused bytes left in aes->tmp */
             tmp = (byte*)aes->tmp + WC_AES_BLOCK_SIZE - aes->left;
             while (aes->left && sz) {
@@ -6522,6 +6510,18 @@ int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz)
             if (aes == NULL || out == NULL || in == NULL) {
                 return BAD_FUNC_ARG;
             }
+
+        #ifdef WOLF_CRYPTO_CB
+            #ifndef WOLF_CRYPTO_CB_FIND
+            if (aes->devId != INVALID_DEVID)
+            #endif
+            {
+                int crypto_cb_ret = wc_CryptoCb_AesCtrEncrypt(aes, out, in, sz);
+                if (crypto_cb_ret != WC_NO_ERR_TRACE(CRYPTOCB_UNAVAILABLE))
+                    return crypto_cb_ret;
+                /* fall-through when unavailable */
+            }
+        #endif
 
             /* consume any unused bytes left in aes->tmp */
             processed = min(aes->left, sz);

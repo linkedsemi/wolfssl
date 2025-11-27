@@ -4206,52 +4206,39 @@ static WARN_UNUSED_RESULT int wc_AesDecrypt(
         aes->rounds = keylen/4 + 6;
         uint8_t keysize = 0;
         uint32_t *u32_key = (uint32_t *)userKey;
-        uint32_t *ending_u32_key = malloc(32);
-        uint32_t *initial_key = ending_u32_key;
-
-        if (ending_u32_key == NULL) 
-            return -1;
 
         do{
-            *ending_u32_key++ = __builtin_bswap32(*u32_key++);
-            *ending_u32_key++ = __builtin_bswap32(*u32_key++);
-            *ending_u32_key++ = __builtin_bswap32(*u32_key++);
-            *ending_u32_key++ = __builtin_bswap32(*u32_key++);
             if(keylen == 16)
             {
                 keysize = AES_KEY_128;
-                LSCRYPT->KEY3 = *initial_key++;
-                LSCRYPT->KEY2 = *initial_key++;
-                LSCRYPT->KEY1 = *initial_key++;
-                LSCRYPT->KEY0 = *initial_key++;
+                LSCRYPT->KEY3 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY2 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY1 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY0 = __builtin_bswap32(*u32_key++);
                 break;
             }
-            *ending_u32_key++ = __builtin_bswap32(*u32_key++);
-            *ending_u32_key++ = __builtin_bswap32(*u32_key++);
             if(keylen == 24)
             {
                 keysize = AES_KEY_192;
-                LSCRYPT->KEY5 = *initial_key++;
-                LSCRYPT->KEY4 = *initial_key++;
-                LSCRYPT->KEY3 = *initial_key++;
-                LSCRYPT->KEY2 = *initial_key++;
-                LSCRYPT->KEY1 = *initial_key++;
-                LSCRYPT->KEY0 = *initial_key++;
+                LSCRYPT->KEY5 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY4 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY3 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY2 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY1 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY0 = __builtin_bswap32(*u32_key++);
                 break;
             }
-            *ending_u32_key++ = __builtin_bswap32(*u32_key++);
-            *ending_u32_key++ = __builtin_bswap32(*u32_key++);
             if(keylen == 32)
             {
                 keysize = AES_KEY_256;
-                LSCRYPT->KEY7 = *initial_key++;
-                LSCRYPT->KEY6 = *initial_key++;
-                LSCRYPT->KEY5 = *initial_key++;
-                LSCRYPT->KEY4 = *initial_key++;
-                LSCRYPT->KEY3 = *initial_key++;
-                LSCRYPT->KEY2 = *initial_key++;
-                LSCRYPT->KEY1 = *initial_key++;
-                LSCRYPT->KEY0 = *initial_key++;
+                LSCRYPT->KEY7 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY6 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY5 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY4 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY3 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY2 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY1 = __builtin_bswap32(*u32_key++);
+                LSCRYPT->KEY0 = __builtin_bswap32(*u32_key++);
                 break;
             }
         }while(0);
@@ -4920,21 +4907,10 @@ static void AesSetKey_C(Aes* aes, const byte* key, word32 keySz, int dir)
         if (iv)
         {
             uint32_t *u32_iv = (uint32_t *)iv;
-            uint32_t *ending_u32_iv = malloc(32);
-            uint32_t *initial_iv = ending_u32_iv;
-
-            if (ending_u32_iv == NULL) 
-                return -1;
-
-            *ending_u32_iv++ = __builtin_bswap32(*u32_iv++);
-            *ending_u32_iv++ = __builtin_bswap32(*u32_iv++);
-            *ending_u32_iv++ = __builtin_bswap32(*u32_iv++);
-            *ending_u32_iv++ = __builtin_bswap32(*u32_iv++);
-
-            LSCRYPT->IVR3 = *initial_iv++;
-            LSCRYPT->IVR2 = *initial_iv++;
-            LSCRYPT->IVR1 = *initial_iv++;
-            LSCRYPT->IVR0 = *initial_iv++;
+            LSCRYPT->IVR3 = __builtin_bswap32(*u32_iv++);
+            LSCRYPT->IVR2 = __builtin_bswap32(*u32_iv++);
+            LSCRYPT->IVR1 = __builtin_bswap32(*u32_iv++);
+            LSCRYPT->IVR0 = __builtin_bswap32(*u32_iv++);
         }
         return 0;
     }

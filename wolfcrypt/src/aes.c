@@ -6434,6 +6434,18 @@ int wc_AesCbcEncrypt(Aes* aes, byte* out, const byte* in, word32 sz)
                 return BAD_FUNC_ARG;
             }
 
+        #ifdef WOLF_CRYPTO_CB
+            #ifndef WOLF_CRYPTO_CB_FIND
+            if (aes->devId != INVALID_DEVID)
+            #endif
+            {
+                int crypto_cb_ret = wc_CryptoCb_AesCtrEncrypt(aes, out, in, sz);
+                if (crypto_cb_ret != WC_NO_ERR_TRACE(CRYPTOCB_UNAVAILABLE))
+                    return crypto_cb_ret;
+                /* fall-through when unavailable */
+            }
+        #endif
+
             /* consume any unused bytes left in aes->tmp */
             tmp = (byte*)aes->tmp + WC_AES_BLOCK_SIZE - aes->left;
             while (aes->left && sz) {
@@ -6643,7 +6655,7 @@ static WC_INLINE void IncCtr(byte* ctr, word32 ctrSz)
 #endif /* HAVE_AESGCM || HAVE_AESCCM */
 
 
-#if defined(HAVE_AESGCM)
+#ifdef HAVE_AESGCM
 
 #ifdef WOLFSSL_AESGCM_STREAM
     /* Access initialization counter data. */
@@ -9261,7 +9273,6 @@ int WARN_UNUSED_RESULT AES_GCM_decrypt_C(
 #else
 static
 #endif
-
 int WARN_UNUSED_RESULT AES_GCM_decrypt_C(
                       Aes* aes, byte* out, const byte* in, word32 sz,
                       const byte* iv, word32 ivSz,

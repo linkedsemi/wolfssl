@@ -4901,7 +4901,12 @@ static void AesSetKey_C(Aes* aes, const byte* key, word32 keySz, int dir)
             return BAD_FUNC_ARG;
 
         /* Clear any unused bytes from last cipher op. */
+#if defined(WOLFSSL_AES_COUNTER) || defined(WOLFSSL_AES_CFB) || \
+    defined(WOLFSSL_AES_OFB) || defined(WOLFSSL_AES_XTS) || \
+    defined(WOLFSSL_AES_CTS)
         aes->left = 0;
+#endif
+
     #ifdef WC_DEBUG_CIPHER_LIFECYCLE
         {
             int ret = wc_debug_CipherLifecycleCheck(aes->CipherLifecycleTag, 0);

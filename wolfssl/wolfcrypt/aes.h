@@ -160,8 +160,6 @@ WOLFSSL_LOCAL void GHASH(Gcm* gcm, const byte* a, word32 aSz, const byte* c,
     #include <reg_crypt_type.h>
     #include <field_manipulate.h>
     typedef struct Aes Aes;
-    WOLFSSL_API int wc_AesSetKeyDirect(Aes* aes, const byte* key, word32 len,
-                                const byte* iv, int dir);
 #endif
 
 

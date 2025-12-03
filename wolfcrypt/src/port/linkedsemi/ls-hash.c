@@ -1,17 +1,10 @@
 #include <wolfssl/wolfcrypt/settings.h>
-#include <tests/unit.h>
 #include <wolfssl/wolfcrypt/types.h>
 #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
 #include <stdio.h>
 
 #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT) || defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
     #include "qsh.h"
-    int fflush(FILE *stream)
-    {
-        ARG_UNUSED(stream);
-        return 0;
-    }
-
     static wolfSSL_Mutex doneLock;
     static LS_HASH_Context* ls_sha_ctx = NULL;
 
@@ -60,7 +53,7 @@
             ls_sha_ctx = lsCtx;
             lsCtx->start_calc_symbol = true;
         }
-        AssertIntEQ(ls_sha_ctx, lsCtx);
+        __ASSERT_NO_MSG(ls_sha_ctx == lsCtx);
         ret = HAL_LSSHA_Update(data, length);
         return ret;
     }
@@ -68,7 +61,7 @@
     int wc_LS_Hash_Final(LS_HASH_Context* lsCtx, uint8_t *digest)
     {
         int ret = 0;
-        AssertIntEQ(ls_sha_ctx, lsCtx);
+        __ASSERT_NO_MSG(ls_sha_ctx == lsCtx);
         ret = HAL_LSSHA_Final(digest);
         ls_sha_ctx = NULL;
         lsCtx->start_calc_symbol = false;
@@ -286,7 +279,7 @@
             ls_sha_ctx = lsCtx;
             lsCtx->start_calc_symbol = true;
         }
-        AssertIntEQ(ls_sha_ctx, lsCtx);
+        __ASSERT_NO_MSG(ls_sha_ctx == lsCtx);
 
         uint32_t trans_count = ilen / SHA224_SHA256_SM3_DMA_MAX_BYTES;
         uint32_t dma_calc_bytes;
@@ -357,7 +350,7 @@
     int wc_LS_Hash_Final_dma(LS_HASH_Context* lsCtx, uint8_t *output)
     {
         int ret = 0;
-        AssertIntEQ(ls_sha_ctx, lsCtx);
+        __ASSERT_NO_MSG(ls_sha_ctx == lsCtx);
         ret = LSSHA_Final(output);
         ls_sha_ctx = NULL;
         lsCtx->start_calc_symbol = false;
@@ -421,7 +414,7 @@
         while ((LS_SHA512->STATUS & 0x1) != 0x1) ;
         REG_FIELD_WR(LS_SHA512->CTRL, SHA512_CTRL_BLOCK_NUM, (block_number - 1));
         LS_SHA512->ADDR = addr;
-        assert(((uint32_t)addr % 4) == 0);
+        __ASSERT_NO_MSG(((uint32_t)addr % 4) == 0);
         csi_dcache_clean_range((uint32_t *)addr, block_number*LS_SHA512_BLOCK_SIZE);
 
         LS_SHA512->INTR_MSK = SHA512_INTR_CALC_END_MASK;
@@ -449,8 +442,8 @@
             ls_sha_ctx = lsCtx;
             lsCtx->start_calc_symbol = true;
         }
-        AssertIntEQ(ls_sha_ctx, lsCtx);
-        assert(((uint32_t)addr % 4) == 0);
+        __ASSERT_NO_MSG(ls_sha_ctx == lsCtx);
+        __ASSERT_NO_MSG(((uint32_t)addr % 4) == 0);
         uint8_t *msg = (uint8_t *)addr;
         total_cnt += length;
 
@@ -483,7 +476,7 @@
 
     void wc_LS_Hash_SHA512_Final(LS_HASH_Context* lsCtx, uint8_t *digest)
     {
-        AssertIntEQ(ls_sha_ctx, lsCtx);
+        __ASSERT_NO_MSG(ls_sha_ctx == lsCtx);
         uint8_t *p_buffer=(uint8_t *)buffer;
         uint64_t bit_cnt = total_cnt * 8;
         p_buffer[buffer_idx++] = 0x80;

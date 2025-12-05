@@ -1,12 +1,12 @@
 /* dilithium.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -117,6 +117,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define DILITHIUM_LEVEL2_PUB_KEY_DER_SIZE 1334
 #define DILITHIUM_LEVEL2_PRV_KEY_DER_SIZE 2588
+#define DILITHIUM_LEVEL2_BOTH_KEY_DER_SIZE 3904
+/* PEM size with the header "-----BEGIN PRIVATE KEY-----" and
+ * the footer "-----END PRIVATE KEY-----" */
+#define DILITHIUM_LEVEL2_BOTH_KEY_PEM_SIZE 5344
 
 #define DILITHIUM_LEVEL3_KEY_SIZE       4032
 #define DILITHIUM_LEVEL3_SIG_SIZE       3309
@@ -126,7 +130,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define DILITHIUM_LEVEL3_PUB_KEY_DER_SIZE 1974
 #define DILITHIUM_LEVEL3_PRV_KEY_DER_SIZE 4060
-
+#define DILITHIUM_LEVEL3_BOTH_KEY_DER_SIZE 6016
+/* PEM size with the header "-----BEGIN PRIVATE KEY-----" and
+ * the footer "-----END PRIVATE KEY-----" */
+#define DILITHIUM_LEVEL3_BOTH_KEY_PEM_SIZE 8204
 
 #define DILITHIUM_LEVEL5_KEY_SIZE       4896
 #define DILITHIUM_LEVEL5_SIG_SIZE       4627
@@ -136,6 +143,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define DILITHIUM_LEVEL5_PUB_KEY_DER_SIZE 2614
 #define DILITHIUM_LEVEL5_PRV_KEY_DER_SIZE 4924
+#define DILITHIUM_LEVEL5_BOTH_KEY_DER_SIZE 7520
+/* PEM size with the header "-----BEGIN ML_DSA_LEVEL5 PRIVATE KEY-----" and
+ * the footer "-----END ML_DSA_LEVEL5 PRIVATE KEY-----" */
+#define DILITHIUM_LEVEL5_BOTH_KEY_PEM_SIZE 10267
 
 #define ML_DSA_LEVEL2_KEY_SIZE          2560
 #define ML_DSA_LEVEL2_SIG_SIZE          2420
@@ -145,6 +156,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define ML_DSA_LEVEL2_PUB_KEY_DER_SIZE DILITHIUM_LEVEL2_PUB_KEY_DER_SIZE
 #define ML_DSA_LEVEL2_PRV_KEY_DER_SIZE DILITHIUM_LEVEL2_PRV_KEY_DER_SIZE
+#define ML_DSA_LEVEL2_BOTH_KEY_DER_SIZE DILITHIUM_LEVEL2_BOTH_KEY_DER_SIZE
+/* PEM size with the header "-----BEGIN PRIVATE KEY-----" and
+ * the footer "-----END PRIVATE KEY-----" */
+#define ML_DSA_LEVEL2_BOTH_KEY_PEM_SIZE DILITHIUM_LEVEL2_BOTH_KEY_PEM_SIZE
 
 #define ML_DSA_LEVEL3_KEY_SIZE          4032
 #define ML_DSA_LEVEL3_SIG_SIZE          3309
@@ -154,6 +169,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define ML_DSA_LEVEL3_PUB_KEY_DER_SIZE DILITHIUM_LEVEL3_PUB_KEY_DER_SIZE
 #define ML_DSA_LEVEL3_PRV_KEY_DER_SIZE DILITHIUM_LEVEL3_PRV_KEY_DER_SIZE
+#define ML_DSA_LEVEL3_BOTH_KEY_DER_SIZE DILITHIUM_LEVEL3_BOTH_KEY_DER_SIZE
+/* PEM size with the header "-----BEGIN PRIVATE KEY-----" and
+ * the footer "-----END PRIVATE KEY-----" */
+#define ML_DSA_LEVEL3_BOTH_KEY_PEM_SIZE DILITHIUM_LEVEL3_BOTH_KEY_PEM_SIZE
 
 #define ML_DSA_LEVEL5_KEY_SIZE          4896
 #define ML_DSA_LEVEL5_SIG_SIZE          4627
@@ -163,6 +182,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define ML_DSA_LEVEL5_PUB_KEY_DER_SIZE DILITHIUM_LEVEL5_PUB_KEY_DER_SIZE
 #define ML_DSA_LEVEL5_PRV_KEY_DER_SIZE DILITHIUM_LEVEL5_PRV_KEY_DER_SIZE
+#define ML_DSA_LEVEL5_BOTH_KEY_DER_SIZE DILITHIUM_LEVEL5_BOTH_KEY_DER_SIZE
+/* PEM size with the header "-----BEGIN ML_DSA_LEVEL5 PRIVATE KEY-----" and
+ * the footer "-----END ML_DSA_LEVEL5 PRIVATE KEY-----" */
+#define ML_DSA_LEVEL5_BOTH_KEY_PEM_SIZE DILITHIUM_LEVEL5_BOTH_KEY_PEM_SIZE
 
 
 
@@ -524,6 +547,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define DILITHIUM_LEVEL2_PUB_KEY_DER_SIZE 1334
 #define DILITHIUM_LEVEL2_PRV_KEY_DER_SIZE 2588
+#define DILITHIUM_LEVEL2_BOTH_KEY_DER_SIZE 3904
+/* PEM size with the header "-----BEGIN PRIVATE KEY-----" and
+ * the footer "-----END PRIVATE KEY-----" */
+#define DILITHIUM_LEVEL2_BOTH_KEY_PEM_SIZE 5344
 
 #define DILITHIUM_LEVEL3_KEY_SIZE     OQS_SIG_ml_dsa_65_ipd_length_secret_key
 #define DILITHIUM_LEVEL3_SIG_SIZE     OQS_SIG_ml_dsa_65_ipd_length_signature
@@ -533,6 +560,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define DILITHIUM_LEVEL3_PUB_KEY_DER_SIZE 1974
 #define DILITHIUM_LEVEL3_PRV_KEY_DER_SIZE 4060
+#define DILITHIUM_LEVEL3_BOTH_KEY_DER_SIZE 6016
+/* PEM size with the header "-----BEGIN PRIVATE KEY-----" and
+ * the footer "-----END PRIVATE KEY-----" */
+#define DILITHIUM_LEVEL3_BOTH_KEY_PEM_SIZE 8204
 
 #define DILITHIUM_LEVEL5_KEY_SIZE     OQS_SIG_ml_dsa_87_ipd_length_secret_key
 #define DILITHIUM_LEVEL5_SIG_SIZE     OQS_SIG_ml_dsa_87_ipd_length_signature
@@ -542,7 +573,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define DILITHIUM_LEVEL5_PUB_KEY_DER_SIZE 2614
 #define DILITHIUM_LEVEL5_PRV_KEY_DER_SIZE 4924
-
+#define DILITHIUM_LEVEL5_BOTH_KEY_DER_SIZE 7520
+/* PEM size with the header "-----BEGIN ML_DSA_LEVEL5 PRIVATE KEY-----" and
+ * the footer "-----END ML_DSA_LEVEL5 PRIVATE KEY-----" */
+#define DILITHIUM_LEVEL5_BOTH_KEY_PEM_SIZE 10267
 
 #define ML_DSA_LEVEL2_KEY_SIZE        OQS_SIG_ml_dsa_44_ipd_length_secret_key
 #define ML_DSA_LEVEL2_SIG_SIZE        OQS_SIG_ml_dsa_44_ipd_length_signature
@@ -552,6 +586,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define ML_DSA_LEVEL2_PUB_KEY_DER_SIZE DILITHIUM_LEVEL2_PUB_KEY_DER_SIZE
 #define ML_DSA_LEVEL2_PRV_KEY_DER_SIZE DILITHIUM_LEVEL2_PRV_KEY_DER_SIZE
+#define ML_DSA_LEVEL2_BOTH_KEY_DER_SIZE DILITHIUM_LEVEL2_BOTH_KEY_DER_SIZE
+/* PEM size with the header "-----BEGIN PRIVATE KEY-----" and
+ * the footer "-----END PRIVATE KEY-----" */
+#define ML_DSA_LEVEL2_BOTH_KEY_PEM_SIZE DILITHIUM_LEVEL2_BOTH_KEY_PEM_SIZE
 
 #define ML_DSA_LEVEL3_KEY_SIZE        OQS_SIG_ml_dsa_65_ipd_length_secret_key
 #define ML_DSA_LEVEL3_SIG_SIZE        OQS_SIG_ml_dsa_65_ipd_length_signature
@@ -561,6 +599,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define ML_DSA_LEVEL3_PUB_KEY_DER_SIZE DILITHIUM_LEVEL3_PUB_KEY_DER_SIZE
 #define ML_DSA_LEVEL3_PRV_KEY_DER_SIZE DILITHIUM_LEVEL3_PRV_KEY_DER_SIZE
+#define ML_DSA_LEVEL3_BOTH_KEY_DER_SIZE DILITHIUM_LEVEL3_BOTH_KEY_DER_SIZE
+/* PEM size with the header "-----BEGIN PRIVATE KEY-----" and
+ * the footer "-----END PRIVATE KEY-----" */
+#define ML_DSA_LEVEL3_BOTH_KEY_PEM_SIZE DILITHIUM_LEVEL3_BOTH_KEY_PEM_SIZE
 
 #define ML_DSA_LEVEL5_KEY_SIZE        OQS_SIG_ml_dsa_87_ipd_length_secret_key
 #define ML_DSA_LEVEL5_SIG_SIZE        OQS_SIG_ml_dsa_87_ipd_length_signature
@@ -570,6 +612,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define ML_DSA_LEVEL5_PUB_KEY_DER_SIZE DILITHIUM_LEVEL5_PUB_KEY_DER_SIZE
 #define ML_DSA_LEVEL5_PRV_KEY_DER_SIZE DILITHIUM_LEVEL5_PRV_KEY_DER_SIZE
+#define ML_DSA_LEVEL5_BOTH_KEY_DER_SIZE DILITHIUM_LEVEL5_BOTH_KEY_DER_SIZE
+/* PEM size with the header "-----BEGIN ML_DSA_LEVEL5 PRIVATE KEY-----" and
+ * the footer "-----END ML_DSA_LEVEL5 PRIVATE KEY-----" */
+#define ML_DSA_LEVEL5_BOTH_KEY_PEM_SIZE DILITHIUM_LEVEL5_BOTH_KEY_PEM_SIZE
 
 #endif
 
@@ -580,6 +626,10 @@
 /* Buffer sizes large enough to store exported DER encoded keys */
 #define DILITHIUM_MAX_PUB_KEY_DER_SIZE DILITHIUM_LEVEL5_PUB_KEY_DER_SIZE
 #define DILITHIUM_MAX_PRV_KEY_DER_SIZE DILITHIUM_LEVEL5_PRV_KEY_DER_SIZE
+#define DILITHIUM_MAX_BOTH_KEY_DER_SIZE DILITHIUM_LEVEL5_BOTH_KEY_DER_SIZE
+/* PEM size with the header "-----BEGIN ML_DSA_LEVEL5 PRIVATE KEY-----" and
+ * the footer "-----END ML_DSA_LEVEL5 PRIVATE KEY-----" */
+#define DILITHIUM_MAX_BOTH_KEY_PEM_SIZE DILITHIUM_LEVEL5_BOTH_KEY_PEM_SIZE
 
 
 #ifdef WOLF_PRIVATE_KEY_ID
@@ -601,7 +651,7 @@ typedef struct wc_dilithium_params {
     byte omega;
     word16 lambda;
     byte gamma1_bits;
-    word32 gamma2;
+    sword32 gamma2;
     word32 w1EncSz;
     word16 aSz;
     word16 s1Sz;
@@ -814,6 +864,10 @@ int wc_dilithium_export_key(dilithium_key* key, byte* priv, word32 *privSz,
 #endif
 
 #ifndef WOLFSSL_DILITHIUM_NO_ASN1
+WOLFSSL_LOCAL int dilithium_get_oid_sum(dilithium_key* key, int* keyFormat);
+#endif /* WOLFSSL_DILITHIUM_NO_ASN1 */
+
+#ifndef WOLFSSL_DILITHIUM_NO_ASN1
 #if defined(WOLFSSL_DILITHIUM_PRIVATE_KEY)
 WOLFSSL_API int wc_Dilithium_PrivateKeyDecode(const byte* input,
     word32* inOutIdx, dilithium_key* key, word32 inSz);
@@ -893,6 +947,13 @@ WOLFSSL_API int wc_Dilithium_PrivateKeyToDer(dilithium_key* key, byte* output,
     wc_dilithium_import_public(in, inLen, key)
 #define wc_MlDsaKey_Verify(key, sig, sigSz, msg, msgSz, res)    \
     wc_dilithium_verify_msg(sig, sigSz, msg, msgSz, res, key)
+
+#define wc_MlDsaKey_PublicKeyToDer(key, output, len, withAlg)   \
+    wc_Dilithium_PublicKeyToDer(key, output, len, withAlg)
+
+#define wc_MlDsaKey_PrivateKeyToDer(key, output, len)           \
+    wc_Dilithium_PrivateKeyToDer(key, output, len)
+
 
 WOLFSSL_API int wc_MlDsaKey_GetPrivLen(MlDsaKey* key, int* len);
 WOLFSSL_API int wc_MlDsaKey_GetPubLen(MlDsaKey* key, int* len);

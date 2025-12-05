@@ -1,12 +1,12 @@
 ; /* chacha_asm.asm */
 ; /*
-;  * Copyright (C) 2006-2024 wolfSSL Inc.
+; * Copyright (C) 2006-2025 wolfSSL Inc.
 ;  *
 ;  * This file is part of wolfSSL.
 ;  *
 ;  * wolfSSL is free software; you can redistribute it and/or modify
 ;  * it under the terms of the GNU General Public License as published by
-;  * the Free Software Foundation; either version 2 of the License, or
+;  * the Free Software Foundation; either version 3 of the License, or
 ;  * (at your option) any later version.
 ;  *
 ;  * wolfSSL is distributed in the hope that it will be useful,
@@ -990,7 +990,6 @@ L_chacha20_avx1_partial_end64:
         sub	r10d, r13d
         mov	DWORD PTR [rcx+76], r10d
 L_chacha20_avx1_partial_done:
-        vzeroupper
         vmovdqu	xmm6, OWORD PTR [rsp+400]
         vmovdqu	xmm7, OWORD PTR [rsp+416]
         vmovdqu	xmm8, OWORD PTR [rsp+432]

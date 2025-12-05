@@ -1,12 +1,12 @@
 /* wc_pkcs11.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,11 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #ifdef HAVE_PKCS11
 
@@ -32,9 +28,7 @@
 #endif
 
 #include <wolfssl/wolfcrypt/wc_pkcs11.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/asn.h>
-#include <wolfssl/wolfcrypt/logging.h>
 #ifndef NO_RSA
     #include <wolfssl/wolfcrypt/rsa.h>
 #endif
@@ -107,6 +101,8 @@ static CK_OBJECT_CLASS privKeyClass    = CKO_PRIVATE_KEY;
 /* Pointer to secret key class required for templates. */
 static CK_OBJECT_CLASS secretKeyClass  = CKO_SECRET_KEY;
 #endif
+
+static CK_OBJECT_CLASS certClass  = CKO_CERTIFICATE;
 
 #ifdef WOLFSSL_DEBUG_PKCS11
 /* Enable logging of PKCS#11 calls and return value. */
@@ -238,6 +234,10 @@ static void pkcs11_dump_template(const char* name, CK_ATTRIBUTE* templ,
             }
             else if (keyClass == CKO_SECRET_KEY) {
                 XSNPRINTF(line, sizeof(line), "%25s: SECRET", type);
+                WOLFSSL_MSG(line);
+            }
+            else if (keyClass == CKO_CERTIFICATE) {
+                XSNPRINTF(line, sizeof(line), "%25s: CERTIFICATE", type);
                 WOLFSSL_MSG(line);
             }
             else
@@ -535,7 +535,7 @@ static int Pkcs11Slot_FindByTokenName(Pkcs11Dev* dev,
     CK_RV         rv;
     CK_ULONG      slotCnt = 0;
     CK_TOKEN_INFO tinfo;
-    int           index = -1;
+    int           idx = -1;
     CK_SLOT_ID*   slot = NULL;
 
     rv = dev->func->C_GetSlotList(CK_TRUE, NULL, &slotCnt);
@@ -547,12 +547,12 @@ static int Pkcs11Slot_FindByTokenName(Pkcs11Dev* dev,
         rv = dev->func->C_GetSlotList(CK_TRUE, slot, &slotCnt);
         if (rv != CKR_OK)
             goto out;
-        for (index = 0; index < (int)slotCnt; index++) {
-            rv = dev->func->C_GetTokenInfo(slot[index], &tinfo);
+        for (idx = 0; idx < (int)slotCnt; idx++) {
+            rv = dev->func->C_GetTokenInfo(slot[idx], &tinfo);
             PKCS11_RV("C_GetTokenInfo", rv);
             if (rv == CKR_OK &&
                 XMEMCMP(tinfo.label, tokenName, tokenNameSz) == 0) {
-                ret =  (int)slot[index];
+                ret =  (int)slot[idx];
                 break;
             }
         }
@@ -1463,7 +1463,8 @@ int wc_Pkcs11StoreKey(Pkcs11Token* token, int type, int clear, void* key)
 }
 
 #if !defined(NO_RSA) || defined(HAVE_ECC) || (!defined(NO_AES) && \
-           (defined(HAVE_AESGCM) || defined(HAVE_AES_CBC))) || !defined(NO_HMAC)
+           (defined(HAVE_AESGCM) || defined(HAVE_AES_CBC))) || \
+           !defined(NO_HMAC) || !defined(NO_CERTS)
 
 /**
  * Find the PKCS#11 object containing key data using template.
@@ -3965,6 +3966,90 @@ static int Pkcs11RandomSeed(Pkcs11Session* session, wc_CryptoInfo* info)
 }
 #endif
 
+#ifndef NO_CERTS
+
+static int Pkcs11GetCert(Pkcs11Session* session, wc_CryptoInfo* info) {
+    int                 ret = 0;
+    CK_RV               rv  = 0;
+    CK_ULONG            count = 0;
+    CK_OBJECT_HANDLE    certHandle = CK_INVALID_HANDLE;
+    byte               *certData = NULL;
+    CK_ATTRIBUTE    certTemplate[2] = {
+        { CKA_CLASS,           &certClass, sizeof(certClass)   }
+    };
+    CK_ATTRIBUTE   tmpl[] = {
+        { CKA_VALUE,         NULL_PTR, 0 }
+    };
+    CK_ULONG        certTmplCnt = sizeof(certTemplate) / sizeof(*certTemplate);
+    CK_ULONG        tmplCnt = sizeof(tmpl) / sizeof(*tmpl);
+
+    WOLFSSL_MSG("PKCS#11: Retrieve certificate");
+    if (info->cert.labelLen > 0) {
+        certTemplate[1].type = CKA_LABEL;
+        certTemplate[1].pValue = (CK_VOID_PTR)info->cert.label;
+        certTemplate[1].ulValueLen = info->cert.labelLen;
+    }
+    else if (info->cert.idLen > 0) {
+        certTemplate[1].type = CKA_ID;
+        certTemplate[1].pValue = (CK_VOID_PTR)info->cert.id;
+        certTemplate[1].ulValueLen = info->cert.idLen;
+    }
+    else {
+        ret = BAD_FUNC_ARG;
+        goto exit;
+    }
+
+    ret = Pkcs11FindKeyByTemplate(
+        &certHandle, session, certTemplate, certTmplCnt, &count);
+    if (ret == 0 && count == 0) {
+        ret = WC_HW_E;
+        goto exit;
+    }
+
+    PKCS11_DUMP_TEMPLATE("Get Certificate Length", tmpl, tmplCnt);
+    rv = session->func->C_GetAttributeValue(
+        session->handle, certHandle, tmpl, tmplCnt);
+    PKCS11_RV("C_GetAttributeValue", rv);
+    if (rv != CKR_OK) {
+        ret = WC_HW_E;
+        goto exit;
+    }
+
+    if (tmpl[0].ulValueLen <= 0) {
+        ret = WC_HW_E;
+        goto exit;
+    }
+
+    certData = (byte *)XMALLOC(
+        (int)tmpl[0].ulValueLen, info->cert.heap, DYNAMIC_TYPE_CERT);
+    if (certData == NULL) {
+        ret = MEMORY_E;
+        goto exit;
+    }
+
+    tmpl[0].pValue = certData;
+    rv = session->func->C_GetAttributeValue(
+        session->handle, certHandle, tmpl, tmplCnt);
+    PKCS11_RV("C_GetAttributeValue", rv);
+    if (rv != CKR_OK) {
+        ret = WC_HW_E;
+        goto exit;
+    }
+
+    *info->cert.certDataOut = certData;
+    *info->cert.certSz = (word32)tmpl[0].ulValueLen;
+    if (info->cert.certFormatOut != NULL) {
+        *info->cert.certFormatOut = CTC_FILETYPE_ASN1;
+    }
+    certData = NULL;
+
+exit:
+    XFREE(certData, info->cert.heap, DYNAMIC_TYPE_CERT);
+    return ret;
+}
+
+#endif /* !NO_CERTS */
+
 /**
  * Perform a cryptographic operation using PKCS#11 device.
  *
@@ -4153,6 +4238,17 @@ int wc_Pkcs11_CryptoDevCb(int devId, wc_CryptoInfo* info, void* ctx)
             ret = Pkcs11OpenSession(token, &session, readWrite);
             if (ret == 0) {
                 ret = Pkcs11RandomSeed(&session, info);
+                Pkcs11CloseSession(token, &session);
+            }
+    #else
+            ret = NOT_COMPILED_IN;
+    #endif
+        }
+        else if (info->algo_type == WC_ALGO_TYPE_CERT) {
+    #ifndef NO_CERTS
+            ret = Pkcs11OpenSession(token, &session, readWrite);
+            if (ret == 0) {
+                ret = Pkcs11GetCert(&session, info);
                 Pkcs11CloseSession(token, &session);
             }
     #else

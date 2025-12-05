@@ -1,12 +1,12 @@
 /* cmac.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,12 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
 #ifdef WOLFSSL_QNX_CAAM
 #include <wolfssl/wolfcrypt/port/caam/wolfcaam.h>
 #endif
@@ -51,7 +47,6 @@
     #include <wolfcrypt/src/misc.c>
 #endif
 
-#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/aes.h>
 #include <wolfssl/wolfcrypt/cmac.h>
 
@@ -212,7 +207,7 @@ int wc_CmacUpdate(Cmac* cmac, const byte* in, word32 inSz)
     #endif
     {
         ret = wc_CryptoCb_Cmac(cmac, NULL, 0, in, inSz,
-                NULL, NULL, cmac->type, NULL);
+            NULL, NULL, (int)cmac->type, NULL);
         if (ret != WC_NO_ERR_TRACE(CRYPTOCB_UNAVAILABLE))
             return ret;
         /* fall-through when unavailable */
@@ -294,8 +289,8 @@ int wc_CmacFinalNoFree(Cmac* cmac, byte* out, word32* outSz)
     if (cmac->devId != INVALID_DEVID)
     #endif
     {
-        ret = wc_CryptoCb_Cmac(cmac, NULL, 0, NULL, 0, out, outSz, cmac->type,
-                NULL);
+        ret = wc_CryptoCb_Cmac(cmac, NULL, 0, NULL, 0, out, outSz,
+            (int)cmac->type, NULL);
         if (ret != WC_NO_ERR_TRACE(CRYPTOCB_UNAVAILABLE))
             return ret;
 

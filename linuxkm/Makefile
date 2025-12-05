@@ -1,12 +1,12 @@
 # libwolfssl Linux kernel module Makefile (wraps Kbuild-native makefile)
 #
-# Copyright (C) 2006-2024 wolfSSL Inc.
+# Copyright (C) 2006-2025 wolfSSL Inc.
 #
 # This file is part of wolfSSL.
 #
 # wolfSSL is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 #
 # wolfSSL is distributed in the hope that it will be useful,
@@ -42,6 +42,8 @@ WOLFSSL_ASFLAGS=-DHAVE_CONFIG_H -I$(SRC_TOP) -DBUILDING_WOLFSSL $(AM_CCASFLAGS) 
 WOLFSSL_OBJ_FILES=$(patsubst %.lo, %.o, $(patsubst src/src_libwolfssl_la-%, src/%, $(patsubst src/libwolfssl_la-%, src/%, $(patsubst wolfcrypt/src/src_libwolfssl_la-%, wolfcrypt/src/%, $(src_libwolfssl_la_OBJECTS)))))
 
 ifeq "$(ENABLED_CRYPT_TESTS)" "yes"
+    WOLFSSL_OBJ_FILES+=wolfcrypt/test/test.o
+else ifneq "$(ENABLED_LINUXKM_LKCAPI_REGISTER)" "none"
     WOLFSSL_OBJ_FILES+=wolfcrypt/test/test.o
 else
     WOLFSSL_CFLAGS+=-DNO_CRYPT_TEST

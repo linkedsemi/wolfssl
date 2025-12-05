@@ -1,12 +1,12 @@
 /* sp_int.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -210,8 +210,10 @@ extern "C" {
 #elif defined(WOLFSSL_SP_X86_64_ASM) || defined(WOLFSSL_SP_X86_64)
     #if SP_ULONG_BITS == 64 || SP_ULLONG_BITS == 64
         #define SP_WORD_SIZE 64
-        #define HAVE_INTEL_AVX1
-        #ifndef NO_AVX2_SUPPORT
+        #ifndef HAVE_INTEL_AVX1
+            #define HAVE_INTEL_AVX1
+        #endif
+        #if !defined(NO_AVX2_SUPPORT) && !defined(HAVE_INTEL_AVX2)
             #define HAVE_INTEL_AVX2
         #endif
     #elif SP_ULONG_BITS == 32
@@ -258,11 +260,8 @@ extern "C" {
     #endif
 #endif
 
-/* Number of bytes in each word. */
-#define SP_WORD_SIZEOF  (SP_WORD_SIZE / 8)
-
 /* Define the types used. */
-#ifdef HAVE___UINT128_T
+#if defined(HAVE___UINT128_T) && !defined(NO_INT128)
     #ifdef __SIZEOF_INT128__
         typedef __uint128_t   sp_uint128;
         typedef  __int128_t    sp_int128;
@@ -283,6 +282,8 @@ extern "C" {
 #endif
 
 #if SP_WORD_SIZE == 8
+    #define SP_WORD_SIZEOF 1
+
     typedef   sp_uint8 sp_int_digit;
     typedef    sp_int8 sp_int_sdigit;
     typedef  sp_uint16 sp_int_word;
@@ -290,6 +291,8 @@ extern "C" {
 
     #define SP_MASK         0xffU
 #elif SP_WORD_SIZE == 16
+    #define SP_WORD_SIZEOF 2
+
     typedef  sp_uint16 sp_int_digit;
     typedef   sp_int16 sp_int_sdigit;
     typedef  sp_uint32 sp_int_word;
@@ -297,6 +300,8 @@ extern "C" {
 
     #define SP_MASK         0xffffU
 #elif SP_WORD_SIZE == 32
+    #define SP_WORD_SIZEOF 4
+
     typedef  sp_uint32 sp_int_digit;
     typedef   sp_int32 sp_int_sdigit;
     typedef  sp_uint64 sp_int_word;
@@ -304,6 +309,8 @@ extern "C" {
 
     #define SP_MASK         0xffffffffU
 #elif SP_WORD_SIZE == 64
+    #define SP_WORD_SIZEOF 8
+
     typedef  sp_uint64 sp_int_digit;
     typedef   sp_int64 sp_int_sdigit;
 #if (defined(WOLFSSL_SP_MATH) || defined(WOLFSSL_SP_MATH_ALL)) && \
@@ -385,11 +392,11 @@ extern "C" {
 /* Non-blocking ECC operation context. */
 typedef struct sp_ecc_ctx {
     #ifdef WOLFSSL_SP_521
-    byte data[66*80]; /* stack data */
+    XALIGNED(4) byte data[66*80]; /* stack data */
     #elif defined(WOLFSSL_SP_384)
-    byte data[48*80]; /* stack data */
+    XALIGNED(4) byte data[48*80]; /* stack data */
     #else
-    byte data[32*80]; /* stack data */
+    XALIGNED(4) byte data[32*80]; /* stack data */
     #endif
 } sp_ecc_ctx_t;
 #endif
@@ -702,7 +709,10 @@ typedef struct sp_ecc_ctx {
     do {                                                                       \
         int ii;                                                                \
         if ((a)->used > 0) {                                                   \
-            for (ii = (int)(a)->used - 1; ii >= 0 && (a)->dp[ii] == 0; ii--) { \
+            for (ii = (int)(a)->used - 1; ii >= 0; ii--) {                     \
+                if ((a)->dp[ii] != 0) {                                        \
+                    break;                                                     \
+                }                                                              \
             }                                                                  \
             (a)->used = (wc_mp_size_t)(ii + 1);                                \
         }                                                                      \
@@ -783,10 +793,18 @@ typedef struct sp_ecc_ctx {
 #define MP_INT_NEXT(t, cnt) \
     (sp_int*)(((byte*)(t)) + MP_INT_SIZEOF(cnt))
 
+#define MP_INT_SIZEOF_DIGITS(cnt) (MP_INT_SIZEOF(cnt) / sizeof(sp_int_digit))
 
 /* Calculate the number of words required to support a number of bits. */
 #define MP_BITS_CNT(bits)                                       \
         ((unsigned int)(((((bits) + SP_WORD_SIZE - 1) / SP_WORD_SIZE) * 2 + 1)))
+
+#if !defined(WOLFSSL_SP_NO_DYN_STACK) && defined(__STDC_VERSION__) && \
+             (__STDC_VERSION__ >= 199901L) &&                         \
+    (defined(WOLFSSL_SP_NO_MALLOC) ||                                 \
+     !(defined(WOLFSSL_SMALL_STACK) || defined(SP_ALLOC)))
+    #define WOLFSSL_SP_DYN_STACK
+#endif
 
 #ifdef WOLFSSL_SMALL_STACK
 /*
@@ -818,26 +836,25 @@ while (0)
 /*
  * Static allocation of mp_int.
  */
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) && \
-    !defined(WOLFSSL_SP_NO_DYN_STACK)
+#ifdef WOLFSSL_SP_DYN_STACK
 /* Declare a dynamically allocated mp_int. */
-#define DECL_MP_INT_SIZE_DYN(name, bits, max)                   \
-    unsigned char name##d[MP_INT_SIZEOF(MP_BITS_CNT(bits))];    \
+#define DECL_MP_INT_SIZE_DYN(name, bits, max)                      \
+    sp_int_digit name##d[MP_INT_SIZEOF_DIGITS(MP_BITS_CNT(bits))]; \
     sp_int* (name) = (sp_int*)name##d
 #elif defined(__cplusplus)
 /* C++ doesn't tolerate parentheses around "name" (-Wparentheses) */
-#define DECL_MP_INT_SIZE_DYN(name, bits, max)                   \
-    unsigned char name##d[MP_INT_SIZEOF(MP_BITS_CNT(max))];     \
+#define DECL_MP_INT_SIZE_DYN(name, bits, max)                      \
+    sp_int_digit name##d[MP_INT_SIZEOF_DIGITS(MP_BITS_CNT(max))];  \
     sp_int* name = (sp_int*)name##d
 #else
 /* Declare a dynamically allocated mp_int. */
-#define DECL_MP_INT_SIZE_DYN(name, bits, max)                   \
-    unsigned char name##d[MP_INT_SIZEOF(MP_BITS_CNT(max))];     \
+#define DECL_MP_INT_SIZE_DYN(name, bits, max)                      \
+    sp_int_digit name##d[MP_INT_SIZEOF_DIGITS(MP_BITS_CNT(max))];  \
     sp_int* (name) = (sp_int*)name##d
 #endif
 /* Declare a statically allocated mp_int. */
-#define DECL_MP_INT_SIZE(name, bits)                            \
-    unsigned char name##d[MP_INT_SIZEOF(MP_BITS_CNT(bits))];    \
+#define DECL_MP_INT_SIZE(name, bits)                               \
+    sp_int_digit name##d[MP_INT_SIZEOF_DIGITS(MP_BITS_CNT(bits))]; \
     sp_int* (name) = (sp_int*)name##d
 /* Zero out mp_int of minimal size. */
 #define NEW_MP_INT_SIZE(name, bits, heap, type) \
@@ -905,7 +922,7 @@ typedef struct sp_int {
     struct WC_BIGINT raw;
 #endif
     /** Data of number.  */
-    sp_int_digit dp[SP_INT_DIGITS];
+    XALIGNED(SP_WORD_SIZEOF) sp_int_digit dp[SP_INT_DIGITS];
 } sp_int;
 
 typedef struct sp_int_minimal {
@@ -915,15 +932,21 @@ typedef struct sp_int_minimal {
     sp_size_t    size;
 #ifdef WOLFSSL_SP_INT_NEGATIVE
     /** Indicates whether number is 0/positive or negative.  */
-    sp_uint8     sign;
+    sp_sign_t    sign;
 #endif
 #ifdef HAVE_WOLF_BIGINT
     /** Unsigned binary (big endian) representation of number. */
     struct WC_BIGINT raw;
 #endif
     /** First digit of number.  */
-    sp_int_digit dp[1];
+    XALIGNED(SP_WORD_SIZEOF) sp_int_digit dp[1];
 } sp_int_minimal;
+
+/* MP_INT_SIZEOF_DIGITS() requires that sizeof(sp_int) is a multiple of
+ * sizeof(sp_int_digit).
+ */
+wc_static_assert(sizeof(struct sp_int) % sizeof(sp_int_digit) == 0);
+wc_static_assert(sizeof(struct sp_int_minimal) % sizeof(sp_int_digit) == 0);
 
 /* Multi-precision integer type is SP integer type. */
 typedef sp_int       mp_int;

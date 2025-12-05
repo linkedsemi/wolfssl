@@ -1,12 +1,12 @@
 /* hpke.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -120,9 +120,18 @@ WOLFSSL_API int wc_HpkeDeserializePublicKey(Hpke* hpke, void** key,
     const byte* in, word16 inSz);
 WOLFSSL_API void wc_HpkeFreeKey(Hpke* hpke, word16 kem, void* keypair,
     void* heap);
+WOLFSSL_API int wc_HpkeInitSealContext(Hpke* hpke, HpkeBaseContext* context,
+    void* ephemeralKey, void* receiverKey, byte* info, word32 infoSz);
+WOLFSSL_API int wc_HpkeContextSealBase(Hpke* hpke, HpkeBaseContext* context,
+    byte* aad, word32 aadSz, byte* plaintext, word32 ptSz, byte* out);
 WOLFSSL_API int wc_HpkeSealBase(Hpke* hpke, void* ephemeralKey,
     void* receiverKey, byte* info, word32 infoSz, byte* aad, word32 aadSz,
     byte* plaintext, word32 ptSz, byte* ciphertext);
+WOLFSSL_API int wc_HpkeInitOpenContext(Hpke* hpke, HpkeBaseContext* context,
+    void* receiverKey, const byte* pubKey, word16 pubKeySz, byte* info,
+    word32 infoSz);
+WOLFSSL_API int wc_HpkeContextOpenBase(Hpke* hpke, HpkeBaseContext* context,
+    byte* aad, word32 aadSz, byte* ciphertext, word32 ctSz, byte* out);
 WOLFSSL_API int wc_HpkeOpenBase(Hpke* hpke, void* receiverKey,
     const byte* pubKey, word16 pubKeySz, byte* info, word32 infoSz, byte* aad,
     word32 aadSz, byte* ciphertext, word32 ctSz, byte* plaintext);

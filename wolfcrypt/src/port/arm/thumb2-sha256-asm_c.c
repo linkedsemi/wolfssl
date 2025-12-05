@@ -1,12 +1,12 @@
 /* thumb2-sha256-asm
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -21,13 +21,11 @@
 
 /* Generated using (from wolfssl):
  *   cd ../scripts
- *   ruby ./sha2/sha256.rb thumb2 ../wolfssl/wolfcrypt/src/port/arm/thumb2-sha256-asm.c
+ *   ruby ./sha2/sha256.rb \
+ *       thumb2 ../wolfssl/wolfcrypt/src/port/arm/thumb2-sha256-asm.c
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif /* HAVE_CONFIG_H */
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources_asm.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 
 #ifdef WOLFSSL_ARMASM
@@ -43,6 +41,7 @@
 #define __asm__        __asm
 #define __volatile__   volatile
 #endif /* __KEIL__ */
+
 #ifndef NO_SHA256
 #include <wolfssl/wolfcrypt/sha256.h>
 
@@ -68,16 +67,24 @@ XALIGNED(16) static const word32 L_SHA256_transform_len_k[] = {
 
 void Transform_Sha256_Len(wc_Sha256* sha256, const byte* data, word32 len);
 #ifndef WOLFSSL_NO_VAR_ASSIGN_REG
-void Transform_Sha256_Len(wc_Sha256* sha256_p, const byte* data_p, word32 len_p)
+WC_OMIT_FRAME_POINTER void Transform_Sha256_Len(wc_Sha256* sha256_p,
+    const byte* data_p, word32 len_p)
 #else
-void Transform_Sha256_Len(wc_Sha256* sha256, const byte* data, word32 len)
+WC_OMIT_FRAME_POINTER void Transform_Sha256_Len(wc_Sha256* sha256,
+    const byte* data, word32 len)
 #endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
 {
 #ifndef WOLFSSL_NO_VAR_ASSIGN_REG
     register wc_Sha256* sha256 __asm__ ("r0") = (wc_Sha256*)sha256_p;
     register const byte* data __asm__ ("r1") = (const byte*)data_p;
     register word32 len __asm__ ("r2") = (word32)len_p;
-    register word32* L_SHA256_transform_len_k_c __asm__ ("r3") = (word32*)&L_SHA256_transform_len_k;
+    register word32* L_SHA256_transform_len_k_c __asm__ ("r3") =
+        (word32*)&L_SHA256_transform_len_k;
+
+#else
+    register word32* L_SHA256_transform_len_k_c =
+        (word32*)&L_SHA256_transform_len_k;
+
 #endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
 
     __asm__ __volatile__ (
@@ -1460,16 +1467,11 @@ void Transform_Sha256_Len(wc_Sha256* sha256, const byte* data, word32 len)
         "BNE.W	L_SHA256_transform_len_begin_%=\n\t"
 #endif
         "ADD	sp, sp, #0xc0\n\t"
-#ifndef WOLFSSL_NO_VAR_ASSIGN_REG
         : [sha256] "+r" (sha256), [data] "+r" (data), [len] "+r" (len),
           [L_SHA256_transform_len_k] "+r" (L_SHA256_transform_len_k_c)
         :
-        : "memory", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "cc"
-#else
-        : [sha256] "+r" (sha256), [data] "+r" (data), [len] "+r" (len)
-        : [L_SHA256_transform_len_k] "r" (L_SHA256_transform_len_k)
-        : "memory", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "cc"
-#endif /* WOLFSSL_NO_VAR_ASSIGN_REG */
+        : "memory", "cc", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11",
+            "r12"
     );
 }
 
@@ -1477,4 +1479,5 @@ void Transform_Sha256_Len(wc_Sha256* sha256, const byte* data, word32 len)
 #endif /* !NO_SHA256 */
 #endif /* WOLFSSL_ARMASM_THUMB2 */
 #endif /* WOLFSSL_ARMASM */
+
 #endif /* WOLFSSL_ARMASM_INLINE */

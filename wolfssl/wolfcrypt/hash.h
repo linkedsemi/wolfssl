@@ -1,12 +1,12 @@
 /* hash.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -40,7 +40,7 @@
 #if defined(WOLFSSL_SHA384) || defined(WOLFSSL_SHA512)
     #include <wolfssl/wolfcrypt/sha512.h>
 #endif
-#ifdef HAVE_BLAKE2
+#if defined(HAVE_BLAKE2) || defined(HAVE_BLAKE2S)
     #include <wolfssl/wolfcrypt/blake2.h>
 #endif
 #ifdef WOLFSSL_SHA3
@@ -51,9 +51,6 @@
 #endif
 #ifdef WOLFSSL_MD2
     #include <wolfssl/wolfcrypt/md2.h>
-#endif
-#if defined(HAVE_BLAKE2) || defined(HAVE_BLAKE2S)
-    #include <wolfssl/wolfcrypt/blake2.h>
 #endif
 #ifdef WOLFSSL_SM3
     #include <wolfssl/wolfcrypt/sm3.h>
@@ -81,16 +78,6 @@ enum wc_MACAlgorithm {
     rmd_mac,
     blake2b_mac,
     sm3_mac
-};
-
-enum wc_HashFlags {
-    WC_HASH_FLAG_NONE =     0x00000000,
-    WC_HASH_FLAG_WILLCOPY = 0x00000001, /* flag to indicate hash will be copied */
-    WC_HASH_FLAG_ISCOPY =   0x00000002, /* hash is copy */
-#ifdef WOLFSSL_SHA3
-    WC_HASH_SHA3_KECCAK256 =0x00010000, /* Older KECCAK256 */
-#endif
-    WOLF_ENUM_DUMMY_LAST_ELEMENT(WC_HASH)
 };
 
 /* hash union */
@@ -132,11 +119,15 @@ typedef struct {
 } wc_HashAlg;
 #endif /* !NO_HASH_WRAPPER */
 
+
 /* Find largest possible digest size
    Note if this gets up to the size of 80 or over check smallstack build */
+#undef WC_MAX_DIGEST_SIZE
+#undef WC_MAX_BLOCK_SIZE
 #if defined(WOLFSSL_SHA3)
+    /* note: SHA3-224 has the largest block size */
     #define WC_MAX_DIGEST_SIZE WC_SHA3_512_DIGEST_SIZE
-    #define WC_MAX_BLOCK_SIZE  WC_SHA3_224_BLOCK_SIZE /* 224 is the largest block size */
+    #define WC_MAX_BLOCK_SIZE  WC_SHA3_224_BLOCK_SIZE
 #elif defined(WOLFSSL_SHA512)
     #define WC_MAX_DIGEST_SIZE WC_SHA512_DIGEST_SIZE
     #define WC_MAX_BLOCK_SIZE  WC_SHA512_BLOCK_SIZE

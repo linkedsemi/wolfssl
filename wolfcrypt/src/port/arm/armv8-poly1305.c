@@ -1,12 +1,12 @@
 /* armv8-poly1305.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,24 +19,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
+
 /*
- * Based off the public domain implementations by Andrew Moon
+ * Based on the public domain implementations by Andrew Moon
  * and Daniel J. Bernstein
  */
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
-#include <wolfssl/wolfcrypt/types.h>
 
 #ifdef WOLFSSL_ARMASM
 
 #ifdef HAVE_POLY1305
 #include <wolfssl/wolfcrypt/poly1305.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
-#include <wolfssl/wolfcrypt/logging.h>
 #include <wolfssl/wolfcrypt/cpuid.h>
 #ifdef NO_INLINE
     #include <wolfssl/wolfcrypt/misc.h>
@@ -55,8 +48,8 @@ static WC_INLINE void poly1305_blocks_aarch64_16(Poly1305* ctx,
 {
     __asm__ __volatile__ (
         /* Check for zero bytes to do. */
-        "CMP        %[bytes], %[POLY1305_BLOCK_SIZE] \n\t"
-        "BLO        L_poly1305_aarch64_16_done_%= \n\t"
+        "CMP        %[bytes], #16 \n\t"
+        "B.LO       L_poly1305_aarch64_16_done_%= \n\t"
 
         "MOV        x12, #1               \n\t"
         /* Load h */
@@ -134,9 +127,9 @@ static WC_INLINE void poly1305_blocks_aarch64_16(Poly1305* ctx,
         "ADCS       x5, x5, x15\n\t"
         "ADC        x6, x6, xzr\n\t"
 
-        "SUBS       %[bytes], %[bytes], %[POLY1305_BLOCK_SIZE]\n\t"
-        "ADD        %[m], %[m], %[POLY1305_BLOCK_SIZE]\n\t"
-        "BGT        L_poly1305_aarch64_16_loop_%=\n\t"
+        "SUBS       %[bytes], %[bytes], #16\n\t"
+        "ADD        %[m], %[m], #16\n\t"
+        "B.GT       L_poly1305_aarch64_16_loop_%=\n\t"
 
         /* Base 64 -> Base 26 */
         "MOV        x10, #0x3ffffff\n\t"
@@ -146,7 +139,6 @@ static WC_INLINE void poly1305_blocks_aarch64_16(Poly1305* ctx,
         "AND        x5, x10, x4, LSR #26\n\t"
         "AND        x4, x4, x10\n\t"
         "AND        x6, x6, x10\n\t"
-        "AND        x8, x8, x10\n\t"
         "STP        w4, w5, [%[ctx_h], #0]   \n\t"
         "STP        w6, w7, [%[ctx_h], #8]   \n\t"
         "STR        w8, [%[ctx_h], #16]   \n\t"
@@ -154,8 +146,7 @@ static WC_INLINE void poly1305_blocks_aarch64_16(Poly1305* ctx,
         ".align 2 \n\t"
     "L_poly1305_aarch64_16_done_%=: \n\t"
         : [bytes] "+r" (bytes), [m] "+r" (m)
-        : [POLY1305_BLOCK_SIZE] "I" (POLY1305_BLOCK_SIZE),
-          [ctx_r64] "m" (ctx->r64[0]), [ctx_h] "r" (ctx->h),
+        : [ctx_r64] "m" (ctx->r64[0]), [ctx_h] "r" (ctx->h),
           [finished] "r" ((word64)ctx->finished)
         : "memory", "cc",
           "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14",
@@ -168,8 +159,8 @@ void poly1305_blocks_aarch64(Poly1305* ctx, const unsigned char *m,
 {
     __asm__ __volatile__ (
         /* If less than 4 blocks to process then use regular method */
-        "CMP        %[bytes], %[POLY1305_BLOCK_SIZE]*4 \n\t"
-        "BLO        L_poly1305_aarch64_64_done_%= \n\t"
+        "CMP        %[bytes], #64 \n\t"
+        "B.LO       L_poly1305_aarch64_64_done_%= \n\t"
         "MOV        x9, #0x3ffffff       \n\t"
         /* Load h */
         "LDP        x20, x22, [%[h]]     \n\t"
@@ -196,8 +187,8 @@ void poly1305_blocks_aarch64(Poly1305* ctx, const unsigned char *m,
         "MOV        v26.D[0], x9         \n\t"
         "MOV        v26.D[1], x9         \n\t"
         "DUP        v30.4S, v26.S[0]     \n\t"
-        "CMP        %[bytes], %[POLY1305_BLOCK_SIZE]*6 \n\t"
-        "BLO        L_poly1305_aarch64_64_start_block_size_64_%= \n\t"
+        "CMP        %[bytes], #96 \n\t"
+        "B.LO       L_poly1305_aarch64_64_start_block_size_64_%= \n\t"
         /* Load r^2 to NEON v0, v1, v2, v3, v4 */
         "LD4        { v0.S-v3.S }[2], [%[r_2]], #16 \n\t"
         "LD1        { v4.S }[2], [%[r_2]] \n\t"
@@ -237,7 +228,7 @@ void poly1305_blocks_aarch64(Poly1305* ctx, const unsigned char *m,
         /* Load m */
         /* Load four message blocks to NEON v10, v11, v12, v13, v14 */
         "LD4        { v10.4S-v13.4S }, [%[m]], #64 \n\t"
-        "SUB        %[bytes], %[bytes], %[POLY1305_BLOCK_SIZE]*4 \n\t"
+        "SUB        %[bytes], %[bytes], #64 \n\t"
         "USHR       v14.4S, v13.4S, #8   \n\t"
         "ORR        v14.16B, v14.16B, v30.16B \n\t"
         "SHL        v13.4S, v13.4S, #18  \n\t"
@@ -370,12 +361,12 @@ void poly1305_blocks_aarch64(Poly1305* ctx, const unsigned char *m,
         "UMLAL2     v24.2D, v14.4S, v9.4S \n\t"
         "UMLAL2     v25.2D, v14.4S, v0.4S \n\t"
         /* If less than six message blocks left then leave loop */
-        "CMP        %[bytes], %[POLY1305_BLOCK_SIZE]*6 \n\t"
-        "BLS        L_poly1305_aarch64_64_loop_128_final_%= \n\t"
+        "CMP        %[bytes], #96 \n\t"
+        "B.LS       L_poly1305_aarch64_64_loop_128_final_%= \n\t"
         /* Load m */
         /* Load four message blocks to NEON v10, v11, v12, v13, v14 */
         "LD4        { v10.4S-v13.4S }, [%[m]], #64 \n\t"
-        "SUB        %[bytes], %[bytes], %[POLY1305_BLOCK_SIZE]*4 \n\t"
+        "SUB        %[bytes], %[bytes], #64 \n\t"
         "USHR       v14.4S, v13.4S, #8   \n\t"
         "ORR        v14.16B, v14.16B, v30.16B \n\t"
         "SHL        v13.4S, v13.4S, #18  \n\t"
@@ -432,7 +423,7 @@ void poly1305_blocks_aarch64(Poly1305* ctx, const unsigned char *m,
         "LD2        { v10.2D-v11.2D }, [%[m]], #32 \n\t"
         /* Copy r^2 to lower half of registers */
         "MOV        v0.D[0], v0.D[1]     \n\t"
-        "SUB        %[bytes], %[bytes], %[POLY1305_BLOCK_SIZE]*2 \n\t"
+        "SUB        %[bytes], %[bytes], #32 \n\t"
         "MOV        v5.D[0], v5.D[1]     \n\t"
         "USHR       v14.2D, v11.2D, #40  \n\t"
         "MOV        v1.D[0], v1.D[1]     \n\t"
@@ -500,8 +491,8 @@ void poly1305_blocks_aarch64(Poly1305* ctx, const unsigned char *m,
         "MOV        v18.S[1], v18.S[2]   \n\t"
         "MOV        v19.S[1], v19.S[2]   \n\t"
         /* If less than 2 blocks left go straight to final multiplication. */
-        "CMP        %[bytes], %[POLY1305_BLOCK_SIZE]*2 \n\t"
-        "BLO        L_poly1305_aarch64_64_last_mult_%= \n\t"
+        "CMP        %[bytes], #32 \n\t"
+        "B.LO       L_poly1305_aarch64_64_last_mult_%= \n\t"
         /* Else go to one loop of L_poly1305_aarch64_64_loop_64 */
         "B          L_poly1305_aarch64_64_loop_64_%= \n\t"
         "\n"
@@ -532,7 +523,7 @@ void poly1305_blocks_aarch64(Poly1305* ctx, const unsigned char *m,
         /* Load m */
         /* Load two message blocks to NEON v10, v11, v12, v13, v14 */
         "LD2        { v10.2D-v11.2D }, [%[m]], #32 \n\t"
-        "SUB        %[bytes], %[bytes], %[POLY1305_BLOCK_SIZE]*2 \n\t"
+        "SUB        %[bytes], %[bytes], #32 \n\t"
         "USHR       v14.2D, v11.2D, #40  \n\t"
         "ORR        v14.16B, v14.16B, v26.16B \n\t"
         "USHR       v13.2D, v11.2D, #14  \n\t"
@@ -624,7 +615,7 @@ void poly1305_blocks_aarch64(Poly1305* ctx, const unsigned char *m,
         "LD2        { v10.2D-v11.2D }, [%[m]], #32 \n\t"
         /* Reduce h % P */
         "MOV        x14, #5              \n\t"
-        "SUB        %[bytes], %[bytes], %[POLY1305_BLOCK_SIZE]*2 \n\t"
+        "SUB        %[bytes], %[bytes], #32 \n\t"
         "ADD        x10, x10, x9, LSR #26 \n\t"
         "USHR       v14.2D, v11.2D, #40  \n\t"
         "ADD        x13, x13, x12, LSR #26 \n\t"
@@ -684,8 +675,8 @@ void poly1305_blocks_aarch64(Poly1305* ctx, const unsigned char *m,
         "MOV        v18.S[1], v18.S[2]   \n\t"
         "MOV        v19.S[1], v19.S[2]   \n\t"
         /* If at least two message blocks left then loop_64 */
-        "CMP        %[bytes], %[POLY1305_BLOCK_SIZE]*2 \n\t"
-        "BHS        L_poly1305_aarch64_64_loop_64_%= \n\t"
+        "CMP        %[bytes], #32 \n\t"
+        "B.HS       L_poly1305_aarch64_64_loop_64_%= \n\t"
         "\n"
         ".align 2 \n\t"
     "L_poly1305_aarch64_64_last_mult_%=: \n\t"
@@ -829,8 +820,7 @@ void poly1305_blocks_aarch64(Poly1305* ctx, const unsigned char *m,
         : [bytes] "+r" (bytes),
           [m] "+r" (m),
           [ctx] "+m" (ctx)
-        : [POLY1305_BLOCK_SIZE] "I" (POLY1305_BLOCK_SIZE),
-          [h] "r" (ctx->h),
+        : [h] "r" (ctx->h),
           [r] "r" (ctx->r),
           [r_2] "r" (ctx->r_2),
           [r_4] "r" (ctx->r_4),
@@ -839,11 +829,9 @@ void poly1305_blocks_aarch64(Poly1305* ctx, const unsigned char *m,
           "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9",
           "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19",
           "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30",
-          "w8", "w9", "w10", "w11", "w12", "w13", "w14", "w15", "w16", "w17",
-          "w19", "w20", "w21", "w22", "w23", "w24", "w25", "w26", "w27", "w28",
-          "w30", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16",
-          "x17", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27",
-          "x28", "x30"
+          "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17",
+          "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28",
+          "x30"
     );
     poly1305_blocks_aarch64_16(ctx, m, bytes);
 }
@@ -853,12 +841,10 @@ void poly1305_block_aarch64(Poly1305* ctx, const unsigned char *m)
     poly1305_blocks_aarch64_16(ctx, m, POLY1305_BLOCK_SIZE);
 }
 
-#if defined(POLY130564)
 static word64 clamp[] = {
     0x0ffffffc0fffffff,
     0x0ffffffc0ffffffc,
 };
-#endif /* POLY130564 */
 
 
 int wc_Poly1305SetKey(Poly1305* ctx, const byte* key, word32 keySz)
@@ -938,6 +924,14 @@ int wc_Poly1305SetKey(Poly1305* ctx, const byte* key, word32 keySz)
         /* Add top bits. */
         "ADDS       x8, x8, x14\n\t"
         "ADCS       x9, x9, x15\n\t"
+        "ADC        x10, x10, xzr\n\t"
+        /* Get high bits from r^2[2]. */
+        "AND        x11, x10, -4\n\t"
+        "AND        x10, x10, 3\n\t"
+        "ADD        x11, x11, x11, LSR 2\n\t"
+        /* Add top bits. */
+        "ADDS       x8, x8, x11\n\t"
+        "ADCS       x9, x9, xzr\n\t"
         "ADC        x10, x10, xzr\n\t"
         /* 130-bits: Base 64 -> Base 26 */
         "EXTR       x15, x10, x9, #40\n\t"
@@ -1112,7 +1106,6 @@ int wc_Poly1305Final(Poly1305* ctx, byte* mac)
           [ctx_r64] "r" (ctx->r64), [ctx_r] "r" (ctx->r),
           [ctx_r_2] "r" (ctx->r_2), [ctx_r_4] "r" (ctx->r_4)
         : "memory", "cc",
-          "w4", "w5", "w6", "w7", "w8",
           "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10"
     );
 
@@ -1151,7 +1144,11 @@ void poly1305_block_thumb2(Poly1305* ctx, const unsigned char* m)
  */
 void poly1305_blocks_arm32(Poly1305* ctx, const unsigned char* m, size_t bytes)
 {
-    poly1305_blocks_arm32_16(ctx, m, bytes, 1);
+#ifndef WOLFSSL_ARMASM_NO_NEON
+    poly1305_arm32_blocks(ctx, m, bytes);
+#else
+    poly1305_arm32_blocks_16(ctx, m, bytes, 1);
+#endif
 }
 
 /* Process 16 bytes of message.
@@ -1161,7 +1158,7 @@ void poly1305_blocks_arm32(Poly1305* ctx, const unsigned char* m, size_t bytes)
  */
 void poly1305_block_arm32(Poly1305* ctx, const unsigned char* m)
 {
-    poly1305_blocks_arm32_16(ctx, m, POLY1305_BLOCK_SIZE, 1);
+    poly1305_arm32_blocks_16(ctx, m, POLY1305_BLOCK_SIZE, 1);
 }
 #endif
 
@@ -1220,6 +1217,16 @@ int wc_Poly1305Final(Poly1305* ctx, byte* mac)
 
     /* Process the remaining partial block - last block. */
     if (ret == 0) {
+    #if !defined(WOLFSSL_ARMASM_THUMB2) && !defined(WOLFSSL_ARMASM_NO_NEON)
+        if (ctx->leftover >= POLY1305_BLOCK_SIZE) {
+             size_t len = ctx->leftover & (~(POLY1305_BLOCK_SIZE - 1));
+             poly1305_arm32_blocks(ctx, ctx->buffer, len);
+             ctx->leftover -= len;
+             if (ctx->leftover) {
+                 XMEMCPY(ctx->buffer, ctx->buffer + len, ctx->leftover);
+             }
+        }
+    #endif
         if (ctx->leftover) {
              size_t i = ctx->leftover;
              ctx->buffer[i++] = 1;
@@ -1230,7 +1237,7 @@ int wc_Poly1305Final(Poly1305* ctx, byte* mac)
              poly1305_blocks_thumb2_16(ctx, ctx->buffer, POLY1305_BLOCK_SIZE,
                  0);
         #else
-             poly1305_blocks_arm32_16(ctx, ctx->buffer, POLY1305_BLOCK_SIZE, 0);
+             poly1305_arm32_blocks_16(ctx, ctx->buffer, POLY1305_BLOCK_SIZE, 0);
         #endif
         }
 

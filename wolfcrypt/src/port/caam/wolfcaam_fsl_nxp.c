@@ -1,12 +1,12 @@
 /* wolfcaam_fsl_nxp.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -271,8 +271,8 @@ static int DoAesCBC(unsigned int args[4], CAAM_BUFFER *buf, int sz)
 
         /* store updated CBC state */
         XMEMCPY((byte*)buf[4].TheAddress,
-                (byte*)buf[2].TheAddress + buf[2].Length - AES_BLOCK_SIZE,
-                AES_BLOCK_SIZE);
+                (byte*)buf[2].TheAddress + buf[2].Length - WC_AES_BLOCK_SIZE,
+                WC_AES_BLOCK_SIZE);
     }
     else {
         status = CAAM_AES_EncryptCbc(CAAM, &hndl,
@@ -282,8 +282,8 @@ static int DoAesCBC(unsigned int args[4], CAAM_BUFFER *buf, int sz)
 
         /* store updated CBC state */
         XMEMCPY((byte*)buf[4].TheAddress,
-            (byte*)buf[3].TheAddress + buf[3].Length - AES_BLOCK_SIZE,
-            AES_BLOCK_SIZE);
+            (byte*)buf[3].TheAddress + buf[3].Length - WC_AES_BLOCK_SIZE,
+            WC_AES_BLOCK_SIZE);
     }
 
     if (status != kStatus_Success) {

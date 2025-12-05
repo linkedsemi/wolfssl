@@ -1,12 +1,12 @@
 /* quic.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,14 +19,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
   /* Name change compatibility layer no longer needs to be included here */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
 #ifdef NO_INLINE
     #include <wolfssl/wolfcrypt/misc.h>
 #else
@@ -154,17 +150,15 @@ static int quic_record_append(WOLFSSL *ssl, QuicRecord *qr, const uint8_t *data,
         }
     }
 
-    if (quic_record_complete(qr) || len == 0) {
-        return 0;
+    if (!quic_record_complete(qr) && len != 0) {
+        missing = qr->len - qr->end;
+        if (len > missing) {
+            len = missing;
+        }
+        XMEMCPY(qr->data + qr->end, data, len);
+        qr->end += (word32)len;
+        consumed += len;
     }
-
-    missing = qr->len - qr->end;
-    if (len > missing) {
-        len = missing;
-    }
-    XMEMCPY(qr->data + qr->end, data, len);
-    qr->end += (word32)len;
-    consumed += len;
 
 cleanup:
     *pconsumed = (ret == WOLFSSL_SUCCESS) ? consumed : 0;
@@ -927,8 +921,12 @@ int wolfSSL_quic_forward_secrets(WOLFSSL* ssl, int ktype, int side)
         goto cleanup;
     }
 
-    ret = !ssl->quic.method->set_encryption_secrets(
-        ssl, level, rx_secret, tx_secret, ssl->specs.hash_size);
+    if(!ssl->quic.method->set_encryption_secrets(
+        ssl, level, rx_secret, tx_secret, ssl->specs.hash_size)) {
+        WOLFSSL_MSG("WOLFSSL_QUIC_FORWARD_SECRETS failed");
+        ret = WOLFSSL_FATAL_ERROR;
+        goto cleanup;
+    }
 
     /* Having installed the secrets, any future read/write will happen
      * at the level. Except early data, which is detected on the record
@@ -991,12 +989,16 @@ const WOLFSSL_EVP_CIPHER* wolfSSL_quic_get_aead(WOLFSSL* ssl)
 
     switch (cipher->cipherSuite) {
 #if !defined(NO_AES) && defined(HAVE_AESGCM)
+    #ifdef WOLFSSL_AES_128
         case TLS_AES_128_GCM_SHA256:
             evp_cipher = wolfSSL_EVP_aes_128_gcm();
             break;
+    #endif
+    #ifdef WOLFSSL_AES_256
         case TLS_AES_256_GCM_SHA384:
             evp_cipher = wolfSSL_EVP_aes_256_gcm();
             break;
+    #endif
 #endif
 #if defined(HAVE_CHACHA) && defined(HAVE_POLY1305)
         case TLS_CHACHA20_POLY1305_SHA256:

@@ -4,13 +4,13 @@
  * Enabled via WOLFSSL_USER_SETTINGS.
  *
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -91,7 +91,6 @@
 #define NO_DES3
 #define NO_PWDBASED
 #define NO_WRITEV
-#define NO_FILESYSTEM
 #define NO_OLD_RNGNAME
 #define NO_WOLFSSL_DIR
 #define WOLFSSL_NO_SOCK

@@ -1,12 +1,12 @@
 /* esp32_util.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -31,13 +31,20 @@
 #include "sdkconfig.h" /* programmatically generated from sdkconfig */
 #include <wolfssl/wolfcrypt/port/Espressif/esp32-crypt.h>
 
+#if HAVE_LIBWOLFSSL_OUTPUT_HEADER
+    /* see wolfssl component CMakeLists.txt that may have generated this: */
+    #include "libwolfssl_output.h"
+#endif
+
 /* Espressif */
 #include <esp_log.h>
 #include <esp_err.h>
 #if ESP_IDF_VERSION_MAJOR > 4
     #include <hal/efuse_hal.h>
     #include <rtc_wdt.h>
+    #include <esp_task_wdt.h>
 #endif
+
 /* wolfSSL */
 #include <wolfssl/wolfcrypt/wolfmath.h> /* needed to print MATH_INT_T value */
 #include <wolfssl/wolfcrypt/types.h>
@@ -645,6 +652,16 @@ int ShowExtendedSystemInfo(void)
                             LIBWOLFSSL_VERSION_HEX);
 #endif
 
+#if defined(LIBWOLFSSL_CMAKE_OUTPUT)
+    /* For some environments such as PlatformIO that may hide CMake output,
+     * we can have important messages propagated to the app:                 */
+    ESP_LOGI(TAG, "----------------------------------------------------------");
+    ESP_LOGI(TAG, "LIBWOLFSSL_CMAKE_OUTPUT:%s", LIBWOLFSSL_CMAKE_OUTPUT);
+    ESP_LOGI(TAG, "----------------------------------------------------------");
+#else
+    ESP_LOGW(TAG, "LIBWOLFSSL_CMAKE_OUTPUT: No cmake messages detected");
+#endif
+
     /* some interesting settings are target specific (ESP32, -C3, -S3, etc */
 #if defined(CONFIG_IDF_TARGET_ESP32)
     /* ESP_RSA_MULM_BITS should be set to at least 16 for ESP32 */
@@ -739,15 +756,25 @@ esp_err_t esp_DisableWatchdog(void)
         #elif defined(CONFIG_IDF_TARGET_ESP32C2) || \
               defined(CONFIG_IDF_TARGET_ESP32C3) || \
               defined(CONFIG_IDF_TARGET_ESP32C6) || \
-              defined(CONFIG_IDF_TARGET_ESP32H2)
-            ESP_LOGW(TAG, "No known rtc_wdt_protect_off for this platform.");
+              defined(CONFIG_IDF_TARGET_ESP32H2) || \
+              defined(CONFIG_IDF_TARGET_ESP32P4)
+            #if ESP_IDF_VERSION_MINOR >= 3
+                #if CONFIG_ESP_TASK_WDT
+                    ret = esp_task_wdt_deinit();
+                #else
+                    /* CONFIG_ESP_TASK_WDT=y needed in sdkconfig */
+                    ESP_LOGW(TAG, "esp_task_wdt_deinit not available");
+                #endif
+            #else
+                    ESP_LOGW(TAG, "esp_task_wdt_deinit not implemented");
+            #endif
         #else
             rtc_wdt_protect_off();
             rtc_wdt_disable();
         #endif
     }
     #else
-        ESP_LOGW(TAG, "esp_DisableWatchdog not implemented on ESP_OIDF v%d",
+        ESP_LOGW(TAG, "esp_DisableWatchdog not implemented on ESP_IDF v%d",
                       ESP_IDF_VERSION_MAJOR);
     #endif
 #endif
@@ -780,8 +807,17 @@ esp_err_t esp_EnabledWatchdog(void)
         #elif defined(CONFIG_IDF_TARGET_ESP32C2) || \
               defined(CONFIG_IDF_TARGET_ESP32C3) || \
               defined(CONFIG_IDF_TARGET_ESP32C6) || \
-              defined(CONFIG_IDF_TARGET_ESP32H2)
+              defined(CONFIG_IDF_TARGET_ESP32H2) || \
+              defined(CONFIG_IDF_TARGET_ESP32P4)
             ESP_LOGW(TAG, "No known rtc_wdt_protect_off for this platform.");
+            esp_task_wdt_config_t twdt_config = {
+                .timeout_ms = 5000,     /* Timeout in milliseconds  */
+                .trigger_panic = true,  /* trigger panic on timeout */
+                .idle_core_mask = (1 << 0), /*  Enable on Core 0    */
+            };
+            ESP_LOGW(TAG, "No known rtc_wdt_protect_off for this platform.");
+            esp_task_wdt_init(&twdt_config);
+            esp_task_wdt_add(NULL);
         #else
             rtc_wdt_protect_on();
             rtc_wdt_enable();

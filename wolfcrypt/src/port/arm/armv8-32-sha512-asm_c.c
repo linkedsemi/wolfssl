@@ -1,12 +1,12 @@
 /* armv8-32-sha512-asm
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -25,31 +25,31 @@
  *       ../wolfssl/wolfcrypt/src/port/arm/armv8-32-sha512-asm.c
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif /* HAVE_CONFIG_H */
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources_asm.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 
 #ifdef WOLFSSL_ARMASM
 #if !defined(__aarch64__) && !defined(WOLFSSL_ARMASM_THUMB2)
 #include <stdint.h>
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif /* HAVE_CONFIG_H */
-#include <wolfssl/wolfcrypt/settings.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 #ifdef WOLFSSL_ARMASM_INLINE
 
 #ifdef __IAR_SYSTEMS_ICC__
 #define __asm__        asm
 #define __volatile__   volatile
+#define WOLFSSL_NO_VAR_ASSIGN_REG
 #endif /* __IAR_SYSTEMS_ICC__ */
 #ifdef __KEIL__
 #define __asm__        __asm
 #define __volatile__   volatile
 #endif /* __KEIL__ */
-#ifdef WOLFSSL_SHA512
+#ifdef __ghs__
+#define __asm__        __asm
+#define __volatile__
+#define WOLFSSL_NO_VAR_ASSIGN_REG
+#endif /* __ghs__ */
+
+#if defined(WOLFSSL_SHA512) || defined(WOLFSSL_SHA384)
 #include <wolfssl/wolfcrypt/sha512.h>
 
 #ifdef WOLFSSL_ARMASM_NO_NEON
@@ -96,21 +96,34 @@ static const word64 L_SHA512_transform_len_k[] = {
     0x5fcb6fab3ad6faecUL, 0x6c44198c4a475817UL,
 };
 
-void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p);
-void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
+void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p,
+    word32 len_p);
+#ifndef WOLFSSL_NO_VAR_ASSIGN_REG
+WC_OMIT_FRAME_POINTER void Transform_Sha512_Len(wc_Sha512* sha512_p,
+    const byte* data_p, word32 len_p)
+#else
+WC_OMIT_FRAME_POINTER void Transform_Sha512_Len(wc_Sha512* sha512,
+    const byte* data, word32 len)
+#endif /* WOLFSSL_NO_VAR_ASSIGN_REG */
 {
+#ifndef WOLFSSL_NO_VAR_ASSIGN_REG
     register wc_Sha512* sha512 asm ("r0") = (wc_Sha512*)sha512_p;
     register const byte* data asm ("r1") = (const byte*)data_p;
     register word32 len asm ("r2") = (word32)len_p;
     register word64* L_SHA512_transform_len_k_c asm ("r3") =
         (word64*)&L_SHA512_transform_len_k;
+#else
+    register word64* L_SHA512_transform_len_k_c =
+        (word64*)&L_SHA512_transform_len_k;
+
+#endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
 
     __asm__ __volatile__ (
         "sub	sp, sp, #0xc0\n\t"
+        "mov	r3, %[L_SHA512_transform_len_k]\n\t"
         /* Copy digest to add in at end */
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -586,16 +599,14 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r4, r5, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [sp]\n\t"
-        "ldr	r9, [sp, #4]\n\t"
+        "ldm	sp, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [sp]\n\t"
 #endif
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [r3]\n\t"
-        "ldr	r7, [r3, #4]\n\t"
+        "ldm	r3, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [r3]\n\t"
 #endif
@@ -618,8 +629,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r8, r8, r4\n\t"
         "adc	r9, r9, r5\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -654,8 +664,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -716,8 +725,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "eor	r7, r7, r9\n\t"
         "eor	r6, r6, r8\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [sp]\n\t"
-        "ldr	r5, [sp, #4]\n\t"
+        "ldm	sp, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [sp]\n\t"
 #endif
@@ -732,8 +740,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r8\n\t"
         "adc	r5, r5, r9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [sp]\n\t"
-        "str	r5, [sp, #4]\n\t"
+        "stm	sp, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [sp]\n\t"
 #endif
@@ -759,16 +766,14 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "eor	r7, r7, r9\n\t"
         "eor	r6, r6, r8\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [sp]\n\t"
-        "ldr	r5, [sp, #4]\n\t"
+        "ldm	sp, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [sp]\n\t"
 #endif
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [sp]\n\t"
-        "str	r5, [sp, #4]\n\t"
+        "stm	sp, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [sp]\n\t"
 #endif
@@ -914,8 +919,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r8, r9, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -1203,8 +1207,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "mov	r11, r9\n\t"
         /* Calc new W[2] */
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [sp]\n\t"
-        "ldr	r5, [sp, #4]\n\t"
+        "ldm	sp, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [sp]\n\t"
 #endif
@@ -1364,8 +1367,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r8\n\t"
         "adc	r5, r5, r9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -1386,8 +1388,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r4, r5, [%[sha512], #40]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r8, [%[sha512]]\n\t"
-        "str	r9, [%[sha512], #4]\n\t"
+        "stm	r0, {r8, r9}\n\t"
 #else
         "strd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -1536,8 +1537,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
 #endif
         /* Round 4 */
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -1572,8 +1572,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "strd	r4, r5, [%[sha512], #24]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -1832,8 +1831,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r4, r5, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -2092,8 +2090,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r6, r7, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -2318,8 +2315,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "orr	r9, r9, r4, lsr #9\n\t"
         "orr	r8, r8, r5, lsr #9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -2328,8 +2324,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -2358,8 +2353,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "eor	r6, r6, r8\n\t"
         "eor	r7, r7, r9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -2388,8 +2382,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -2422,8 +2415,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "orr	r9, r9, r4, lsr #7\n\t"
         "orr	r8, r8, r5, lsr #7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -2444,8 +2436,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r6, r7, [%[sha512], #16]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -2456,16 +2447,14 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "eor	r10, r10, r6\n\t"
         "eor	r11, r11, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
         "adds	r6, r6, r10\n\t"
         "adc	r7, r7, r11\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r6, [%[sha512]]\n\t"
-        "str	r7, [%[sha512], #4]\n\t"
+        "stm	r0, {r6, r7}\n\t"
 #else
         "strd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -2500,8 +2489,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r4, r5, [sp, #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [sp]\n\t"
-        "ldr	r9, [sp, #4]\n\t"
+        "ldm	sp, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [sp]\n\t"
 #endif
@@ -2650,8 +2638,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r8, r8, r4\n\t"
         "adc	r9, r9, r5\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -2686,8 +2673,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -2946,8 +2932,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r8, r9, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -3396,8 +3381,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r8\n\t"
         "adc	r5, r5, r9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -3418,8 +3402,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r4, r5, [%[sha512], #40]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r8, [%[sha512]]\n\t"
-        "str	r9, [%[sha512], #4]\n\t"
+        "stm	r0, {r8, r9}\n\t"
 #else
         "strd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -3568,8 +3551,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
 #endif
         /* Round 12 */
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -3604,8 +3586,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "strd	r4, r5, [%[sha512], #24]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -3864,8 +3845,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r4, r5, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -4124,8 +4104,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r6, r7, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -4350,8 +4329,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "orr	r9, r9, r4, lsr #9\n\t"
         "orr	r8, r8, r5, lsr #9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -4360,8 +4338,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -4390,8 +4367,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "eor	r6, r6, r8\n\t"
         "eor	r7, r7, r9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -4420,8 +4396,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -4454,8 +4429,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "orr	r9, r9, r4, lsr #7\n\t"
         "orr	r8, r8, r5, lsr #7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -4476,8 +4450,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r6, r7, [%[sha512], #16]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -4488,16 +4461,14 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "eor	r10, r10, r6\n\t"
         "eor	r11, r11, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
         "adds	r6, r6, r10\n\t"
         "adc	r7, r7, r11\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r6, [%[sha512]]\n\t"
-        "str	r7, [%[sha512], #4]\n\t"
+        "stm	r0, {r6, r7}\n\t"
 #else
         "strd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -4548,8 +4519,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "strd	r4, r5, [sp, #120]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [sp]\n\t"
-        "ldr	r5, [sp, #4]\n\t"
+        "ldm	sp, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [sp]\n\t"
 #endif
@@ -4653,16 +4623,14 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r4, r5, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [sp]\n\t"
-        "ldr	r9, [sp, #4]\n\t"
+        "ldm	sp, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [sp]\n\t"
 #endif
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [r3]\n\t"
-        "ldr	r7, [r3, #4]\n\t"
+        "ldm	r3, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [r3]\n\t"
 #endif
@@ -4685,8 +4653,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r8, r8, r4\n\t"
         "adc	r9, r9, r5\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -4721,8 +4688,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -4902,8 +4868,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r8, r9, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -5194,8 +5159,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r8\n\t"
         "adc	r5, r5, r9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -5216,8 +5180,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r4, r5, [%[sha512], #40]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r8, [%[sha512]]\n\t"
-        "str	r9, [%[sha512], #4]\n\t"
+        "stm	r0, {r8, r9}\n\t"
 #else
         "strd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -5287,8 +5250,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "mov	r11, r9\n\t"
         /* Round 4 */
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -5323,8 +5285,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "strd	r4, r5, [%[sha512], #24]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -5504,8 +5465,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r4, r5, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -5685,8 +5645,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r6, r7, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -5832,8 +5791,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "orr	r9, r9, r4, lsr #9\n\t"
         "orr	r8, r8, r5, lsr #9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -5842,8 +5800,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -5872,8 +5829,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "eor	r6, r6, r8\n\t"
         "eor	r7, r7, r9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -5902,8 +5858,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -5936,8 +5891,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "orr	r9, r9, r4, lsr #7\n\t"
         "orr	r8, r8, r5, lsr #7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -5958,8 +5912,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r6, r7, [%[sha512], #16]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -5970,16 +5923,14 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "eor	r10, r10, r6\n\t"
         "eor	r11, r11, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
         "adds	r6, r6, r10\n\t"
         "adc	r7, r7, r11\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r6, [%[sha512]]\n\t"
-        "str	r7, [%[sha512], #4]\n\t"
+        "stm	r0, {r6, r7}\n\t"
 #else
         "strd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -6085,8 +6036,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r8, r8, r4\n\t"
         "adc	r9, r9, r5\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -6121,8 +6071,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -6302,8 +6251,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r8, r9, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -6594,8 +6542,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r8\n\t"
         "adc	r5, r5, r9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -6616,8 +6563,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r4, r5, [%[sha512], #40]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r8, [%[sha512]]\n\t"
-        "str	r9, [%[sha512], #4]\n\t"
+        "stm	r0, {r8, r9}\n\t"
 #else
         "strd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -6687,8 +6633,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "mov	r11, r9\n\t"
         /* Round 12 */
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -6723,8 +6668,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "strd	r4, r5, [%[sha512], #24]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -6904,8 +6848,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r4, r5, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -7085,8 +7028,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r6, r7, [%[sha512], #56]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r8, [%[sha512]]\n\t"
-        "ldr	r9, [%[sha512], #4]\n\t"
+        "ldm	r0, {r8, r9}\n\t"
 #else
         "ldrd	r8, r9, [%[sha512]]\n\t"
 #endif
@@ -7232,8 +7174,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "orr	r9, r9, r4, lsr #9\n\t"
         "orr	r8, r8, r5, lsr #9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -7242,8 +7183,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -7272,8 +7212,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "eor	r6, r6, r8\n\t"
         "eor	r7, r7, r9\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -7302,8 +7241,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r4, r4, r6\n\t"
         "adc	r5, r5, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -7336,8 +7274,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "orr	r9, r9, r4, lsr #7\n\t"
         "orr	r8, r8, r5, lsr #7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -7358,8 +7295,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "ldrd	r6, r7, [%[sha512], #16]\n\t"
 #endif
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -7370,16 +7306,14 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "eor	r10, r10, r6\n\t"
         "eor	r11, r11, r7\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r6, [%[sha512]]\n\t"
-        "ldr	r7, [%[sha512], #4]\n\t"
+        "ldm	r0, {r6, r7}\n\t"
 #else
         "ldrd	r6, r7, [%[sha512]]\n\t"
 #endif
         "adds	r6, r6, r10\n\t"
         "adc	r7, r7, r11\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r6, [%[sha512]]\n\t"
-        "str	r7, [%[sha512], #4]\n\t"
+        "stm	r0, {r6, r7}\n\t"
 #else
         "strd	r6, r7, [%[sha512]]\n\t"
 #endif
@@ -7387,8 +7321,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "mov	r11, r9\n\t"
         /* Add in digest from start */
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "ldr	r4, [%[sha512]]\n\t"
-        "ldr	r5, [%[sha512], #4]\n\t"
+        "ldm	r0, {r4, r5}\n\t"
 #else
         "ldrd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -7415,8 +7348,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "adds	r6, r6, r10\n\t"
         "adc	r7, r7, r11\n\t"
 #if defined(WOLFSSL_ARM_ARCH) && (WOLFSSL_ARM_ARCH < 7)
-        "str	r4, [%[sha512]]\n\t"
-        "str	r5, [%[sha512], #4]\n\t"
+        "stm	r0, {r4, r5}\n\t"
 #else
         "strd	r4, r5, [%[sha512]]\n\t"
 #endif
@@ -7600,9 +7532,15 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "bne	L_SHA512_transform_len_begin_%=\n\t"
         "eor	r0, r0, r0\n\t"
         "add	sp, sp, #0xc0\n\t"
+#ifndef WOLFSSL_NO_VAR_ASSIGN_REG
         : [sha512] "+r" (sha512), [data] "+r" (data), [len] "+r" (len),
           [L_SHA512_transform_len_k] "+r" (L_SHA512_transform_len_k_c)
         :
+#else
+        :
+        : [sha512] "r" (sha512), [data] "r" (data), [len] "r" (len),
+          [L_SHA512_transform_len_k] "r" (L_SHA512_transform_len_k_c)
+#endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
         : "memory", "cc", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11",
             "r12"
     );
@@ -7655,16 +7593,30 @@ static const word64 L_SHA512_transform_neon_len_k[] = {
     0x5fcb6fab3ad6faecUL, 0x6c44198c4a475817UL,
 };
 
-void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p);
-void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
+void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p,
+    word32 len_p);
+#ifndef WOLFSSL_NO_VAR_ASSIGN_REG
+WC_OMIT_FRAME_POINTER void Transform_Sha512_Len(wc_Sha512* sha512_p,
+    const byte* data_p, word32 len_p)
+#else
+WC_OMIT_FRAME_POINTER void Transform_Sha512_Len(wc_Sha512* sha512,
+    const byte* data, word32 len)
+#endif /* WOLFSSL_NO_VAR_ASSIGN_REG */
 {
+#ifndef WOLFSSL_NO_VAR_ASSIGN_REG
     register wc_Sha512* sha512 asm ("r0") = (wc_Sha512*)sha512_p;
     register const byte* data asm ("r1") = (const byte*)data_p;
     register word32 len asm ("r2") = (word32)len_p;
     register word64* L_SHA512_transform_neon_len_k_c asm ("r3") =
         (word64*)&L_SHA512_transform_neon_len_k;
+#else
+    register word64* L_SHA512_transform_neon_len_k_c =
+        (word64*)&L_SHA512_transform_neon_len_k;
+
+#endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
 
     __asm__ __volatile__ (
+        "mov	r3, %[L_SHA512_transform_neon_len_k]\n\t"
         /* Load digest into working vars */
         "vldm.64	%[sha512], {d0-d7}\n\t"
         /* Start of loop processing a block */
@@ -9153,9 +9105,15 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
         "subs	%[len], %[len], #0x80\n\t"
         "sub	r3, r3, #0x280\n\t"
         "bne	L_SHA512_transform_neon_len_begin_%=\n\t"
+#ifndef WOLFSSL_NO_VAR_ASSIGN_REG
         : [sha512] "+r" (sha512), [data] "+r" (data), [len] "+r" (len),
           [L_SHA512_transform_neon_len_k] "+r" (L_SHA512_transform_neon_len_k_c)
         :
+#else
+        :
+        : [sha512] "r" (sha512), [data] "r" (data), [len] "r" (len),
+          [L_SHA512_transform_neon_len_k] "r" (L_SHA512_transform_neon_len_k_c)
+#endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
         : "memory", "cc", "r12", "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
             "d8", "d9", "d10", "d11", "d12", "d13", "d14", "d15", "q8", "q9",
             "q10", "q11", "q12", "q13", "q14", "q15"
@@ -9163,7 +9121,7 @@ void Transform_Sha512_Len(wc_Sha512* sha512_p, const byte* data_p, word32 len_p)
 }
 
 #endif /* !WOLFSSL_ARMASM_NO_NEON */
-#endif /* WOLFSSL_SHA512 */
+#endif /* WOLFSSL_SHA512 || WOLFSSL_SHA384 */
 #endif /* !__aarch64__ && !WOLFSSL_ARMASM_THUMB2 */
 #endif /* WOLFSSL_ARMASM */
 

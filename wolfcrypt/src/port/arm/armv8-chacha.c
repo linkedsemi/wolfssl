@@ -1,12 +1,12 @@
 /* armv8-chacha.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,22 +19,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-/*  The paper NEON crypto by Daniel J. Bernstein and Peter Schwabe was used to optimize for ARM
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
+
+/*  The paper NEON crypto by Daniel J. Bernstein and Peter Schwabe was used to
+ *  optimize for ARM
  *  https://cryptojedi.org/papers/neoncrypto-20120320.pdf
  */
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
 
 #if defined(WOLFSSL_ARMASM)
 #ifdef HAVE_CHACHA
 
 #include <wolfssl/wolfcrypt/chacha.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
-#include <wolfssl/wolfcrypt/logging.h>
 #include <wolfssl/wolfcrypt/cpuid.h>
 #ifdef NO_INLINE
     #include <wolfssl/wolfcrypt/misc.h>
@@ -121,7 +116,7 @@ int wc_Chacha_SetIV(ChaCha* ctx, const byte* iv, word32 counter)
 
     ctx->left = 0;
     ctx->X[CHACHA_IV_BYTES+0] = counter;           /* block counter */
-    ctx->X[CHACHA_IV_BYTES+1] = LITTLE32(temp[0]); /* fixed variable from nonce */
+    ctx->X[CHACHA_IV_BYTES+1] = LITTLE32(temp[0]); /* fixed var from nonce */
     ctx->X[CHACHA_IV_BYTES+2] = LITTLE32(temp[1]); /* counter from nonce */
     ctx->X[CHACHA_IV_BYTES+3] = LITTLE32(temp[2]); /* counter from nonce */
 
@@ -246,7 +241,7 @@ static const word32 L_chacha20_neon_inc_first_word[] = {
 
 #ifdef __aarch64__
 
-static const word32 L_chacha20_neon_add_all_counters[] = {
+static const word32 L_chacha20_neon_add_all_cntrs[] = {
     0x0,
     0x1,
     0x2,
@@ -260,7 +255,8 @@ static const word32 L_chacha20_neon_rol8[] = {
     0xe0d0c0f,
 };
 
-static WC_INLINE void wc_Chacha_encrypt_320(const word32* input, const byte* m, byte* c, word32 bytes)
+static WC_INLINE void wc_Chacha_encrypt_320(const word32* input, const byte* m,
+    byte* c, word32 bytes)
 {
 #ifdef CHACHA_TEST
     printf("Entering wc_Chacha_encrypt_320 with %d bytes\n", bytes);
@@ -270,22 +266,26 @@ static WC_INLINE void wc_Chacha_encrypt_320(const word32* input, const byte* m, 
         /*
          * The layout of used registers is:
          * ARM
-         * w4-w19: these registers hold the fifth Chacha block for calculation in regular ARM
+         * w4-w19: these registers hold the fifth Chacha block for calculation
+         * in regular ARM
          * w20: loop counter for how many even-odd rounds need to be executed
          * w21: the counter offset for the block in ARM registers
-         * NEON
-         * v0-v15: the vi'th register holds the i'th word of four blocks during the quarter rounds.
-         *         these registers are later transposed make ADDing the input and XORing the message easier.
-         * v16-v19: these are helper registers that are used as temporary location to store data
+         *      NEON
+         * v0-v15: the vi'th register holds the i'th word of four blocks during
+         *         the quarter rounds. these registers are later transposed make
+         *         ADDing the input and XORing the message easier.
+         * v16-v19: these are helper registers that are used as temporary
+         *          location to store data
          * v20-v23: load the next message block
          * v24-v27: the 64 byte initial Chacha block
          * v28: vector to increment the counter words of each block
-         * v29: vector of 5's to increment counters between L_chacha20_arm64_outer_%= loops
+         * v29: vector of 5's to increment counters between
+         *      L_chacha20_arm64_outer_%= loops
          * v30: table lookup indices to rotate values by 8
          */
 
         /* Load counter-add values for each block */
-        "LD1    {v28.4s}, [%[L_chacha20_neon_add_all_counters]] \n\t"
+        "LD1    {v28.4s}, [%[L_chacha20_neon_add_all_cntrs]] \n\t"
         /* Load index look-up for rotating left 8 bits */
         "LD1    {v30.16b}, [%[L_chacha20_neon_rol8]] \n\t"
         /* For adding 5 to each counter-add for next 320-byte chunk */
@@ -556,7 +556,7 @@ static WC_INLINE void wc_Chacha_encrypt_320(const word32* input, const byte* m, 
         "SRI    v6.4s, v17.4s, #25 \n\t"
         "SRI    v7.4s, v18.4s, #25 \n\t"
         "SRI    v4.4s, v19.4s, #25 \n\t"
-        "BNE    L_chacha20_arm64_inner_%= \n\t"
+        "B.NE    L_chacha20_arm64_inner_%= \n\t"
         /* Add counter now rather than after transposed */
         "ADD    v12.4s, v12.4s, v28.4s \n\t"
         "ADD    w16, w16, w21 \n\t"
@@ -666,10 +666,10 @@ static WC_INLINE void wc_Chacha_encrypt_320(const word32* input, const byte* m, 
         "ST1    {v16.4s-v19.4s}, [%[c]], #64 \n\t"
         "SUBS   %[bytes], %[bytes], #320 \n\t"
         "ADD    v28.4s, v28.4s, v29.4s \n\t"
-        "BNE    L_chacha20_arm64_outer_%= \n\t"
+        "B.NE    L_chacha20_arm64_outer_%= \n\t"
         : [input] "+r" (input), [m] "+r" (m), [c] "+r" (c),
           [bytes] "+r" (bytes64)
-        : [L_chacha20_neon_add_all_counters] "r" (L_chacha20_neon_add_all_counters),
+        : [L_chacha20_neon_add_all_cntrs] "r" (L_chacha20_neon_add_all_cntrs),
           [L_chacha20_neon_rol8] "r" (L_chacha20_neon_rol8)
         : "memory", "cc",
           "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12",
@@ -684,7 +684,8 @@ static WC_INLINE void wc_Chacha_encrypt_320(const word32* input, const byte* m, 
 /**
   * Converts word into bytes with rotations having been done.
   */
-static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS], const byte* m, byte* c)
+static WC_INLINE int wc_Chacha_encrypt_256(
+    const word32 input[CHACHA_CHUNK_WORDS], const byte* m, byte* c)
 {
 #ifdef CHACHA_TEST
     printf("Entering wc_Chacha_encrypt_256\n");
@@ -958,7 +959,7 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
         "EXT    v9.16B, v9.16B, v9.16B, #12 \n\t"
         "EXT    v10.16B, v10.16B, v10.16B, #8 \n\t"
         "EXT    v11.16B, v11.16B, v11.16B, #4 \n\t"
-        "BNE    L_chacha20_arm64_256_loop_%= \n\t"
+        "B.NE    L_chacha20_arm64_256_loop_%= \n\t"
         /* Load message */
         "LD1    {v16.4S-v19.4S}, [%[m]], #64 \n\t"
         /* Add one (2 added during calculating vector results) */
@@ -1035,7 +1036,8 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
     );
 #else
     __asm__ __volatile__ (
-        // The paper NEON crypto by Daniel J. Bernstein and Peter Schwabe was used to optimize for ARM
+        // The paper NEON crypto by Daniel J. Bernstein and Peter Schwabe was
+        // used to optimize for ARM
         // https://cryptojedi.org/papers/neoncrypto-20120320.pdf
 
         ".align 2 \n\t"
@@ -1087,7 +1089,8 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
         "VMOV d14, r10, r11 \n\t"
         "ADD r10, r10, #1 \n\t"
         "VMOV d22, r10, r11 \n\t"
-        "ADD r10, r10, #1 \n\t" // ARM calculates the fourth block (two was already added earlier)
+        "ADD r10, r10, #1 \n\t" // ARM calculates the fourth block (two was
+                                // already added earlier)
         "\n"
     "L_chacha20_arm32_256_loop_%=: \n\t"
         "SUBS r14, r14, #1 \n\t"
@@ -1109,7 +1112,8 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
         "ROR r11, r11, #16 \n\t" // 13 13
         "VEOR q14, q11, q8 \n\t"
         "ADD r8, r8, r10 \n\t" // 8 8 12
-        // rotation by 16 bits may be done by reversing the 16 bit elements in 32 bit words
+        // rotation by 16 bits may be done by reversing the 16 bit elements in
+        // 32 bit words
         "VREV32.16 q3, q12 \n\t"
         "ADD r9, r9, r11 \n\t" //  9 9 13
         "VREV32.16 q7, q13 \n\t"
@@ -1129,7 +1133,8 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
         "EOR r10, r10, r0 \n\t" // 12 12 0
         "VEOR q14, q9, q10 \n\t"
         "EOR r11, r11, r1 \n\t" // 13 13 1
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q1, q12, #12 \n\t"
         "ROR r10, r10, #24 \n\t" // 12 12
         "VSHL.I32 q5, q13, #12 \n\t"
@@ -1155,7 +1160,8 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
         "STR r9, [sp, #4*9] \n\t"
         "VEOR q14, q11, q8 \n\t"
         "LDR r9, [sp, #4*11] \n\t"
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q3, q12, #8 \n\t"
         "ROR r4, r4, #25 \n\t" // 4 4
         "VSHL.I32 q7, q13, #8 \n\t"
@@ -1188,7 +1194,8 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
         "EOR r6, r6, r8 \n\t" // 6 6 10
         "VEOR q14, q9, q10 \n\t"
         "EOR r7, r7, r9 \n\t" // 7 7 11
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q1, q12, #7 \n\t"
         "ROR r6, r6, #20 \n\t" // 6 6
         "VSHL.I32 q5, q13, #7 \n\t"
@@ -1240,7 +1247,8 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
         "ROR r10, r10, #16 \n\t" // 12 12
         "VEOR q14, q11, q8 \n\t"
         "ADD r8, r8, r11 \n\t" // 10 10 15
-        // rotation by 16 bits may be done by reversing the 16 bit elements in 32 bit words
+        // rotation by 16 bits may be done by reversing the 16 bit elements in
+        // 32 bit words
         "VREV32.16 q3, q12 \n\t"
         "ADD r9, r9, r10 \n\t" // 11 11 12
         "VREV32.16 q7, q13 \n\t"
@@ -1260,7 +1268,8 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
         "EOR r11, r11, r0 \n\t" // 15 15 0
         "VEOR q14, q9, q10 \n\t"
         "EOR r10, r10, r1 \n\t" // 12 12 1
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q1, q12, #12 \n\t"
         "ROR r11, r11, #24 \n\t" // 15 15
         "VSHL.I32 q5, q13, #12 \n\t"
@@ -1286,7 +1295,8 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
         "STR r9, [sp, #4*11] \n\t"
         "VEOR q14, q11, q8 \n\t"
         "LDR r9, [sp, #4*9] \n\t"
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q3, q12, #8 \n\t"
         "ROR r5, r5, #25 \n\t" // 5 5
         "VSHL.I32 q7, q13, #8 \n\t"
@@ -1319,7 +1329,8 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
         "EOR r7, r7, r8 \n\t" // 7 7 8
         "VEOR q14, q9, q10 \n\t"
         "EOR r4, r4, r9 \n\t" // 4 4 9
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q1, q12, #7 \n\t"
         "ROR r7, r7, #20 \n\t" // 7 7
         "VSHL.I32 q5, q13, #7 \n\t"
@@ -1461,7 +1472,8 @@ static WC_INLINE int wc_Chacha_encrypt_256(const word32 input[CHACHA_CHUNK_WORDS
 }
 
 
-static WC_INLINE int wc_Chacha_encrypt_128(const word32 input[CHACHA_CHUNK_WORDS], const byte* m, byte* c)
+static WC_INLINE int wc_Chacha_encrypt_128(
+    const word32 input[CHACHA_CHUNK_WORDS], const byte* m, byte* c)
 {
 #ifdef CHACHA_TEST
     printf("Entering wc_Chacha_encrypt_128\n");
@@ -1571,7 +1583,7 @@ static WC_INLINE int wc_Chacha_encrypt_128(const word32 input[CHACHA_CHUNK_WORDS
         "EXT    v5.16B, v5.16B, v5.16B, #12 \n\t"
         "EXT    v6.16B, v6.16B, v6.16B, #8 \n\t"
         "EXT    v7.16B, v7.16B, v7.16B, #4 \n\t"
-        "BNE    L_chacha20_arm64_128_loop_%= \n\t"
+        "B.NE    L_chacha20_arm64_128_loop_%= \n\t"
         /* Add back state, XOR in message and store (load next block) */
         "ADD    v0.4S, v0.4S, v18.4S \n\t"
         "ADD    v1.4S, v1.4S, v19.4S \n\t"
@@ -1626,7 +1638,8 @@ static WC_INLINE int wc_Chacha_encrypt_128(const word32 input[CHACHA_CHUNK_WORDS
         "VADD.I32 q4, q4, q5 \n\t"
         "VEOR q8, q3, q0 \n\t"
         "VEOR q9, q7, q4 \n\t"
-        // rotation by 16 bits may be done by reversing the 16 bit elements in 32 bit words
+        // rotation by 16 bits may be done by reversing the 16 bit elements in
+        // 32 bit words
         "VREV32.16 q3, q8 \n\t"
         "VREV32.16 q7, q9 \n\t"
 
@@ -1634,7 +1647,8 @@ static WC_INLINE int wc_Chacha_encrypt_128(const word32 input[CHACHA_CHUNK_WORDS
         "VADD.I32 q6, q6, q7 \n\t"
         "VEOR q8, q1, q2 \n\t"
         "VEOR q9, q5, q6 \n\t"
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q1, q8, #12 \n\t"
         "VSHL.I32 q5, q9, #12 \n\t"
         "VSRI.I32 q1, q8, #20 \n\t"
@@ -1644,7 +1658,8 @@ static WC_INLINE int wc_Chacha_encrypt_128(const word32 input[CHACHA_CHUNK_WORDS
         "VADD.I32 q4, q4, q5 \n\t"
         "VEOR q8, q3, q0 \n\t"
         "VEOR q9, q7, q4 \n\t"
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q3, q8, #8 \n\t"
         "VSHL.I32 q7, q9, #8 \n\t"
         "VSRI.I32 q3, q8, #24 \n\t"
@@ -1654,7 +1669,8 @@ static WC_INLINE int wc_Chacha_encrypt_128(const word32 input[CHACHA_CHUNK_WORDS
         "VADD.I32 q6, q6, q7 \n\t"
         "VEOR q8, q1, q2 \n\t"
         "VEOR q9, q5, q6 \n\t"
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q1, q8, #7 \n\t"
         "VSHL.I32 q5, q9, #7 \n\t"
         "VSRI.I32 q1, q8, #25 \n\t"
@@ -1674,7 +1690,8 @@ static WC_INLINE int wc_Chacha_encrypt_128(const word32 input[CHACHA_CHUNK_WORDS
         "VADD.I32 q4, q4, q5 \n\t"
         "VEOR q8, q3, q0 \n\t"
         "VEOR q9, q7, q4 \n\t"
-        // rotation by 16 bits may be done by reversing the 16 bit elements in 32 bit words
+        // rotation by 16 bits may be done by reversing the 16 bit elements in
+        // 32 bit words
         "VREV32.16 q3, q8 \n\t"
         "VREV32.16 q7, q9 \n\t"
 
@@ -1682,7 +1699,8 @@ static WC_INLINE int wc_Chacha_encrypt_128(const word32 input[CHACHA_CHUNK_WORDS
         "VADD.I32 q6, q6, q7 \n\t"
         "VEOR q8, q1, q2 \n\t"
         "VEOR q9, q5, q6 \n\t"
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q1, q8, #12 \n\t"
         "VSHL.I32 q5, q9, #12 \n\t"
         "VSRI.I32 q1, q8, #20 \n\t"
@@ -1692,7 +1710,8 @@ static WC_INLINE int wc_Chacha_encrypt_128(const word32 input[CHACHA_CHUNK_WORDS
         "VADD.I32 q4, q4, q5 \n\t"
         "VEOR q8, q3, q0 \n\t"
         "VEOR q9, q7, q4 \n\t"
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q3, q8, #8 \n\t"
         "VSHL.I32 q7, q9, #8 \n\t"
         "VSRI.I32 q3, q8, #24 \n\t"
@@ -1702,7 +1721,8 @@ static WC_INLINE int wc_Chacha_encrypt_128(const word32 input[CHACHA_CHUNK_WORDS
         "VADD.I32 q6, q6, q7 \n\t"
         "VEOR q8, q1, q2 \n\t"
         "VEOR q9, q5, q6 \n\t"
-        // SIMD instructions don't support rotation so we have to cheat using shifts and a help register
+        // SIMD instructions don't support rotation so we have to cheat using
+        // shifts and a help register
         "VSHL.I32 q1, q8, #7 \n\t"
         "VSHL.I32 q5, q9, #7 \n\t"
         "VSRI.I32 q1, q8, #25 \n\t"
@@ -2231,7 +2251,7 @@ static WC_INLINE void wc_Chacha_encrypt_64(const word32* input, const byte* m,
         "ADD    v2.4S, v2.4S, v10.4S \n\t"
         "ADD    v3.4S, v3.4S, v11.4S \n\t"
         "CMP    %[bytes], #64 \n\t"
-        "BLT    L_chacha20_arm64_64_lt_64_%= \n\t"
+        "B.LT    L_chacha20_arm64_64_lt_64_%= \n\t"
         "LD1    {v4.4S-v7.4S}, [%[m]], #64 \n\t"
         "EOR    v4.16B, v4.16B, v0.16B \n\t"
         "EOR    v5.16B, v5.16B, v1.16B \n\t"
@@ -2240,13 +2260,13 @@ static WC_INLINE void wc_Chacha_encrypt_64(const word32* input, const byte* m,
         "ST1    {v4.4S-v7.4S}, [%[c]], #64 \n\t"
         "SUBS   %[bytes], %[bytes], #64 \n\t"
         "ADD    v11.4S, v11.4S, v14.4S \n\t"
-        "BNE    L_chacha20_arm64_64_loop_%= \n\t"
+        "B.NE    L_chacha20_arm64_64_loop_%= \n\t"
         "B      L_chacha20_arm64_64_done_%= \n\t"
         "\n"
     "L_chacha20_arm64_64_lt_64_%=: \n\t"
         "ST1	{v0.4s-v3.4s}, [%[over]]\n\t"
         "CMP    %[bytes], #32 \n\t"
-        "BLT    L_chacha20_arm64_64_lt_32_%= \n\t"
+        "B.LT    L_chacha20_arm64_64_lt_32_%= \n\t"
         "LD1    {v4.4S, v5.4S}, [%[m]], #32 \n\t"
         "EOR    v4.16B, v4.16B, v0.16B \n\t"
         "EOR    v5.16B, v5.16B, v1.16B \n\t"
@@ -2254,27 +2274,27 @@ static WC_INLINE void wc_Chacha_encrypt_64(const word32* input, const byte* m,
         "SUBS   %[bytes], %[bytes], #32 \n\t"
         "MOV    v0.16B, v2.16B \n\t"
         "MOV    v1.16B, v3.16B \n\t"
-        "BEQ    L_chacha20_arm64_64_done_%= \n\t"
+        "B.EQ    L_chacha20_arm64_64_done_%= \n\t"
         "\n"
     "L_chacha20_arm64_64_lt_32_%=: \n\t"
         "CMP    %[bytes], #16 \n\t"
-        "BLT    L_chacha20_arm64_64_lt_16_%= \n\t"
+        "B.LT    L_chacha20_arm64_64_lt_16_%= \n\t"
         "LD1    {v4.4S}, [%[m]], #16 \n\t"
         "EOR    v4.16B, v4.16B, v0.16B \n\t"
         "ST1    {v4.4S}, [%[c]], #16 \n\t"
         "SUBS   %[bytes], %[bytes], #16 \n\t"
         "MOV    v0.16B, v1.16B \n\t"
-        "BEQ    L_chacha20_arm64_64_done_%= \n\t"
+        "B.EQ    L_chacha20_arm64_64_done_%= \n\t"
         "\n"
     "L_chacha20_arm64_64_lt_16_%=: \n\t"
         "CMP    %[bytes], #8 \n\t"
-        "BLT    L_chacha20_arm64_64_lt_8_%= \n\t"
+        "B.LT    L_chacha20_arm64_64_lt_8_%= \n\t"
         "LD1    {v4.2S}, [%[m]], #8 \n\t"
         "EOR    v4.8B, v4.8B, v0.8B \n\t"
         "ST1    {v4.2S}, [%[c]], #8 \n\t"
         "SUBS   %[bytes], %[bytes], #8 \n\t"
         "MOV    v0.D[0], v0.D[1] \n\t"
-        "BEQ    L_chacha20_arm64_64_done_%= \n\t"
+        "B.EQ    L_chacha20_arm64_64_done_%= \n\t"
         "\n"
     "L_chacha20_arm64_64_lt_8_%=: \n\t"
         "MOV	x4, v0.D[0] \n\t"
@@ -2285,10 +2305,11 @@ static WC_INLINE void wc_Chacha_encrypt_64(const word32* input, const byte* m,
         "STRB	w6, [%[c]], #1 \n\t"
         "SUBS	%[bytes], %[bytes], #1 \n\t"
         "LSR	x4, x4, #8 \n\t"
-        "BGT	L_chacha20_arm64_64_loop_lt_8_%= \n\t"
+        "B.GT	L_chacha20_arm64_64_loop_lt_8_%= \n\t"
         "\n"
     "L_chacha20_arm64_64_done_%=: \n\t"
-        : [input] "+r" (input), [m] "+r" (m), [c] "+r" (c), [bytes] "+r" (bytes64)
+        : [input] "+r" (input), [m] "+r" (m), [c] "+r" (c),
+          [bytes] "+r" (bytes64)
         : [L_chacha20_neon_rol8] "r" (L_chacha20_neon_rol8),
           [L_chacha20_neon_inc_first_word] "r" (L_chacha20_neon_inc_first_word),
           [over] "r" (over)
@@ -2875,7 +2896,8 @@ static WC_INLINE void wc_Chacha_encrypt_64(const word32* input, const byte* m,
         : [L_chacha20_neon_inc_first_word] "r" (L_chacha20_neon_inc_first_word),
           [over] "r" (over)
         : "memory", "cc",
-          "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q14", "r12", "r14"
+          "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10",
+          "q11", "q14", "r12", "r14"
     );
 #endif /* __aarch64__ */
 }
@@ -2897,7 +2919,8 @@ static void wc_Chacha_encrypt_bytes(ChaCha* ctx, const byte* m, byte* c,
         bytes -= processed;
         c += processed;
         m += processed;
-        ctx->X[CHACHA_IV_BYTES] = PLUS(ctx->X[CHACHA_IV_BYTES], processed / CHACHA_CHUNK_BYTES);
+        ctx->X[CHACHA_IV_BYTES] = PLUS(ctx->X[CHACHA_IV_BYTES],
+                                       processed / CHACHA_CHUNK_BYTES);
     }
     if (bytes >= CHACHA_CHUNK_BYTES * 4) {
 #else
@@ -2908,7 +2931,8 @@ static void wc_Chacha_encrypt_bytes(ChaCha* ctx, const byte* m, byte* c,
         bytes -= processed;
         c += processed;
         m += processed;
-        ctx->X[CHACHA_IV_BYTES] = PLUS(ctx->X[CHACHA_IV_BYTES], processed / CHACHA_CHUNK_BYTES);
+        ctx->X[CHACHA_IV_BYTES] = PLUS(ctx->X[CHACHA_IV_BYTES],
+                                       processed / CHACHA_CHUNK_BYTES);
     }
     if (bytes >= CHACHA_CHUNK_BYTES * 2) {
         processed = wc_Chacha_encrypt_128(ctx->X, m, c);
@@ -2916,7 +2940,8 @@ static void wc_Chacha_encrypt_bytes(ChaCha* ctx, const byte* m, byte* c,
         bytes -= processed;
         c += processed;
         m += processed;
-        ctx->X[CHACHA_IV_BYTES] = PLUS(ctx->X[CHACHA_IV_BYTES], processed / CHACHA_CHUNK_BYTES);
+        ctx->X[CHACHA_IV_BYTES] = PLUS(ctx->X[CHACHA_IV_BYTES],
+                                       processed / CHACHA_CHUNK_BYTES);
     }
     if (bytes > 0) {
         wc_Chacha_encrypt_64(ctx->X, m, c, bytes, (byte*)ctx->over);

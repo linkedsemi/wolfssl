@@ -1,12 +1,12 @@
 /* conf.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,12 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #if !defined(WOLFSSL_CONF_INCLUDED)
     #ifndef WOLFSSL_IGNORE_FILE_WARN
@@ -202,7 +197,10 @@ long wolfSSL_TXT_DB_write(WOLFSSL_BIO *out, WOLFSSL_TXT_DB *db)
                 return WOLFSSL_FAILURE;
             }
         }
-        idx[-1] = '\n';
+        if (idx > buf)
+            idx[-1] = '\n';
+        else
+            return WOLFSSL_FAILURE;
         sz = (int)(idx - buf);
 
         if (wolfSSL_BIO_write(out, buf, sz) != sz) {
@@ -770,8 +768,18 @@ static char* expandValue(WOLFSSL_CONF *conf, const char* section,
                     /* This will allocate slightly more memory than necessary
                      * but better be safe */
                     strLen += valueLen;
+                #ifdef WOLFSSL_NO_REALLOC
+                    newRet = (char*)XMALLOC(strLen + 1, NULL,
+                            DYNAMIC_TYPE_OPENSSL);
+                    if (newRet != NULL && ret != NULL) {
+                       XMEMCPY(newRet, ret, (strLen - valueLen) + 1);
+                       XFREE(ret, NULL, DYNAMIC_TYPE_OPENSSL);
+                       ret = NULL;
+                    }
+                #else
                     newRet = (char*)XREALLOC(ret, strLen + 1, NULL,
                             DYNAMIC_TYPE_OPENSSL);
+                #endif
                     if (!newRet) {
                         WOLFSSL_MSG("realloc error");
                         goto expand_cleanup;
@@ -976,8 +984,6 @@ void wolfSSL_NCONF_free(WOLFSSL_CONF *conf)
 
 void wolfSSL_X509V3_conf_free(WOLFSSL_CONF_VALUE *val)
 {
-    WOLF_STACK_OF(WOLFSSL_CONF_VALUE) *sk = NULL;
-
     if (val) {
         if (val->name) {
             /* Not a section. Don't free section as it is a shared pointer. */
@@ -989,12 +995,7 @@ void wolfSSL_X509V3_conf_free(WOLFSSL_CONF_VALUE *val)
             XFREE(val->section, NULL, DYNAMIC_TYPE_OPENSSL);
             /* Only free the stack structures. The contained conf values
              * will be freed in wolfSSL_NCONF_free */
-            sk = (WOLF_STACK_OF(WOLFSSL_CONF_VALUE)*)val->value;
-            while (sk) {
-                WOLF_STACK_OF(WOLFSSL_CONF_VALUE) *tmp = sk->next;
-                XFREE(sk, NULL, DYNAMIC_TYPE_OPENSSL);
-                sk = tmp;
-            }
+            wolfSSL_sk_free((WOLF_STACK_OF(WOLFSSL_CONF_VALUE)*)val->value);
         }
         XFREE(val, NULL, DYNAMIC_TYPE_OPENSSL);
     }
@@ -1020,19 +1021,9 @@ WOLFSSL_STACK *wolfSSL_sk_CONF_VALUE_new(
  */
 void wolfSSL_sk_CONF_VALUE_free(WOLF_STACK_OF(WOLFSSL_CONF_VALUE)* sk)
 {
-    WOLFSSL_STACK* tmp;
     WOLFSSL_ENTER("wolfSSL_sk_CONF_VALUE_free");
 
-    if (sk == NULL)
-        return;
-
-    /* parse through stack freeing each node */
-    while (sk) {
-        tmp = sk->next;
-        wolfSSL_X509V3_conf_free(sk->data.conf);
-        XFREE(sk, NULL, DYNAMIC_TYPE_OPENSSL);
-        sk = tmp;
-    }
+    wolfSSL_sk_pop_free(sk, NULL);
 }
 
 int wolfSSL_sk_CONF_VALUE_num(const WOLFSSL_STACK *sk)

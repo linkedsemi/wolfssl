@@ -1,12 +1,12 @@
 /* ssl_certman.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,11 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #include <wolfssl/internal.h>
 
@@ -44,6 +40,7 @@
  */
 static WC_INLINE WOLFSSL_METHOD* cm_pick_method(void* heap)
 {
+    (void)heap;
     #ifndef NO_WOLFSSL_CLIENT
         #if !defined(NO_OLD_TLS) && defined(WOLFSSL_ALLOW_SSLV3)
             return wolfSSLv3_client_method_ex(heap);
@@ -400,6 +397,7 @@ WOLFSSL_STACK* wolfSSL_CertManagerGetCerts(WOLFSSL_CERT_MANAGER* cm)
         /* Decode certificate. */
         if ((!err) && (wolfSSL_sk_X509_push(sk, x509) <= 0)) {
             wolfSSL_X509_free(x509);
+            x509 = NULL;
             err = 1;
         }
     }
@@ -1527,7 +1525,7 @@ int CM_MemRestoreCertCache(WOLFSSL_CERT_MANAGER* cm, const void* mem, int sz)
     WOLFSSL_ENTER("CM_MemRestoreCertCache");
 
     /* Check memory available is bigger than cache header. */
-    if (current > end) {
+    if ((sz < (int)sizeof(CertCacheHeader)) || (current > end)) {
         WOLFSSL_MSG("Cert Cache Memory buffer too small");
         ret = BUFFER_E;
     }

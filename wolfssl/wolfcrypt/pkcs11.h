@@ -1,12 +1,12 @@
 /* pkcs11.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -71,9 +71,11 @@ extern "C" {
 #define CKF_RW_SESSION                        0x00000002UL
 #define CKF_SERIAL_SESSION                    0x00000004UL
 
+#define CKO_CERTIFICATE                       0x00000001UL
 #define CKO_PUBLIC_KEY                        0x00000002UL
 #define CKO_PRIVATE_KEY                       0x00000003UL
 #define CKO_SECRET_KEY                        0x00000004UL
+
 
 #define CKK_RSA                               0x00000000UL
 #define CKK_DH                                0x00000002UL

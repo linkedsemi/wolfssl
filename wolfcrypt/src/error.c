@@ -1,12 +1,12 @@
 /* error.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,14 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
-
-#include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #ifdef _MSC_VER
     /* 4996 warning to use MS extensions e.g., strcpy_s instead of XSTRNCPY */
@@ -189,10 +182,10 @@ const char* wc_GetErrorString(int error)
         return "ASN date error, bad size";
 
     case ASN_BEFORE_DATE_E :
-        return "ASN date error, current date before";
+        return "ASN date error, current date is before start of validity";
 
     case ASN_AFTER_DATE_E :
-        return "ASN date error, current date after";
+        return "ASN date error, current date is after expiration";
 
     case ASN_SIG_OID_E :
         return "ASN signature error, mismatched oid";
@@ -645,8 +638,17 @@ const char* wc_GetErrorString(int error)
     case PBKDF2_KAT_FIPS_E:
         return "wolfCrypt FIPS PBKDF2 Known Answer Test Failure";
 
+    case WC_KEY_MISMATCH_E:
+        return "key values mismatch";
+
     case DEADLOCK_AVERTED_E:
         return "Deadlock averted -- retry the call";
+
+    case ASCON_AUTH_E:
+        return "ASCON Authentication check fail";
+
+    case WC_ACCEL_INHIBIT_E:
+        return "Crypto acceleration is currently inhibited";
 
     case MAX_CODE_E:
     case WC_SPAN1_MIN_CODE_E:

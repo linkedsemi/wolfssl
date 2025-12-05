@@ -1,12 +1,12 @@
 /* hmac.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -124,6 +124,10 @@ typedef wc_Hashes wc_HmacHash;
 /* Hmac digest */
 struct Hmac {
     wc_HmacHash hash;
+#ifdef WOLFSSL_HMAC_COPY_HASH
+    wc_HmacHash i_hash;
+    wc_HmacHash o_hash;
+#endif
     word32  ipad[WC_HMAC_BLOCK_SIZE  / sizeof(word32)];  /* same block size all*/
     word32  opad[WC_HMAC_BLOCK_SIZE  / sizeof(word32)];
     word32  innerHash[WC_MAX_DIGEST_SIZE / sizeof(word32)];
@@ -190,6 +194,7 @@ WOLFSSL_API void wc_HmacFree(Hmac* hmac);
 WOLFSSL_API int wolfSSL_GetHmacMaxSize(void);
 
 WOLFSSL_LOCAL int _InitHmac(Hmac* hmac, int type, void* heap);
+WOLFSSL_LOCAL int _HmacInitIOHashes(Hmac* hmac);
 
 #ifdef HAVE_HKDF
 

@@ -1,12 +1,12 @@
 /* tfm.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 /*
  * Based on public domain TomsFastMath 0.10 by Tom St Denis, tomstdenis@iahu.ca,
@@ -30,13 +30,6 @@
  *  Edited by Moises Guimaraes (moises@wolfssl.com)
  *  to fit wolfSSL's needs.
  */
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-/* in case user set USE_FAST_MATH there */
-#include <wolfssl/wolfcrypt/settings.h>
 
 #ifdef USE_FAST_MATH
 
@@ -4205,6 +4198,58 @@ int fp_to_unsigned_bin(fp_int *a, unsigned char *b)
   return FP_OKAY;
 }
 
+int fp_to_unsigned_bin_len_ct(fp_int *a, unsigned char *out, int outSz)
+{
+  int err = MP_OKAY;
+
+  /* Validate parameters. */
+  if ((a == NULL) || (out == NULL) || (outSz < 0)) {
+    err = MP_VAL;
+  }
+
+#if DIGIT_BIT > 8
+  if (err == MP_OKAY) {
+    /* Start at the end of the buffer - least significant byte. */
+    int j;
+    unsigned int i;
+    fp_digit mask = (fp_digit)-1;
+    fp_digit d;
+
+    /* Put each digit in. */
+    i = 0;
+    for (j = outSz - 1; j >= 0; ) {
+      unsigned int b;
+      d = a->dp[i];
+      /* Place each byte of a digit into the buffer. */
+      for (b = 0; (j >= 0) && (b < (DIGIT_BIT / 8)); b++) {
+        out[j--] = (byte)(d & mask);
+        d >>= 8;
+      }
+      mask &= (fp_digit)0 - (i < (unsigned int)a->used - 1);
+      i += (unsigned int)(1 & mask);
+    }
+  }
+#else
+  if ((err == MP_OKAY) && ((unsigned int)outSz < a->used)) {
+    err = MP_VAL;
+  }
+  if (err == MP_OKAY) {
+    unsigned int i;
+    int j;
+    fp_digit mask = (fp_digit)-1;
+
+    i = 0;
+    for (j = outSz - 1; j >= 0; j--) {
+      out[j] = a->dp[i] & mask;
+      mask &= (fp_digit)0 - (i < (unsigned int)a->used - 1);
+      i += (unsigned int)(1 & mask);
+    }
+  }
+#endif
+
+  return err;
+}
+
 int fp_to_unsigned_bin_len(fp_int *a, unsigned char *b, int c)
 {
 #if DIGIT_BIT == 64 || DIGIT_BIT == 32 || DIGIT_BIT == 16
@@ -4575,6 +4620,9 @@ void fp_zero(fp_int *a)
 
 void fp_clear(fp_int *a)
 {
+#ifdef HAVE_FIPS
+    fp_forcezero(a);
+#else
     int size;
     a->used = 0;
     a->sign = FP_ZPOS;
@@ -4585,6 +4633,7 @@ void fp_clear(fp_int *a)
 #endif
     XMEMSET(a->dp, 0, size * sizeof(fp_digit));
     fp_free(a);
+#endif
 }
 
 void fp_forcezero (mp_int * a)
@@ -4824,6 +4873,11 @@ int mp_to_unsigned_bin_at_pos(int x, fp_int *t, unsigned char *b)
 int mp_to_unsigned_bin (mp_int * a, unsigned char *b)
 {
   return fp_to_unsigned_bin(a,b);
+}
+
+int mp_to_unsigned_bin_len_ct(mp_int * a, unsigned char *b, int c)
+{
+  return fp_to_unsigned_bin_len_ct(a, b, c);
 }
 
 int mp_to_unsigned_bin_len(mp_int * a, unsigned char *b, int c)

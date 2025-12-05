@@ -27,13 +27,13 @@
 
 /* camellia.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -52,18 +52,11 @@
  *  http://info.isl.ntt.co.jp/crypt/eng/camellia/specifications.html
  */
 
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #ifdef HAVE_CAMELLIA
 
 #include <wolfssl/wolfcrypt/camellia.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
-#include <wolfssl/wolfcrypt/logging.h>
 #ifdef NO_INLINE
     #include <wolfssl/wolfcrypt/misc.h>
 #else
@@ -1029,7 +1022,7 @@ static int camellia_setup256(const unsigned char *key, u32 *subkey)
 static int camellia_setup192(const unsigned char *key, u32 *subkey)
 {
     unsigned char kk[32];
-    u32 krll, krlr, krrl,krrr;
+    u32 krll = 0, krlr = 0, krrl = 0, krrr = 0;
 
     XMEMCPY(kk, key, 24);
     XMEMCPY((unsigned char *)&krll, key+16,4);

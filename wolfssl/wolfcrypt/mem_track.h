@@ -1,12 +1,12 @@
 /* mem_track.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -177,7 +177,7 @@ static WC_INLINE void* TrackMalloc(size_t sz)
     (void)line;
 #endif
 #endif
-#if defined(DO_MEM_LIST) || defined(DO_MEM_STATS)
+#if !defined(SINGLE_THREADED) && (defined(DO_MEM_LIST) || defined(DO_MEM_STATS))
     if (pthread_mutex_lock(&memLock) == 0)
     {
 #endif
@@ -223,7 +223,7 @@ static WC_INLINE void* TrackMalloc(size_t sz)
         ourMemList.tail = header;      /* add to the end either way */
         ourMemList.count++;
 #endif
-#if defined(DO_MEM_LIST) || defined(DO_MEM_STATS)
+#if !defined(SINGLE_THREADED) && (defined(DO_MEM_LIST) || defined(DO_MEM_STATS))
         pthread_mutex_unlock(&memLock);
     }
 #endif /* DO_MEM_LIST */
@@ -250,7 +250,7 @@ static WC_INLINE void TrackFree(void* ptr)
     header = &mt->u.hint;
     sz = header->thisSize;
 
-#if defined(DO_MEM_LIST) || defined(DO_MEM_STATS)
+#if !defined(SINGLE_THREADED) && (defined(DO_MEM_LIST) || defined(DO_MEM_STATS))
     if (pthread_mutex_lock(&memLock) == 0)
     {
 #endif
@@ -284,7 +284,7 @@ static WC_INLINE void TrackFree(void* ptr)
         ourMemList.count--;
 #endif
 
-#if defined(DO_MEM_LIST) || defined(DO_MEM_STATS)
+#if !defined(SINGLE_THREADED) && (defined(DO_MEM_LIST) || defined(DO_MEM_STATS))
         pthread_mutex_unlock(&memLock);
     }
 #endif
@@ -596,7 +596,7 @@ static WC_INLINE int StackSizeCheck(struct func_args* args, thread_func tf)
 #endif
 
 #ifdef PTHREAD_STACK_MIN
-    if (stackSize < PTHREAD_STACK_MIN)
+    if (stackSize < (size_t)PTHREAD_STACK_MIN)
         stackSize = PTHREAD_STACK_MIN;
 #endif
 
@@ -677,7 +677,7 @@ static WC_INLINE int StackSizeCheck_launch(struct func_args* args,
     struct stack_size_debug_context* shim_args;
 
 #ifdef PTHREAD_STACK_MIN
-    if (stackSize < PTHREAD_STACK_MIN)
+    if (stackSize < (size_t)PTHREAD_STACK_MIN)
         stackSize = PTHREAD_STACK_MIN;
 #endif
 

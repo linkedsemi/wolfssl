@@ -1,12 +1,12 @@
 /* armv8-sha3-asm
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,14 +19,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif /* HAVE_CONFIG_H */
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources_asm.h>
 
 /* Generated using (from wolfssl):
  *   cd ../scripts
- *   ruby ./sha3/sha3.rb arm64 ../wolfssl/wolfcrypt/src/port/arm/armv8-sha3-asm.S
+ *   ruby ./sha3/sha3.rb arm64 \
+ *       ../wolfssl/wolfcrypt/src/port/arm/armv8-sha3-asm.S
  */
 #ifdef WOLFSSL_ARMASM
 #ifdef __aarch64__
@@ -73,15 +71,15 @@ L_SHA3_transform_crypto_r:
 	.xword	0x8000000080008008
 #ifndef __APPLE__
 .text
-.globl	BlockSha3
-.type	BlockSha3,@function
+.globl	BlockSha3_crypto
+.type	BlockSha3_crypto,@function
 .align	2
-BlockSha3:
+BlockSha3_crypto:
 #else
 .section	__TEXT,__text
-.globl	_BlockSha3
+.globl	_BlockSha3_crypto
 .p2align	2
-_BlockSha3:
+_BlockSha3_crypto:
 #endif /* __APPLE__ */
 	stp	x29, x30, [sp, #-80]!
 	add	x29, sp, #0
@@ -204,9 +202,9 @@ L_sha3_crypto_begin:
 	ldp	x29, x30, [sp], #0x50
 	ret
 #ifndef __APPLE__
-	.size	BlockSha3,.-BlockSha3
+	.size	BlockSha3_crypto,.-BlockSha3_crypto
 #endif /* __APPLE__ */
-#else
+#endif /* WOLFSSL_ARMASM_CRYPTO_SHA3 */
 #ifndef __APPLE__
 	.text
 	.type	L_SHA3_transform_base_r, %object
@@ -247,15 +245,15 @@ L_SHA3_transform_base_r:
 	.xword	0x8000000080008008
 #ifndef __APPLE__
 .text
-.globl	BlockSha3
-.type	BlockSha3,@function
+.globl	BlockSha3_base
+.type	BlockSha3_base,@function
 .align	2
-BlockSha3:
+BlockSha3_base:
 #else
 .section	__TEXT,__text
-.globl	_BlockSha3
+.globl	_BlockSha3_base
 .p2align	2
-_BlockSha3:
+_BlockSha3_base:
 #endif /* __APPLE__ */
 	stp	x29, x30, [sp, #-160]!
 	add	x29, sp, #0
@@ -449,9 +447,8 @@ L_SHA3_transform_base_begin:
 	ldp	x29, x30, [sp], #0xa0
 	ret
 #ifndef __APPLE__
-	.size	BlockSha3,.-BlockSha3
+	.size	BlockSha3_base,.-BlockSha3_base
 #endif /* __APPLE__ */
-#endif /* WOLFSSL_ARMASM_CRYPTO_SHA3 */
 #endif /* WOLFSSL_SHA3 */
 #endif /* __aarch64__ */
 #endif /* WOLFSSL_ARMASM */

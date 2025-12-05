@@ -1,12 +1,12 @@
 /* client-tls.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -41,9 +41,9 @@
 #undef USE_WOLFSSL_ESP_SDK_WIFI
 #include <wolfssl/ssl.h>
 
-#if defined(WOLFSSL_WC_KYBER)
-    #include <wolfssl/wolfcrypt/kyber.h>
-    #include <wolfssl/wolfcrypt/wc_kyber.h>
+#if defined(WOLFSSL_WC_MLKEM)
+    #include <wolfssl/wolfcrypt/mlkem.h>
+    #include <wolfssl/wolfcrypt/wc_mlkem.h>
 #endif
 #if defined(USE_CERT_BUFFERS_2048) || defined(USE_CERT_BUFFERS_1024)
     #include <wolfssl/certs_test.h>
@@ -307,11 +307,11 @@ WOLFSSL_ESP_TASK tls_smp_client_task(void* args)
 
     /* no peer check */
     if (doPeerCheck == 0) {
-        ESP_LOGW(TAG, "doPeerCheck == 0");
+        ESP_LOGW(TAG, "doPeerCheck == 0; WOLFSSL_VERIFY_NONE");
         wolfSSL_CTX_set_verify(ctx, WOLFSSL_VERIFY_NONE, 0);
     }
     else {
-        ESP_LOGW(TAG, "doPeerCheck != 0");
+        ESP_LOGI(TAG, "doPeerCheck != 0");
         WOLFSSL_MSG("Loading... our cert");
         /* load our certificate */
         ret_i = wolfSSL_CTX_use_certificate_chain_buffer_format(ctx,
@@ -397,22 +397,49 @@ WOLFSSL_ESP_TASK tls_smp_client_task(void* args)
         ESP_LOGI(TAG, "tls_smp_client_task heap @ %p = %d",
                       &this_heap, this_heap);
 #endif
-#if defined(WOLFSSL_HAVE_KYBER)
-    #if defined(WOLFSSL_KYBER1024)
-        ESP_LOGI(TAG, "WOLFSSL_HAVE_KYBER is enabled, setting key share: "
-                                        "WOLFSSL_P256_KYBER_LEVEL5");
-        ret_i = wolfSSL_UseKeyShare(ssl, WOLFSSL_P521_KYBER_LEVEL5);
-    #elif defined(WOLFSSL_KYBER768)
-        ESP_LOGI(TAG, "WOLFSSL_HAVE_KYBER is enabled, setting key share: "
+
+#if defined(CONFIG_ESP_WOLFSSL_ENABLE_MLKEM)
+    /* Kconfig ESP_WOLFSSL_ENABLE_MLKEM triggers settings in user_setting.h */
+    ESP_LOGI(TAG, "Espressif CONFIG_ESP_WOLFSSL_ENABLE_MLKEM is defined");
+#endif
+#if defined(WOLFSSL_HAVE_MLKEM)
+    ESP_LOGI(TAG, "WOLFSSL_MLKEM_KYBER is defined");
+    #if defined(WOLFSSL_KYBER1024) || !defined(WOLFSSL_NO_ML_KEM_1024)
+        #if defined(WOLFSSL_MLKEM_KYBER)
+            ESP_LOGW(TAG, "WOLFSSL_MLKEM_KYBER is enabled, setting key share: "
+                                        "WOLFSSL_P521_KYBER_LEVEL5");
+            ret_i = wolfSSL_UseKeyShare(ssl, WOLFSSL_P521_KYBER_LEVEL5);
+        #else
+            ESP_LOGI(TAG, "WOLFSSL_HAVE_MLKEM is enabled, setting key share: "
+                                        "WOLFSSL_ML_KEM_1024");
+            ESP_LOGW(TAG, "Note: Wireshark as of 4.4.6 reports as frodo976aes");
+            ret_i = wolfSSL_UseKeyShare(ssl, WOLFSSL_ML_KEM_1024);
+        #endif
+    #elif defined(WOLFSSL_KYBER768) || !defined(WOLFSSL_NO_ML_KEM_768)
+        #if defined(WOLFSSL_MLKEM_KYBER)
+            ESP_LOGW(TAG, "WOLFSSL_MLKEM_KYBER is enabled, setting key share: "
                                         "WOLFSSL_P256_KYBER_LEVEL3");
-        ret_i = wolfSSL_UseKeyShare(ssl, WOLFSSL_P256_KYBER_LEVEL3);
-    #elif defined(WOLFSSL_KYBER512)
+            ret_i = wolfSSL_UseKeyShare(ssl, WOLFSSL_P256_KYBER_LEVEL3);
+        #else
+            ESP_LOGI(TAG, "WOLFSSL_HAVE_MLKEM is enabled, setting key share: "
+                                        "WOLFSSL_ML_KEM_768");
+            ESP_LOGW(TAG, "Note: Wireshark as of 4.4.6 reports as frodo976aes");
+            ret_i = wolfSSL_UseKeyShare(ssl, WOLFSSL_ML_KEM_768);
+        #endif
+    #elif defined(WOLFSSL_KYBER512) || !defined(WOLFSSL_NO_ML_KEM_512)
         /* This will typically be a low memory situation, such as ESP8266 */
-        ESP_LOGI(TAG, "WOLFSSL_HAVE_KYBER is enabled, setting key share: "
+        #if defined(WOLFSSL_MLKEM_KYBER)
+            ESP_LOGW(TAG, "WOLFSSL_MLKEM_KYBER is enabled, setting key share: "
                                         "WOLFSSL_P256_KYBER_LEVEL1");
-        ret_i = wolfSSL_UseKeyShare(ssl, WOLFSSL_P256_KYBER_LEVEL1);
+            ret_i = wolfSSL_UseKeyShare(ssl, WOLFSSL_P256_KYBER_LEVEL1);
+        #else
+            ESP_LOGI(TAG, "WOLFSSL_HAVE_MLKEM is enabled, setting key share: "
+                                        "WOLFSSL_ML_KEM_512");
+            ESP_LOGW(TAG, "Note: Wireshark as of 4.4.6 reports as frodo976aes");
+            ret_i = wolfSSL_UseKeyShare(ssl, WOLFSSL_ML_KEM_512);
+        #endif
     #else
-        ESP_LOGW(TAG, "WOLFSSL_HAVE_KYBER enabled but no key size available.");
+        ESP_LOGW(TAG, "WOLFSSL_HAVE_MLKEM enabled but no key size available.");
         ret_i = ESP_FAIL;
     #endif
         if (ret_i == WOLFSSL_SUCCESS) {
@@ -422,7 +449,7 @@ WOLFSSL_ESP_TASK tls_smp_client_task(void* args)
             ESP_LOGE(TAG, "UseKeyShare Kyber failed");
         }
 #else
-    ESP_LOGI(TAG, "WOLFSSL_HAVE_KYBER is not enabled");
+    ESP_LOGI(TAG, "WOLFSSL_HAVE_MLKEM is not enabled");
 #endif
     }
 

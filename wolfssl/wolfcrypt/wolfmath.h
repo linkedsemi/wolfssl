@@ -1,12 +1,12 @@
 /* wolfmath.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -40,7 +40,16 @@ This library provides big integer math functions.
 #endif
 
 
-#if defined(USE_FAST_MATH)
+#if defined(NO_BIG_INT)
+    /* MPI globally disabled -- no PK algorithms supported. */
+    #if defined(USE_FAST_MATH) || defined(USE_INTEGER_HEAP_MATH) || \
+        defined(WOLFSSL_SP_MATH_ALL) || defined(WOLFSSL_SP_MATH) || \
+        defined(HAVE_WOLF_BIGINT) || defined(WOLFSSL_EXPORT_INT)
+        #error Conflicting MPI settings.
+    #endif
+#elif defined(WOLFSSL_SP_MATH_ALL) || defined(WOLFSSL_SP_MATH)
+    #include <wolfssl/wolfcrypt/sp_int.h>
+#elif defined(USE_FAST_MATH)
     #include <wolfssl/wolfcrypt/tfm.h>
 #elif defined(USE_INTEGER_HEAP_MATH)
     #include <wolfssl/wolfcrypt/integer.h>
@@ -48,7 +57,7 @@ This library provides big integer math functions.
     #include <wolfssl/wolfcrypt/sp_int.h>
 #endif
 
-#if !defined(NO_BIG_INT) || defined(WOLFSSL_SP_MATH)
+#if !defined(NO_BIG_INT)
     #include <wolfssl/wolfcrypt/random.h>
 #endif
 
@@ -72,12 +81,18 @@ This library provides big integer math functions.
     extern const wc_ptr_t wc_off_on_addr[2];
 #endif
 
-#if !defined(NO_BIG_INT) || defined(WOLFSSL_SP_MATH)
+#if !defined(NO_BIG_INT)
 /* common math functions */
-MP_API int get_digit_count(const mp_int* a);
-MP_API mp_digit get_digit(const mp_int* a, int n);
-MP_API int get_rand_digit(WC_RNG* rng, mp_digit* d);
+MP_API int mp_get_digit_count(const mp_int* a);
+MP_API mp_digit mp_get_digit(const mp_int* a, int n);
+MP_API int mp_get_rand_digit(WC_RNG* rng, mp_digit* d);
 WOLFSSL_LOCAL void mp_reverse(unsigned char *s, int len);
+
+#if defined(HAVE_FIPS) || defined(HAVE_SELFTEST)
+#define get_digit_count mp_get_digit_count
+#define get_digit mp_get_digit
+#define get_rand_digit mp_get_rand_digit
+#endif
 
 WOLFSSL_API int mp_cond_copy(mp_int* a, int copy, mp_int* b);
 WOLFSSL_API int mp_rand(mp_int* a, int digits, WC_RNG* rng);

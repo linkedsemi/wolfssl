@@ -1,12 +1,12 @@
 /* sp.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -21,16 +21,11 @@
 
 /* Implementation by Sean Parkinson. */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #if defined(WOLFSSL_HAVE_SP_RSA) || defined(WOLFSSL_HAVE_SP_DH) || \
     defined(WOLFSSL_HAVE_SP_ECC)
 
-#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/cpuid.h>
 #ifdef NO_INLINE
     #include <wolfssl/wolfcrypt/misc.h>
@@ -98,7 +93,7 @@ static void sp_2048_from_bin(sp_digit* r, int size, const byte* a, int n)
         "sub	x4, x4, 8\n\t"
         "subs	x6, %[n], 8\n\t"
         "mov	x7, xzr\n\t"
-        "blt	2f\n\t"
+        "b.lt	2f\n\t"
         /* Put in multiples of 8 bytes. */
         "1:\n\t"
         "ldr	x8, [x4], -8\n\t"
@@ -3356,7 +3351,7 @@ SP_NOINLINE static void sp_2048_mont_reduce_16(sp_digit* a, const sp_digit* m,
         "adc	x3, x3, xzr\n\t"
         "subs	x4, x4, 1\n\t"
         "add	%[a], %[a], 8\n\t"
-        "bne	1b\n\t"
+        "b.ne	1b\n\t"
         "# Create mask\n\t"
         "neg	x3, x3\n\t"
         "mov	x9, %[a]\n\t"
@@ -6985,7 +6980,7 @@ static void sp_3072_from_bin(sp_digit* r, int size, const byte* a, int n)
         "sub	x4, x4, 8\n\t"
         "subs	x6, %[n], 8\n\t"
         "mov	x7, xzr\n\t"
-        "blt	2f\n\t"
+        "b.lt	2f\n\t"
         /* Put in multiples of 8 bytes. */
         "1:\n\t"
         "ldr	x8, [x4], -8\n\t"
@@ -16582,7 +16577,7 @@ static void sp_4096_from_bin(sp_digit* r, int size, const byte* a, int n)
         "sub	x4, x4, 8\n\t"
         "subs	x6, %[n], 8\n\t"
         "mov	x7, xzr\n\t"
-        "blt	2f\n\t"
+        "b.lt	2f\n\t"
         /* Put in multiples of 8 bytes. */
         "1:\n\t"
         "ldr	x8, [x4], -8\n\t"
@@ -21750,11 +21745,13 @@ static const sp_digit p256_order[4] = {
     0xffffffff00000000L
 };
 #endif
+#ifndef WC_NO_RNG
 /* The order of the curve P256 minus 2. */
 static const sp_digit p256_order2[4] = {
     0xf3b9cac2fc63254fL,0xbce6faada7179e84L,0xffffffffffffffffL,
     0xffffffff00000000L
 };
+#endif
 #if defined(HAVE_ECC_SIGN) || defined(HAVE_ECC_VERIFY)
 /* The Montgomery normalizer for order of the curve P256. */
 static const sp_digit p256_norm_order[4] = {
@@ -21791,7 +21788,8 @@ static const sp_point_256 p256_base = {
     0
 };
 #endif /* WOLFSSL_SP_SMALL */
-#if defined(HAVE_ECC_CHECK_KEY) || defined(HAVE_COMP_KEY)
+#if defined(HAVE_ECC_CHECK_KEY) || !defined(NO_ECC_CHECK_PUBKEY_ORDER) || \
+     defined(HAVE_COMP_KEY)
 static const sp_digit p256_b[4] = {
     0x3bce3c3e27d2604bL,0x651d06b0cc53b0f6L,0xb3ebbd55769886bcL,
     0x5ac635d8aa3a93e7L
@@ -24258,7 +24256,7 @@ static void sp_256_ecc_recode_6_4(const sp_digit* k, ecc_recode_256* v)
             n >>= o;
         }
 
-        y += (word8)carry;
+        y = (word8)(y + carry);
         v[i].i = recode_index_4_6[y];
         v[i].neg = recode_neg_4_6[y];
         carry = (y >> 6) + v[i].neg;
@@ -27341,7 +27339,7 @@ static void sp_256_ecc_recode_7_4(const sp_digit* k, ecc_recode_256* v)
             n >>= o;
         }
 
-        y += (word8)carry;
+        y = (word8)(y + carry);
         v[i].i = recode_index_4_7[y];
         v[i].neg = recode_neg_4_7[y];
         carry = (y >> 7) + v[i].neg;
@@ -39445,7 +39443,7 @@ static int sp_256_ecc_mulmod_add_only_4(sp_point_256* r, const sp_point_256* g,
             p->infinity = !v[i].i;
             sp_256_sub_4(negy, p256_mod, p->y);
             sp_256_norm_4(negy);
-            sp_256_cond_copy_4(p->y, negy, 0 - v[i].neg);
+            sp_256_cond_copy_4(p->y, negy, (sp_digit)(0 - v[i].neg));
             sp_256_proj_point_add_qz1_4(rt, rt, p, tmp);
         }
         if (map != 0) {
@@ -39619,6 +39617,7 @@ int sp_ecc_mulmod_base_add_256(const mp_int* km, const ecc_point* am,
 #if defined(WOLFSSL_VALIDATE_ECC_KEYGEN) || defined(HAVE_ECC_SIGN) || \
                                                         defined(HAVE_ECC_VERIFY)
 #endif /* WOLFSSL_VALIDATE_ECC_KEYGEN | HAVE_ECC_SIGN | HAVE_ECC_VERIFY */
+#ifndef WC_NO_RNG
 /* Add 1 to a. (a = a + 1)
  *
  * a  A single precision integer.
@@ -39641,6 +39640,7 @@ static void sp_256_add_one_4(sp_digit* a)
     );
 }
 
+#endif
 /* Read big endian unsigned byte array into r.
  *
  * r  A single precision integer.
@@ -39659,7 +39659,7 @@ static void sp_256_from_bin(sp_digit* r, int size, const byte* a, int n)
         "sub	x4, x4, 8\n\t"
         "subs	x6, %[n], 8\n\t"
         "mov	x7, xzr\n\t"
-        "blt	2f\n\t"
+        "b.lt	2f\n\t"
         /* Put in multiples of 8 bytes. */
         "1:\n\t"
         "ldr	x8, [x4], -8\n\t"
@@ -42056,7 +42056,7 @@ int sp_ecc_verify_256_nb(sp_ecc_ctx_t* sp_ctx, const byte* hash,
 #endif /* WOLFSSL_SP_NONBLOCK */
 #endif /* HAVE_ECC_VERIFY */
 
-#ifdef HAVE_ECC_CHECK_KEY
+#if defined(HAVE_ECC_CHECK_KEY) || !defined(NO_ECC_CHECK_PUBKEY_ORDER)
 /* Add two Montgomery form numbers (r = a + b % m).
  *
  * r   Result of addition.
@@ -42669,7 +42669,7 @@ static const sp_digit p384_norm_mod[6] = {
     0x0000000000000000L,0x0000000000000000L,0x0000000000000000L
 };
 /* The Montgomery multiplier for modulus of the curve P384. */
-static sp_digit p384_mp_mod = 0x0000000100000001;
+static const sp_digit p384_mp_mod = 0x0000000100000001;
 #if defined(WOLFSSL_VALIDATE_ECC_KEYGEN) || defined(HAVE_ECC_SIGN) || \
                                             defined(HAVE_ECC_VERIFY)
 /* The order of the curve P384. */
@@ -42678,11 +42678,13 @@ static const sp_digit p384_order[6] = {
     0xffffffffffffffffL,0xffffffffffffffffL,0xffffffffffffffffL
 };
 #endif
+#ifndef WC_NO_RNG
 /* The order of the curve P384 minus 2. */
 static const sp_digit p384_order2[6] = {
     0xecec196accc52971L,0x581a0db248b0a77aL,0xc7634d81f4372ddfL,
     0xffffffffffffffffL,0xffffffffffffffffL,0xffffffffffffffffL
 };
+#endif
 #if defined(HAVE_ECC_SIGN) || defined(HAVE_ECC_VERIFY)
 /* The Montgomery normalizer for order of the curve P384. */
 static const sp_digit p384_norm_order[6] = {
@@ -42692,7 +42694,7 @@ static const sp_digit p384_norm_order[6] = {
 #endif
 #if defined(HAVE_ECC_SIGN) || defined(HAVE_ECC_VERIFY)
 /* The Montgomery multiplier for order of the curve P384. */
-static sp_digit p384_mp_order = 0x6ed46089e88fdc45L;
+static const sp_digit p384_mp_order = 0x6ed46089e88fdc45L;
 #endif
 #ifdef WOLFSSL_SP_SMALL
 /* The base point of curve P384. */
@@ -42722,7 +42724,8 @@ static const sp_point_384 p384_base = {
     0
 };
 #endif /* WOLFSSL_SP_SMALL */
-#if defined(HAVE_ECC_CHECK_KEY) || defined(HAVE_COMP_KEY)
+#if defined(HAVE_ECC_CHECK_KEY) || !defined(NO_ECC_CHECK_PUBKEY_ORDER) || \
+     defined(HAVE_COMP_KEY)
 static const sp_digit p384_b[6] = {
     0x2a85c8edd3ec2aefL,0xc656398d8a2ed19dL,0x0314088f5013875aL,
     0x181d9c6efe814112L,0x988e056be3f82d19L,0xb3312fa7e23ee7e4L
@@ -43862,7 +43865,7 @@ SP_NOINLINE static void sp_384_mont_reduce_order_6(sp_digit* a, const sp_digit* 
         "adc	x3, x3, xzr\n\t"
         "subs	x4, x4, 1\n\t"
         "add	%[a], %[a], 8\n\t"
-        "bne	1b\n\t"
+        "b.ne	1b\n\t"
         "# Create mask\n\t"
         "neg	x3, x3\n\t"
         "mov	x9, %[a]\n\t"
@@ -45220,7 +45223,7 @@ static void sp_384_ecc_recode_6_6(const sp_digit* k, ecc_recode_384* v)
             n >>= o;
         }
 
-        y += (word8)carry;
+        y = (word8)(y + carry);
         v[i].i = recode_index_6_6[y];
         v[i].neg = recode_neg_6_6[y];
         carry = (y >> 6) + v[i].neg;
@@ -48267,7 +48270,7 @@ static void sp_384_ecc_recode_7_6(const sp_digit* k, ecc_recode_384* v)
             n >>= o;
         }
 
-        y += (word8)carry;
+        y = (word8)(y + carry);
         v[i].i = recode_index_6_7[y];
         v[i].neg = recode_neg_6_7[y];
         carry = (y >> 7) + v[i].neg;
@@ -66185,7 +66188,7 @@ static int sp_384_ecc_mulmod_add_only_6(sp_point_384* r, const sp_point_384* g,
             p->infinity = !v[i].i;
             sp_384_sub_6(negy, p384_mod, p->y);
             sp_384_norm_6(negy);
-            sp_384_cond_copy_6(p->y, negy, 0 - v[i].neg);
+            sp_384_cond_copy_6(p->y, negy, (sp_digit)(0 - v[i].neg));
             sp_384_proj_point_add_qz1_6(rt, rt, p, tmp);
         }
         if (map != 0) {
@@ -66359,6 +66362,7 @@ int sp_ecc_mulmod_base_add_384(const mp_int* km, const ecc_point* am,
 #if defined(WOLFSSL_VALIDATE_ECC_KEYGEN) || defined(HAVE_ECC_SIGN) || \
                                                         defined(HAVE_ECC_VERIFY)
 #endif /* WOLFSSL_VALIDATE_ECC_KEYGEN | HAVE_ECC_SIGN | HAVE_ECC_VERIFY */
+#ifndef WC_NO_RNG
 /* Add 1 to a. (a = a + 1)
  *
  * a  A single precision integer.
@@ -66385,6 +66389,7 @@ static void sp_384_add_one_6(sp_digit* a)
     );
 }
 
+#endif
 /* Read big endian unsigned byte array into r.
  *
  * r  A single precision integer.
@@ -66403,7 +66408,7 @@ static void sp_384_from_bin(sp_digit* r, int size, const byte* a, int n)
         "sub	x4, x4, 8\n\t"
         "subs	x6, %[n], 8\n\t"
         "mov	x7, xzr\n\t"
-        "blt	2f\n\t"
+        "b.lt	2f\n\t"
         /* Put in multiples of 8 bytes. */
         "1:\n\t"
         "ldr	x8, [x4], -8\n\t"
@@ -68157,7 +68162,7 @@ int sp_ecc_verify_384_nb(sp_ecc_ctx_t* sp_ctx, const byte* hash,
 #endif /* WOLFSSL_SP_NONBLOCK */
 #endif /* HAVE_ECC_VERIFY */
 
-#ifdef HAVE_ECC_CHECK_KEY
+#if defined(HAVE_ECC_CHECK_KEY) || !defined(NO_ECC_CHECK_PUBKEY_ORDER)
 /* Check that the x and y ordinates are a valid point on the curve.
  *
  * point  EC point.
@@ -68758,7 +68763,7 @@ static const sp_digit p521_norm_mod[9] = {
     0x0000000000000000L,0x0000000000000000L,0x0000000000000000L
 };
 /* The Montgomery multiplier for modulus of the curve P521. */
-static sp_digit p521_mp_mod = 0x0000000000000001;
+static const sp_digit p521_mp_mod = 0x0000000000000001;
 #if defined(WOLFSSL_VALIDATE_ECC_KEYGEN) || defined(HAVE_ECC_SIGN) || \
                                             defined(HAVE_ECC_VERIFY)
 /* The order of the curve P521. */
@@ -68768,12 +68773,14 @@ static const sp_digit p521_order[9] = {
     0xffffffffffffffffL,0xffffffffffffffffL,0x00000000000001ffL
 };
 #endif
+#ifndef WC_NO_RNG
 /* The order of the curve P521 minus 2. */
 static const sp_digit p521_order2[9] = {
     0xbb6fb71e91386407L,0x3bb5c9b8899c47aeL,0x7fcc0148f709a5d0L,
     0x51868783bf2f966bL,0xfffffffffffffffaL,0xffffffffffffffffL,
     0xffffffffffffffffL,0xffffffffffffffffL,0x00000000000001ffL
 };
+#endif
 #if defined(HAVE_ECC_SIGN) || defined(HAVE_ECC_VERIFY)
 /* The Montgomery normalizer for order of the curve P521. */
 static const sp_digit p521_norm_order[9] = {
@@ -68784,7 +68791,7 @@ static const sp_digit p521_norm_order[9] = {
 #endif
 #if defined(HAVE_ECC_SIGN) || defined(HAVE_ECC_VERIFY)
 /* The Montgomery multiplier for order of the curve P521. */
-static sp_digit p521_mp_order = 0x1d2f5ccd79a995c7L;
+static const sp_digit p521_mp_order = 0x1d2f5ccd79a995c7L;
 #endif
 #ifdef WOLFSSL_SP_SMALL
 /* The base point of curve P521. */
@@ -68817,7 +68824,8 @@ static const sp_point_521 p521_base = {
     0
 };
 #endif /* WOLFSSL_SP_SMALL */
-#if defined(HAVE_ECC_CHECK_KEY) || defined(HAVE_COMP_KEY)
+#if defined(HAVE_ECC_CHECK_KEY) || !defined(NO_ECC_CHECK_PUBKEY_ORDER) || \
+     defined(HAVE_COMP_KEY)
 static const sp_digit p521_b[9] = {
     0xef451fd46b503f00L,0x3573df883d2c34f1L,0x1652c0bd3bb1bf07L,
     0x56193951ec7e937bL,0xb8b489918ef109e1L,0xa2da725b99b315f3L,
@@ -72230,7 +72238,7 @@ SP_NOINLINE static void sp_521_mont_reduce_9(sp_digit* a, const sp_digit* m,
         "# mu = a[i] * mp\n\t"
         "mul	x9, %[mp], x13\n\t"
         "cmp	x4, #1\n\t"
-        "bne	L_521_mont_reduce_9_nomask\n\t"
+        "b.ne	L_521_mont_reduce_9_nomask\n\t"
         "and	x9, x9, #0x1ff\n\t"
         "L_521_mont_reduce_9_nomask:\n\t"
         "# a[i+0] += m[0] * mu\n\t"
@@ -72304,7 +72312,7 @@ SP_NOINLINE static void sp_521_mont_reduce_9(sp_digit* a, const sp_digit* m,
         "adc	x3, x3, xzr\n\t"
         "subs	x4, x4, 1\n\t"
         "add	%[a], %[a], 8\n\t"
-        "bne	1b\n\t"
+        "b.ne	1b\n\t"
         "extr	x12, x13, x12, 9\n\t"
         "extr	x13, x14, x13, 9\n\t"
         "extr	x14, x15, x14, 9\n\t"
@@ -73577,7 +73585,7 @@ static void sp_521_ecc_recode_6_9(const sp_digit* k, ecc_recode_521* v)
             n >>= o;
         }
 
-        y += (word8)carry;
+        y = (word8)(y + carry);
         v[i].i = recode_index_9_6[y];
         v[i].neg = recode_neg_9_6[y];
         carry = (y >> 6) + v[i].neg;
@@ -77323,7 +77331,7 @@ static void sp_521_ecc_recode_7_9(const sp_digit* k, ecc_recode_521* v)
             n >>= o;
         }
 
-        y += (word8)carry;
+        y = (word8)(y + carry);
         v[i].i = recode_index_9_7[y];
         v[i].neg = recode_neg_9_7[y];
         carry = (y >> 7) + v[i].neg;
@@ -111319,7 +111327,7 @@ static int sp_521_ecc_mulmod_add_only_9(sp_point_521* r, const sp_point_521* g,
             p->infinity = !v[i].i;
             sp_521_sub_9(negy, p521_mod, p->y);
             sp_521_norm_9(negy);
-            sp_521_cond_copy_9(p->y, negy, 0 - v[i].neg);
+            sp_521_cond_copy_9(p->y, negy, (sp_digit)(0 - v[i].neg));
             sp_521_proj_point_add_qz1_9(rt, rt, p, tmp);
         }
         if (map != 0) {
@@ -111493,6 +111501,7 @@ int sp_ecc_mulmod_base_add_521(const mp_int* km, const ecc_point* am,
 #if defined(WOLFSSL_VALIDATE_ECC_KEYGEN) || defined(HAVE_ECC_SIGN) || \
                                                         defined(HAVE_ECC_VERIFY)
 #endif /* WOLFSSL_VALIDATE_ECC_KEYGEN | HAVE_ECC_SIGN | HAVE_ECC_VERIFY */
+#ifndef WC_NO_RNG
 /* Add 1 to a. (a = a + 1)
  *
  * a  A single precision integer.
@@ -111527,6 +111536,7 @@ static void sp_521_add_one_9(sp_digit* a)
     );
 }
 
+#endif
 /* Read big endian unsigned byte array into r.
  *
  * r  A single precision integer.
@@ -111545,7 +111555,7 @@ static void sp_521_from_bin(sp_digit* r, int size, const byte* a, int n)
         "sub	x4, x4, 8\n\t"
         "subs	x6, %[n], 8\n\t"
         "mov	x7, xzr\n\t"
-        "blt	2f\n\t"
+        "b.lt	2f\n\t"
         /* Put in multiples of 8 bytes. */
         "1:\n\t"
         "ldr	x8, [x4], -8\n\t"
@@ -113079,7 +113089,7 @@ int sp_ecc_verify_521_nb(sp_ecc_ctx_t* sp_ctx, const byte* hash,
 #endif /* WOLFSSL_SP_NONBLOCK */
 #endif /* HAVE_ECC_VERIFY */
 
-#ifdef HAVE_ECC_CHECK_KEY
+#if defined(HAVE_ECC_CHECK_KEY) || !defined(NO_ECC_CHECK_PUBKEY_ORDER)
 /* Check that the x and y ordinates are a valid point on the curve.
  *
  * point  EC point.
@@ -115983,7 +115993,7 @@ SP_NOINLINE static void sp_1024_mont_reduce_16(sp_digit* a, const sp_digit* m,
         "adc	x3, x3, xzr\n\t"
         "subs	x4, x4, 1\n\t"
         "add	%[a], %[a], 8\n\t"
-        "bne	1b\n\t"
+        "b.ne	1b\n\t"
         "# Create mask\n\t"
         "subs	x11, x10, x28\n\t"
         "neg	x3, x3\n\t"
@@ -117664,7 +117674,7 @@ static void sp_1024_ecc_recode_7_16(const sp_digit* k, ecc_recode_1024* v)
             n >>= o;
         }
 
-        y += (word8)carry;
+        y = (word8)(y + carry);
         v[i].i = recode_index_16_7[y];
         v[i].neg = recode_neg_16_7[y];
         carry = (y >> 7) + v[i].neg;
@@ -125114,7 +125124,7 @@ int sp_Pairing_precomp_1024(const ecc_point* pm, const ecc_point* qm,
 }
 
 #endif /* WOLFSSL_SP_SMALL */
-#ifdef HAVE_ECC_CHECK_KEY
+#if defined(HAVE_ECC_CHECK_KEY) || !defined(NO_ECC_CHECK_PUBKEY_ORDER)
 /* Read big endian unsigned byte array into r.
  *
  * r  A single precision integer.
@@ -125133,7 +125143,7 @@ static void sp_1024_from_bin(sp_digit* r, int size, const byte* a, int n)
         "sub	x4, x4, 8\n\t"
         "subs	x6, %[n], 8\n\t"
         "mov	x7, xzr\n\t"
-        "blt	2f\n\t"
+        "b.lt	2f\n\t"
         /* Put in multiples of 8 bytes. */
         "1:\n\t"
         "ldr	x8, [x4], -8\n\t"

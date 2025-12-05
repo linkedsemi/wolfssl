@@ -1,12 +1,12 @@
 /* ssl_sess.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,12 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #if !defined(WOLFSSL_SSL_SESS_INCLUDED)
     #ifndef WOLFSSL_IGNORE_FILE_WARN
@@ -375,7 +370,7 @@ int wolfSSL_SetServerID(WOLFSSL* ssl, const byte* id, int len, int newSession)
         WOLFSSL_MSG("Valid ServerID not cached already");
 
         ssl->session->idLen = (word16)len;
-        XMEMCPY(ssl->session->serverID, id, len);
+        XMEMCPY(ssl->session->serverID, id, (size_t)len);
     }
 #ifdef HAVE_EXT_CACHE
     else {
@@ -871,7 +866,7 @@ int wolfSSL_set_timeout(WOLFSSL* ssl, unsigned int to)
     return WOLFSSL_SUCCESS;
 }
 
-
+#ifndef NO_TLS
 /**
  * Sets ctx session timeout in seconds.
  * The timeout value set here should be reflected in the
@@ -932,7 +927,7 @@ int wolfSSL_CTX_set_timeout(WOLFSSL_CTX* ctx, unsigned int to)
     return ret;
 #endif /* WOLFSSL_ERROR_CODE_OPENSSL */
 }
-
+#endif /* !NO_TLS */
 
 #ifndef NO_CLIENT_CACHE
 
@@ -1183,9 +1178,6 @@ int wolfSSL_GetSessionFromCache(WOLFSSL* ssl, WOLFSSL_SESSION* output)
     byte preallocNonceUsed = 0;
 #endif /* WOLFSSL_TLS13 */
     byte         tmpBufSet = 0;
-#endif
-#if defined(SESSION_CERTS) && defined(OPENSSL_EXTRA)
-    WOLFSSL_X509* peer = NULL;
 #endif
     byte         bogusID[ID_LEN];
     byte         bogusIDSz = 0;
@@ -1452,12 +1444,6 @@ int wolfSSL_GetSessionFromCache(WOLFSSL* ssl, WOLFSSL_SESSION* output)
     XFREE(preallocNonce, output->heap, DYNAMIC_TYPE_SESSION_TICK);
 #endif /* WOLFSSL_TLS13 && WOLFSSL_TICKET_NONCE_MALLOC && FIPS_VERSION_GE(5,3)*/
 
-#endif
-
-#if defined(SESSION_CERTS) && defined(OPENSSL_EXTRA)
-    if (peer != NULL) {
-        wolfSSL_X509_free(peer);
-    }
 #endif
 
     return error;
@@ -1819,7 +1805,7 @@ int AddSessionToCache(WOLFSSL_CTX* ctx, WOLFSSL_SESSION* addSession,
     ticLen = addSession->ticketLen;
     /* Alloc Memory here to avoid syscalls during lock */
     if (ticLen > SESSION_TICKET_LEN) {
-        ticBuff = (byte*)XMALLOC(ticLen, NULL,
+        ticBuff = (byte*)XMALLOC((size_t)ticLen, NULL,
                 DYNAMIC_TYPE_SESSION_TICK);
         if (ticBuff == NULL) {
             return MEMORY_E;
@@ -1978,7 +1964,7 @@ int AddSessionToCache(WOLFSSL_CTX* ctx, WOLFSSL_SESSION* addSession,
         /* Copy in the certs from the session */
         addSession->chain.count = cacheSession->chain.count;
         XMEMCPY(addSession->chain.certs, cacheSession->chain.certs,
-                sizeof(x509_buffer) * cacheSession->chain.count);
+                sizeof(x509_buffer) * (size_t)cacheSession->chain.count);
     }
 #endif /* SESSION_CERTS */
 #if defined(SESSION_CERTS) && defined(OPENSSL_EXTRA)
@@ -2669,7 +2655,8 @@ int wolfSSL_i2d_SSL_SESSION(WOLFSSL_SESSION* sess, unsigned char** p)
         unsigned char *data;
 
         if (*p == NULL)
-            *p = (unsigned char*)XMALLOC(size, NULL, DYNAMIC_TYPE_OPENSSL);
+            *p = (unsigned char*)XMALLOC((size_t)size, NULL,
+                                                DYNAMIC_TYPE_OPENSSL);
         if (*p == NULL)
             return 0;
         data = *p;
@@ -2693,7 +2680,7 @@ int wolfSSL_i2d_SSL_SESSION(WOLFSSL_SESSION* sess, unsigned char** p)
             c16toa((word16)sess->chain.certs[i].length, data + idx);
             idx += OPAQUE16_LEN;
             XMEMCPY(data + idx, sess->chain.certs[i].buffer,
-                    sess->chain.certs[i].length);
+                    (size_t)sess->chain.certs[i].length);
             idx += sess->chain.certs[i].length;
         }
 #endif
@@ -3524,7 +3511,7 @@ int wolfSSL_SESSION_get_master_key(const WOLFSSL_SESSION* ses,
         size = outSz;
     }
 
-    XMEMCPY(out, ses->masterSecret, size);
+    XMEMCPY(out, ses->masterSecret, (size_t)size);
     return size;
 }
 
@@ -3538,6 +3525,10 @@ int wolfSSL_SESSION_get_master_key_length(const WOLFSSL_SESSION* ses)
 #ifdef WOLFSSL_EARLY_DATA
 unsigned int wolfSSL_SESSION_get_max_early_data(const WOLFSSL_SESSION *session)
 {
+    if (session == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
     return session->maxEarlyDataSz;
 }
 #endif /* WOLFSSL_EARLY_DATA */
@@ -3565,7 +3556,16 @@ void SetupSession(WOLFSSL* ssl)
     session->side = (byte)ssl->options.side;
     if (!IsAtLeastTLSv1_3(ssl->version) && ssl->arrays != NULL)
         XMEMCPY(session->masterSecret, ssl->arrays->masterSecret, SECRET_LEN);
-    session->haveEMS = ssl->options.haveEMS;
+    /* RFC8446 Appendix D.
+     *   implementations which support both TLS 1.3 and earlier versions SHOULD
+     *   indicate the use of the Extended Master Secret extension in their APIs
+     *   whenever TLS 1.3 is used.
+     * Set haveEMS so that we send the extension in subsequent connections that
+     * offer downgrades. */
+    if (IsAtLeastTLSv1_3(ssl->version))
+        session->haveEMS = 1;
+    else
+        session->haveEMS = ssl->options.haveEMS;
 #ifdef WOLFSSL_SESSION_ID_CTX
     /* If using compatibility layer then check for and copy over session context
      * id. */
@@ -3754,10 +3754,10 @@ static int wolfSSL_DupSessionEx(const WOLFSSL_SESSION* input,
     byte* ticketNonceLen, byte* preallocUsed)
 {
 #ifdef HAVE_SESSION_TICKET
-    int   ticLenAlloc = 0;
+    word16 ticLenAlloc = 0;
     byte *ticBuff = NULL;
 #endif
-    const size_t copyOffset = OFFSETOF(WOLFSSL_SESSION, heap) +
+    const size_t copyOffset = WC_OFFSETOF(WOLFSSL_SESSION, heap) +
         sizeof(input->heap);
     int ret = WOLFSSL_SUCCESS;
 
@@ -4096,7 +4096,7 @@ void wolfSSL_FreeSession(WOLFSSL_CTX* ctx, WOLFSSL_SESSION* session)
     ForceZero(session->sessionID, ID_LEN);
 
     if (session->type == WOLFSSL_SESSION_TYPE_HEAP) {
-        XFREE(session, session->heap, DYNAMIC_TYPE_SESSION);
+        XFREE(session, session->heap, DYNAMIC_TYPE_SESSION); /* // NOLINT(clang-analyzer-unix.Malloc) */
     }
 }
 
@@ -4170,7 +4170,8 @@ int wolfSSL_SESSION_set1_id(WOLFSSL_SESSION *s,
     if (sid_len > ID_LEN) {
         return WOLFSSL_FAILURE;
     }
-    s->sessionIDSz = sid_len;
+
+    s->sessionIDSz = (byte)sid_len;
     if (sid != s->sessionID) {
         XMEMCPY(s->sessionID, sid, sid_len);
     }
@@ -4186,7 +4187,7 @@ int wolfSSL_SESSION_set1_id_context(WOLFSSL_SESSION *s,
     if (sid_ctx_len > ID_LEN) {
         return WOLFSSL_FAILURE;
     }
-    s->sessionCtxSz = sid_ctx_len;
+    s->sessionCtxSz = (byte)sid_ctx_len;
     if (sid_ctx != s->sessionCtx) {
         XMEMCPY(s->sessionCtx, sid_ctx, sid_ctx_len);
     }

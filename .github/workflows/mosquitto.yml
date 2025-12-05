@@ -17,7 +17,7 @@ jobs:
     name: Build wolfSSL
     # Just to keep it the same as the testing target
     if: github.repository_owner == 'wolfssl'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     # This should be a safe limit for the tests to run.
     timeout-minutes: 4
     steps:
@@ -45,7 +45,7 @@ jobs:
         ref: [ 2.0.18 ]
     name: ${{ matrix.ref }}
     if: github.repository_owner == 'wolfssl'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     # This should be a safe limit for the tests to run.
     timeout-minutes: 4
     needs: build_wolfssl
@@ -76,6 +76,12 @@ jobs:
           repository: eclipse/mosquitto
           ref: v${{ matrix.ref }}
           path: mosquitto
+
+      - name: Update certs
+        run: |
+            cd $GITHUB_WORKSPACE/mosquitto/test/ssl
+            ./gen.sh
+            cat all-ca.crt >> server.crt
 
       - name: Configure and build mosquitto
         run: |

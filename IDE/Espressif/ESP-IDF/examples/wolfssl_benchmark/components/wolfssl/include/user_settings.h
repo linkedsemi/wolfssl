@@ -1,12 +1,12 @@
 /* wolfssl-component include/user_settings.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,6 +19,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 #define WOLFSSL_ESPIDF_COMPONENT_VERSION 0x01
+
+/* Examples such as test and benchmark are known to cause watchdog timeouts.
+ * Note this is often set in project Makefile:
+ * CFLAGS += -DWOLFSSL_ESP_NO_WATCHDOG=1 */
+#define WOLFSSL_ESP_NO_WATCHDOG 1
 
 /* The Espressif project config file. See also sdkconfig.defaults */
 #include "sdkconfig.h"
@@ -105,7 +110,7 @@
     /* We don't use WiFi, so don't compile in the esp-sdk-lib WiFi helpers: */
     /* #define USE_WOLFSSL_ESP_SDK_WIFI */
     #define TEST_ESPIDF_ALL_WOLFSSL
-
+    #define HAVE_HKDF
 #elif defined(CONFIG_WOLFSSL_EXAMPLE_NAME_BENCHMARK)
     /* See https://github.com/wolfSSL/wolfssl/tree/master/IDE/Espressif/ESP-IDF/examples/wolfssl_benchmark */
     /* We don't use WiFi, so don't compile in the esp-sdk-lib WiFi helpers: */
@@ -204,19 +209,52 @@
     /* the code is older or does not have application name defined. */
 #endif /* Example wolfSSL Configuration app settings */
 
-/* Experimental Kyber */
-#ifdef CONFIG_WOLFSSL_ENABLE_KYBER
+/* Optional MLKEM (Kyber Post Quantum)               */
+/*  ./configure --enable-mlkem                       */
+/* See Kconfig / menuconfig ESP_WOLFSSL_ENABLE_MLKEM */
+#ifdef CONFIG_ESP_WOLFSSL_ENABLE_MLKEM
     /* Kyber typically needs a minimum 10K stack */
-    #define WOLFSSL_EXPERIMENTAL_SETTINGS
-    #define WOLFSSL_HAVE_KYBER
-    #define WOLFSSL_WC_KYBER
-    #define WOLFSSL_SHA3
+    #define WOLFSSL_HAVE_MLKEM
+    #define WOLFSSL_WC_MLKEM
+    #define WOLFSSL_SHAKE128
+    #define WOLFSSL_SHAKE256
+
+    /* Old code points to keep compatibility with Kyber Round 3. */
+    /*   ./configure --enable-kyber=all --enable-experimental    */
+    #if defined(CONFIG_WOLFSSL_ENABLE_KYBER)
+        #define WOLFSSL_MLKEM_KYBER
+        #define WOLFSSL_EXPERIMENTAL_SETTINGS
+    #endif
+
     #if defined(CONFIG_IDF_TARGET_ESP8266)
         /* With limited RAM, we'll disable some of the Kyber sizes: */
         #define WOLFSSL_NO_KYBER1024
         #define WOLFSSL_NO_KYBER768
+        #define WOLFSSL_NO_ML_KEM_1024
+        #define WOLFSSL_NO_ML_KEM_768
         #define NO_SESSION_CACHE
+    #else
+        /* Only needed for older wolfssl versions, see mlkem.h */
+        #define WOLFSSL_KYBER1024
+        /* optional alternative sizes:    */
+        /* #define WOLFSSL_KYBER768       */
+        /* #define WOLFSSL_KYBER512       */
+        /* -- or disable a specific one:  */
+        /* #define WOLFSSL_NO_ML_KEM_1024 */
+        /* #define WOLFSSL_NO_ML_KEM_768  */
+        /* #define WOLFSSL_NO_ML_KEM_512  */
     #endif
+#endif
+
+/* Enable AES for all examples */
+#ifdef NO_AES
+    #warning "Found NO_AES, wolfSSL AES Cannot be enabled. Check config."
+#else
+    #define WOLFSSL_AES
+    #define WOLFSSL_AES_COUNTER
+
+    /* Typically only needed for wolfssl_test, see docs. */
+    #define WOLFSSL_AES_DIRECT
 #endif
 
 /* Pick a cert buffer size: */
@@ -273,6 +311,10 @@
 
 /* Optionally enable some wolfSSH settings */
 #if defined(ESP_ENABLE_WOLFSSH) || defined(CONFIG_ESP_ENABLE_WOLFSSH)
+    /* Enable wolfSSH. Espressif examples need a few more settings, below */
+    #undef  WOLFSSL_WOLFSSH
+    #define WOLFSSL_WOLFSSH
+
     /* The default SSH Windows size is massive for an embedded target.
      * Limit it: */
     #define DEFAULT_WINDOW_SZ 2000
@@ -386,7 +428,10 @@
 #if defined(CONFIG_IDF_TARGET_ESP32C2) || \
     defined(CONFIG_IDF_TARGET_ESP8684)
     /* Optionally set smaller size here */
-    #define HAVE_FFDHE_4096
+    #ifdef HAVE_FFDHE_4096
+        /* this size may be problematic on the C2 */
+    #endif
+    #define HAVE_FFDHE_2048
 #else
     #define HAVE_FFDHE_4096
 #endif
@@ -509,7 +554,7 @@
 /* Adjust wait-timeout count if you see timeout in RSA HW acceleration.
  * Set to very large number and enable WOLFSSL_HW_METRICS to determine max. */
 #ifndef ESP_RSA_TIMEOUT_CNT
-	#define ESP_RSA_TIMEOUT_CNT 0xFF0000
+    #define ESP_RSA_TIMEOUT_CNT 0xFF0000
 #endif
 
 /* hash limit for test.c */
@@ -536,8 +581,6 @@
     defined(WOLFSSL_SP_MATH_ALL)   || \
     defined(WOLFSSL_SP_RISCV32)
 #endif
-
-#define WOLFSSL_SMALL_STACK
 
 
 #define HAVE_VERSION_EXTENDED_INFO
@@ -761,11 +804,20 @@
     #define NO_WOLFSSL_ESP32_CRYPT_RSA_PRI
     /***** END CONFIG_IDF_TARGET_ESP32H2 *****/
 
+#elif defined(CONFIG_IDF_TARGET_ESP32P4)
+    #define WOLFSSL_ESP32
+    /*  wolfSSL Hardware Acceleration not yet implemented */
+    #define NO_ESP32_CRYPT
+    #define NO_WOLFSSL_ESP32_CRYPT_HASH
+    #define NO_WOLFSSL_ESP32_CRYPT_AES
+    #define NO_WOLFSSL_ESP32_CRYPT_RSA_PRI
+    /***** END CONFIG_IDF_TARGET_ESP32P4 *****/
+
 #elif defined(CONFIG_IDF_TARGET_ESP8266)
     #define WOLFSSL_ESP8266
 
     /* There's no hardware encryption on the ESP8266 */
-    /* Consider using the ESP32-C2/C3/C6 */
+    /* Consider using the ESP32-C2/C3/C6             */
     #define NO_ESP32_CRYPT
     #define NO_WOLFSSL_ESP32_CRYPT_HASH
     #define NO_WOLFSSL_ESP32_CRYPT_AES
@@ -801,13 +853,18 @@
     #ifndef NO_RSA
         #define ESP32_USE_RSA_PRIMITIVE
 
-        #if defined(CONFIG_IDF_TARGET_ESP32)
-            #ifdef CONFIG_ESP_MAIN_TASK_STACK_SIZE
+        #ifdef CONFIG_ESP_MAIN_TASK_STACK_SIZE
+            /* See idf.py menuconfig for stack warning settings */
+            #if !defined(CONFIG_ESP_WOLFSSL_NO_STACK_SIZE_BUILD_WARNING)
                 #if CONFIG_ESP_MAIN_TASK_STACK_SIZE < 10500
-                    #warning "RSA may be difficult with less than 10KB Stack "/
+                    #warning "RSA may be difficult with less than 10KB Stack"
                 #endif
+            #else
+                /* Implement your own stack warning here */
             #endif
+        #endif
 
+        #if defined(CONFIG_IDF_TARGET_ESP32)
             /* NOTE HW unreliable for small values! */
             /* threshold for performance adjustment for HW primitive use   */
             /* X bits of G^X mod P greater than                            */
@@ -904,6 +961,8 @@ Turn on timer debugging (used when CPU cycles not available)
 #define ATCA_WOLFSSL
 */
 
+/* optional SM4 Ciphers. See github.com/wolfSSL/wolfsm */
+
 /***************************** Certificate Macros *****************************
  *
  * The section below defines macros used in typically all of the wolfSSL
@@ -995,9 +1054,14 @@ Turn on timer debugging (used when CPU cycles not available)
     #define WOLFSSL_BASE16
 #else
     #if defined(USE_CERT_BUFFERS_2048)
-        #define USE_CERT_BUFFERS_256
+        #ifdef USE_CERT_BUFFERS_1024
+            #error "USE_CERT_BUFFERS_1024 is already defined. Pick one."
+        #endif
+
         /* Be sure to include in app when using example certs: */
-        /* #include <wolfssl/certs_test.h>                     */
+        #include <wolfssl/certs_test.h>
+
+        #define USE_CERT_BUFFERS_256
         #define CTX_CA_CERT          ca_cert_der_2048
         #define CTX_CA_CERT_SIZE     sizeof_ca_cert_der_2048
         #define CTX_CA_CERT_TYPE     WOLFSSL_FILETYPE_ASN1
@@ -1017,9 +1081,14 @@ Turn on timer debugging (used when CPU cycles not available)
         #define CTX_CLIENT_KEY_TYPE  WOLFSSL_FILETYPE_ASN1
 
     #elif defined(USE_CERT_BUFFERS_1024)
-        #define USE_CERT_BUFFERS_256
+        #ifdef USE_CERT_BUFFERS_2048
+            #error "USE_CERT_BUFFERS_2048 is already defined. Pick one."
+        #endif
+
         /* Be sure to include in app when using example certs: */
-        /* #include <wolfssl/certs_test.h>                     */
+        #include <wolfssl/certs_test.h>
+
+        #define USE_CERT_BUFFERS_256
         #define CTX_CA_CERT          ca_cert_der_1024
         #define CTX_CA_CERT_SIZE     sizeof_ca_cert_der_1024
         #define CTX_CA_CERT_TYPE     WOLFSSL_FILETYPE_ASN1

@@ -1,12 +1,12 @@
 /* dtls13.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,11 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #ifdef WOLFSSL_DTLS13
 
@@ -31,10 +27,7 @@
 #include <wolfssl/internal.h>
 #include <wolfssl/ssl.h>
 #include <wolfssl/wolfcrypt/aes.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/kdf.h>
-#include <wolfssl/wolfcrypt/logging.h>
-#include <wolfssl/wolfcrypt/types.h>
 
 #ifdef NO_INLINE
 #include <wolfssl/wolfcrypt/misc.h>
@@ -185,7 +178,8 @@ int Dtls13RlAddPlaintextHeader(WOLFSSL* ssl, byte* out,
     /* seq[0] combines the epoch and 16 MSB of sequence number. We write on the
        epoch field and will overflow to the first two bytes of the sequence
        number */
-    c32toa(seq[0], hdr->epoch);
+    c16toa((word16)(seq[0] >> 16), hdr->epoch);
+    c16toa((word16)seq[0], hdr->sequenceNumber);
     c32toa(seq[1], &hdr->sequenceNumber[2]);
 
     c16toa(length, hdr->length);
@@ -724,7 +718,7 @@ static Dtls13RecordNumber* Dtls13NewRecordNumber(w64wrapper epoch,
     return rn;
 }
 
-static int Dtls13RtxAddAck(WOLFSSL* ssl, w64wrapper epoch, w64wrapper seq)
+int Dtls13RtxAddAck(WOLFSSL* ssl, w64wrapper epoch, w64wrapper seq)
 {
     Dtls13RecordNumber* rn;
 
@@ -734,12 +728,28 @@ static int Dtls13RtxAddAck(WOLFSSL* ssl, w64wrapper epoch, w64wrapper seq)
     if (wc_LockMutex(&ssl->dtls13Rtx.mutex) == 0)
 #endif
     {
+        /* Find location to insert new record */
+        Dtls13RecordNumber** prevNext = &ssl->dtls13Rtx.seenRecords;
+        Dtls13RecordNumber* cur = ssl->dtls13Rtx.seenRecords;
+
+        for (; cur != NULL; prevNext = &cur->next, cur = cur->next) {
+            if (w64Equal(cur->epoch, epoch) && w64Equal(cur->seq, seq)) {
+                /* already in list. no duplicates. */
+                return 0;
+            }
+            else if (w64LT(epoch, cur->epoch)
+                    || (w64Equal(epoch, cur->epoch)
+                            && w64LT(seq, cur->seq))) {
+                break;
+            }
+        }
+
         rn = Dtls13NewRecordNumber(epoch, seq, ssl->heap);
         if (rn == NULL)
             return MEMORY_E;
 
-        rn->next = ssl->dtls13Rtx.seenRecords;
-        ssl->dtls13Rtx.seenRecords = rn;
+        *prevNext = rn;
+        rn->next = cur;
     #ifdef WOLFSSL_RW_THREADED
         wc_UnLockMutex(&ssl->dtls13Rtx.mutex);
     #endif
@@ -895,7 +905,7 @@ static int Dtls13RtxMsgRecvd(WOLFSSL* ssl, enum HandShakeType hs,
         /* the other peer may have retransmitted because an ACK for a flight
            that needs explicit ACK was lost.*/
         if (ssl->dtls13Rtx.seenRecords != NULL)
-            ssl->dtls13Rtx.sendAcks = (byte)ssl->options.dtls13SendMoreAcks;
+            ssl->dtls13Rtx.sendAcks = 1;
     }
 
     if (ssl->keys.dtls_peer_handshake_number ==
@@ -1149,6 +1159,11 @@ static int Dtls13UnifiedHeaderParseCID(WOLFSSL* ssl, byte flags,
     }
 
     return 0;
+}
+
+int Dtls13UnifiedHeaderCIDPresent(byte flags)
+{
+    return Dtls13IsUnifiedHeader(flags) && (flags & DTLS13_CID_BIT);
 }
 
 #else
@@ -1546,11 +1561,14 @@ static int Dtls13RtxSendBuffered(WOLFSSL* ssl)
     byte* output;
     int isLast;
     int sendSz;
+#ifndef NO_ASN_TIME
     word32 now;
+#endif
     int ret;
 
     WOLFSSL_ENTER("Dtls13RtxSendBuffered");
 
+#ifndef NO_ASN_TIME
     now = LowResTimer();
     if (now - ssl->dtls13Rtx.lastRtx < DTLS13_MIN_RTX_INTERVAL) {
 #ifdef WOLFSSL_DEBUG_TLS
@@ -1560,6 +1578,7 @@ static int Dtls13RtxSendBuffered(WOLFSSL* ssl)
     }
 
     ssl->dtls13Rtx.lastRtx = now;
+#endif
 
     r = ssl->dtls13Rtx.rtxRecords;
     prevNext = &ssl->dtls13Rtx.rtxRecords;
@@ -1634,6 +1653,102 @@ static int Dtls13AcceptFragmented(WOLFSSL *ssl, enum HandShakeType type)
 #endif
     return 0;
 }
+
+int Dtls13CheckEpoch(WOLFSSL* ssl, enum HandShakeType type)
+{
+    w64wrapper plainEpoch = w64From32(0x0, 0x0);
+    w64wrapper hsEpoch = w64From32(0x0, DTLS13_EPOCH_HANDSHAKE);
+    w64wrapper t0Epoch = w64From32(0x0, DTLS13_EPOCH_TRAFFIC0);
+
+    if (IsAtLeastTLSv1_3(ssl->version)) {
+        switch (type) {
+            case client_hello:
+            case server_hello:
+            case hello_verify_request:
+            case hello_retry_request:
+            case hello_request:
+                if (!w64Equal(ssl->keys.curEpoch64, plainEpoch)) {
+                    WOLFSSL_MSG("Msg should be epoch 0");
+                    WOLFSSL_ERROR_VERBOSE(SANITY_MSG_E);
+                    return SANITY_MSG_E;
+                }
+                break;
+            case encrypted_extensions:
+            case server_key_exchange:
+            case server_hello_done:
+            case client_key_exchange:
+                if (!w64Equal(ssl->keys.curEpoch64, hsEpoch)) {
+                    if (ssl->options.side == WOLFSSL_CLIENT_END &&
+                            ssl->options.serverState < SERVER_HELLO_COMPLETE) {
+                        /* before processing SH we don't know which version
+                         * will be negotiated.  */
+                        if (!w64Equal(ssl->keys.curEpoch64, plainEpoch)) {
+                            WOLFSSL_MSG("Msg should be epoch 2 or 0");
+                            WOLFSSL_ERROR_VERBOSE(SANITY_MSG_E);
+                            return SANITY_MSG_E;
+                        }
+                    }
+                    else {
+                        WOLFSSL_MSG("Msg should be epoch 2");
+                        WOLFSSL_ERROR_VERBOSE(SANITY_MSG_E);
+                        return SANITY_MSG_E;
+                    }
+                }
+                break;
+            case certificate_request:
+            case certificate:
+            case certificate_verify:
+            case finished:
+                if (!ssl->options.handShakeDone) {
+                    if (!w64Equal(ssl->keys.curEpoch64, hsEpoch)) {
+                        if (ssl->options.side == WOLFSSL_CLIENT_END &&
+                            ssl->options.serverState < SERVER_HELLO_COMPLETE) {
+                            /* before processing SH we don't know which version
+                             * will be negotiated.  */
+                            if (!w64Equal(ssl->keys.curEpoch64, plainEpoch)) {
+                                WOLFSSL_MSG("Msg should be epoch 2 or 0");
+                                WOLFSSL_ERROR_VERBOSE(SANITY_MSG_E);
+                                return SANITY_MSG_E;
+                            }
+                        }
+                        else {
+                            WOLFSSL_MSG("Msg should be epoch 2");
+                            WOLFSSL_ERROR_VERBOSE(SANITY_MSG_E);
+                            return SANITY_MSG_E;
+                        }
+                    }
+                }
+                else {
+                    /* Allow epoch 2 in case of rtx */
+                    if (!w64GTE(ssl->keys.curEpoch64, hsEpoch)) {
+                        WOLFSSL_MSG("Msg should be epoch 2+");
+                        WOLFSSL_ERROR_VERBOSE(SANITY_MSG_E);
+                        return SANITY_MSG_E;
+                    }
+                }
+                break;
+            case certificate_status:
+            case change_cipher_hs:
+            case key_update:
+            case session_ticket:
+                if (!w64GTE(ssl->keys.curEpoch64, t0Epoch)) {
+                    WOLFSSL_MSG("Msg should be epoch 3+");
+                    WOLFSSL_ERROR_VERBOSE(SANITY_MSG_E);
+                    return SANITY_MSG_E;
+                }
+                break;
+            case end_of_early_data:
+            case message_hash:
+            case no_shake:
+            default:
+                WOLFSSL_MSG("Unknown message type");
+                WOLFSSL_ERROR_VERBOSE(SANITY_MSG_E);
+                return SANITY_MSG_E;
+        }
+    }
+    return 0;
+}
+
 /**
  * Dtls13HandshakeRecv() - process an handshake message. Deal with
  fragmentation if needed
@@ -1664,6 +1779,12 @@ static int _Dtls13HandshakeRecv(WOLFSSL* ssl, byte* input, word32 size,
 
     /* Need idx + fragLength as we don't advance the inputBuffer idx value */
     ret = EarlySanityCheckMsgReceived(ssl, handshakeType, idx + fragLength);
+    if (ret != 0) {
+        WOLFSSL_ERROR(ret);
+        return ret;
+    }
+
+    ret = Dtls13CheckEpoch(ssl, (enum HandShakeType)handshakeType);
     if (ret != 0) {
         WOLFSSL_ERROR(ret);
         return ret;
@@ -1956,6 +2077,9 @@ int Dtls13DeriveSnKeys(WOLFSSL* ssl, int provision)
 
 end:
     ForceZero(key_dig, MAX_PRF_DIG);
+#ifdef WOLFSSL_CHECK_MEM_ZERO
+    wc_MemZero_Check(key_dig, sizeof(key_dig));
+#endif
     return ret;
 }
 
@@ -2414,7 +2538,7 @@ static int Dtls13GetAckListLength(Dtls13RecordNumber* list, word16* length)
     return 0;
 }
 
-static int Dtls13WriteAckMessage(WOLFSSL* ssl,
+int Dtls13WriteAckMessage(WOLFSSL* ssl,
     Dtls13RecordNumber* recordNumberList, word32* length)
 {
     word16 msgSz, headerLength;
@@ -2494,19 +2618,16 @@ static int Dtls13RtxIsTrackedByRn(const Dtls13RtxRecord* r, w64wrapper epoch,
 static int Dtls13KeyUpdateAckReceived(WOLFSSL* ssl)
 {
     int ret;
-    w64Increment(&ssl->dtls13Epoch);
-
-    /* Epoch wrapped up */
-    if (w64IsZero(ssl->dtls13Epoch))
-        return BAD_STATE_E;
 
     ret = DeriveTls13Keys(ssl, update_traffic_key, ENCRYPT_SIDE_ONLY, 1);
     if (ret != 0)
         return ret;
 
-    ret = Dtls13NewEpoch(ssl, ssl->dtls13Epoch, ENCRYPT_SIDE_ONLY);
-    if (ret != 0)
-        return ret;
+    w64Increment(&ssl->dtls13Epoch);
+
+    /* Epoch wrapped up */
+    if (w64IsZero(ssl->dtls13Epoch))
+        return BAD_STATE_E;
 
     return Dtls13SetEpochKeys(ssl, ssl->dtls13Epoch, ENCRYPT_SIDE_ONLY);
 }

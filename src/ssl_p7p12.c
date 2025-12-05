@@ -1,12 +1,12 @@
 /* ssl_p7p12.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,11 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #if defined(OPENSSL_EXTRA) && (defined(HAVE_FIPS) || defined(HAVE_SELFTEST))
     #include <wolfssl/wolfcrypt/pkcs7.h>
@@ -231,6 +227,7 @@ WOLFSSL_STACK* wolfSSL_PKCS7_to_stack(PKCS7* pkcs7)
         if (x509) {
             if (wolfSSL_sk_X509_push(ret, x509) <= 0) {
                 wolfSSL_X509_free(x509);
+                x509 = NULL;
                 WOLFSSL_MSG("wolfSSL_sk_X509_push error");
                 goto error;
             }
@@ -320,6 +317,10 @@ PKCS7* wolfSSL_d2i_PKCS7_bio(WOLFSSL_BIO* bio, PKCS7** p7)
         return NULL;
 
     pkcs7->len = wolfSSL_BIO_get_len(bio);
+    if (pkcs7->len < 0){
+        wolfSSL_PKCS7_free((PKCS7*)pkcs7);
+        return NULL;
+    }
     pkcs7->data = (byte*)XMALLOC(pkcs7->len, NULL, DYNAMIC_TYPE_PKCS7);
     if (pkcs7->data == NULL) {
         wolfSSL_PKCS7_free((PKCS7*)pkcs7);
@@ -775,6 +776,8 @@ int wolfSSL_PKCS7_verify(PKCS7* pkcs7, WOLFSSL_STACK* certs,
     int contTypeLen;
     WOLFSSL_X509* signer = NULL;
     WOLFSSL_STACK* signers = NULL;
+    X509_STORE_CTX* ctx = NULL;
+
 
     WOLFSSL_ENTER("wolfSSL_PKCS7_verify");
 
@@ -807,24 +810,37 @@ int wolfSSL_PKCS7_verify(PKCS7* pkcs7, WOLFSSL_STACK* certs,
             return WOLFSSL_FAILURE;
         }
 
+        ctx = X509_STORE_CTX_new();
+        if (ctx == NULL) {
+            WOLFSSL_MSG("Error allocating X509 Store Context");
+            return WOLFSSL_FAILURE;
+        }
+
         signers = wolfSSL_PKCS7_get0_signers(pkcs7, certs, flags);
         if (signers == NULL) {
             WOLFSSL_MSG("No signers found to verify");
+            wolfSSL_X509_STORE_CTX_free(ctx);
             return WOLFSSL_FAILURE;
         }
+
         for (i = 0; i < wolfSSL_sk_X509_num(signers); i++) {
             signer = wolfSSL_sk_X509_value(signers, i);
-
-            if (wolfSSL_CertManagerVerifyBuffer(store->cm,
-                        signer->derCert->buffer,
-                        signer->derCert->length,
-                        WOLFSSL_FILETYPE_ASN1) != WOLFSSL_SUCCESS) {
+            if (wolfSSL_X509_STORE_CTX_init(ctx, store, signer, NULL)
+                        != WOLFSSL_SUCCESS) {
+                WOLFSSL_MSG("Failed to initialize X509 STORE CTX");
+                wolfSSL_sk_X509_pop_free(signers, NULL);
+                wolfSSL_X509_STORE_CTX_free(ctx);
+                return WOLFSSL_FAILURE;
+            }
+            if (wolfSSL_X509_verify_cert(ctx) != WOLFSSL_SUCCESS) {
                 WOLFSSL_MSG("Failed to verify signer certificate");
                 wolfSSL_sk_X509_pop_free(signers, NULL);
+                wolfSSL_X509_STORE_CTX_free(ctx);
                 return WOLFSSL_FAILURE;
             }
         }
         wolfSSL_sk_X509_pop_free(signers, NULL);
+        wolfSSL_X509_STORE_CTX_free(ctx);
     }
 
     if (flags & PKCS7_TEXT) {
@@ -948,7 +964,7 @@ int wolfSSL_PEM_write_bio_PKCS7(WOLFSSL_BIO* bio, PKCS7* p7)
     int    pemSz = -1;
     enum wc_HashType hashType;
     byte hashBuf[WC_MAX_DIGEST_SIZE];
-    word32 hashSz = -1;
+    word32 hashSz = 0;
 
     WOLFSSL_ENTER("wolfSSL_PEM_write_bio_PKCS7");
 
@@ -1180,6 +1196,8 @@ PKCS7* wolfSSL_SMIME_read_PKCS7(WOLFSSL_BIO* in,
                                           DYNAMIC_TYPE_PKCS7);
             if (canonSection == NULL) {
                 goto error;
+            } else {
+                XMEMSET(canonSection, 0, (word32)canonSize);
             }
 
             lineLen = wolfSSL_BIO_gets(in, section, remainLen);
@@ -1912,12 +1930,14 @@ int wolfSSL_PKCS12_parse(WC_PKCS12* pkcs12, const char* psw,
                 WOLFSSL_MSG("Issue with parsing certificate");
                 FreeDecodedCert(DeCert);
                 wolfSSL_X509_free(x509);
+                x509 = NULL;
             }
             else {
                 if (CopyDecodedToX509(x509, DeCert) != 0) {
                     WOLFSSL_MSG("Failed to copy decoded cert");
                     FreeDecodedCert(DeCert);
                     wolfSSL_X509_free(x509);
+                    x509 = NULL;
                     wolfSSL_sk_X509_pop_free(*ca, NULL); *ca = NULL;
                     XFREE(pk, heap, DYNAMIC_TYPE_PUBLIC_KEY);
                     XFREE(certData, heap, DYNAMIC_TYPE_PKCS);
@@ -1937,6 +1957,7 @@ int wolfSSL_PKCS12_parse(WC_PKCS12* pkcs12, const char* psw,
                 if (wolfSSL_sk_X509_push(*ca, x509) <= 0) {
                     WOLFSSL_MSG("Failed to push x509 onto stack");
                     wolfSSL_X509_free(x509);
+                    x509 = NULL;
                     wolfSSL_sk_X509_pop_free(*ca, NULL); *ca = NULL;
                     XFREE(pk, heap, DYNAMIC_TYPE_PUBLIC_KEY);
                     XFREE(certData, heap, DYNAMIC_TYPE_PKCS);

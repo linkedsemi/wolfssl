@@ -1,12 +1,12 @@
 /* ssl_crypto.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,12 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #ifndef WOLFSSL_SSL_CRYPTO_INCLUDED
     #ifndef WOLFSSL_IGNORE_FILE_WARN
@@ -1477,56 +1472,136 @@ int wolfSSL_HmacCopy(Hmac* dst, Hmac* src)
     #ifndef NO_MD5
         case WC_MD5:
             rc = wc_Md5Copy(&src->hash.md5, &dst->hash.md5);
+        #ifdef WOLFSSL_HMAC_COPY_HASH
+            if (rc == 0) {
+                rc = wc_Md5Copy(&src->i_hash.md5, &dst->i_hash.md5);
+            }
+            if (rc == 0) {
+                rc = wc_Md5Copy(&src->o_hash.md5, &dst->o_hash.md5);
+            }
+        #endif
             break;
     #endif /* !NO_MD5 */
 
     #ifndef NO_SHA
         case WC_SHA:
             rc = wc_ShaCopy(&src->hash.sha, &dst->hash.sha);
+        #ifdef WOLFSSL_HMAC_COPY_HASH
+            if (rc == 0) {
+                rc = wc_ShaCopy(&src->i_hash.sha, &dst->i_hash.sha);
+            }
+            if (rc == 0) {
+                rc = wc_ShaCopy(&src->o_hash.sha, &dst->o_hash.sha);
+            }
+        #endif
             break;
     #endif /* !NO_SHA */
 
     #ifdef WOLFSSL_SHA224
         case WC_SHA224:
             rc = wc_Sha224Copy(&src->hash.sha224, &dst->hash.sha224);
+        #ifdef WOLFSSL_HMAC_COPY_HASH
+            if (rc == 0) {
+                rc = wc_Sha224Copy(&src->i_hash.sha224, &dst->i_hash.sha224);
+            }
+            if (rc == 0) {
+                rc = wc_Sha224Copy(&src->o_hash.sha224, &dst->o_hash.sha224);
+            }
+        #endif
             break;
     #endif /* WOLFSSL_SHA224 */
 
     #ifndef NO_SHA256
         case WC_SHA256:
             rc = wc_Sha256Copy(&src->hash.sha256, &dst->hash.sha256);
+        #ifdef WOLFSSL_HMAC_COPY_HASH
+            if (rc == 0) {
+                rc = wc_Sha256Copy(&src->i_hash.sha256, &dst->i_hash.sha256);
+            }
+            if (rc == 0) {
+                rc = wc_Sha256Copy(&src->o_hash.sha256, &dst->o_hash.sha256);
+            }
+        #endif
             break;
     #endif /* !NO_SHA256 */
 
     #ifdef WOLFSSL_SHA384
         case WC_SHA384:
             rc = wc_Sha384Copy(&src->hash.sha384, &dst->hash.sha384);
+        #ifdef WOLFSSL_HMAC_COPY_HASH
+            if (rc == 0) {
+                rc = wc_Sha384Copy(&src->i_hash.sha384, &dst->i_hash.sha384);
+            }
+            if (rc == 0) {
+                rc = wc_Sha384Copy(&src->o_hash.sha384, &dst->o_hash.sha384);
+            }
+        #endif
             break;
     #endif /* WOLFSSL_SHA384 */
     #ifdef WOLFSSL_SHA512
         case WC_SHA512:
             rc = wc_Sha512Copy(&src->hash.sha512, &dst->hash.sha512);
+        #ifdef WOLFSSL_HMAC_COPY_HASH
+            if (rc == 0) {
+                rc = wc_Sha512Copy(&src->i_hash.sha512, &dst->i_hash.sha512);
+            }
+            if (rc == 0) {
+                rc = wc_Sha512Copy(&src->o_hash.sha512, &dst->o_hash.sha512);
+            }
+        #endif
             break;
     #endif /* WOLFSSL_SHA512 */
 #ifdef WOLFSSL_SHA3
     #ifndef WOLFSSL_NOSHA3_224
         case WC_SHA3_224:
             rc = wc_Sha3_224_Copy(&src->hash.sha3, &dst->hash.sha3);
+        #ifdef WOLFSSL_HMAC_COPY_HASH
+            if (rc == 0) {
+                rc = wc_Sha3_224_Copy(&src->i_hash.sha3, &dst->i_hash.sha3);
+            }
+            if (rc == 0) {
+                rc = wc_Sha3_224_Copy(&src->o_hash.sha3, &dst->o_hash.sha3);
+            }
+        #endif
             break;
     #endif /* WOLFSSL_NO_SHA3_224 */
     #ifndef WOLFSSL_NOSHA3_256
         case WC_SHA3_256:
             rc = wc_Sha3_256_Copy(&src->hash.sha3, &dst->hash.sha3);
+        #ifdef WOLFSSL_HMAC_COPY_HASH
+            if (rc == 0) {
+                rc = wc_Sha3_256_Copy(&src->i_hash.sha3, &dst->i_hash.sha3);
+            }
+            if (rc == 0) {
+                rc = wc_Sha3_256_Copy(&src->o_hash.sha3, &dst->o_hash.sha3);
+            }
+        #endif
             break;
     #endif /* WOLFSSL_NO_SHA3_256 */
     #ifndef WOLFSSL_NOSHA3_384
         case WC_SHA3_384:
             rc = wc_Sha3_384_Copy(&src->hash.sha3, &dst->hash.sha3);
+        #ifdef WOLFSSL_HMAC_COPY_HASH
+            if (rc == 0) {
+                rc = wc_Sha3_384_Copy(&src->i_hash.sha3, &dst->i_hash.sha3);
+            }
+            if (rc == 0) {
+                rc = wc_Sha3_384_Copy(&src->o_hash.sha3, &dst->o_hash.sha3);
+            }
+        #endif
             break;
     #endif /* WOLFSSL_NO_SHA3_384 */
     #ifndef WOLFSSL_NOSHA3_512
         case WC_SHA3_512:
             rc = wc_Sha3_512_Copy(&src->hash.sha3, &dst->hash.sha3);
+        #ifdef WOLFSSL_HMAC_COPY_HASH
+            if (rc == 0) {
+                rc = wc_Sha3_512_Copy(&src->i_hash.sha3, &dst->i_hash.sha3);
+            }
+            if (rc == 0) {
+                rc = wc_Sha3_512_Copy(&src->o_hash.sha3, &dst->o_hash.sha3);
+            }
+        #endif
             break;
     #endif /* WOLFSSL_NO_SHA3_512 */
 #endif /* WOLFSSL_SHA3 */
@@ -1828,12 +1903,23 @@ int wolfSSL_HMAC_Init(WOLFSSL_HMAC_CTX* ctx, const void* key, int keylen,
             WC_HMAC_BLOCK_SIZE);
         XMEMCPY((byte *)&ctx->hmac.opad, (byte *)&ctx->save_opad,
             WC_HMAC_BLOCK_SIZE);
-        /* Initialize the wolfSSL HMAC object. */
-        rc = _HMAC_Init(&ctx->hmac, ctx->hmac.macType, heap);
+    #ifdef WOLFSSL_HMAC_COPY_HASH
+        rc = _HmacInitIOHashes(&ctx->hmac);
         if (rc != 0) {
-            WOLFSSL_MSG("hmac init error");
+            WOLFSSL_MSG("hmac init i_hash/o_hash error");
             WOLFSSL_ERROR(rc);
             ret = 0;
+        }
+        if (ret == 1)
+    #endif
+        {
+            /* Initialize the wolfSSL HMAC object. */
+            rc = _HMAC_Init(&ctx->hmac, ctx->hmac.macType, heap);
+            if (rc != 0) {
+                WOLFSSL_MSG("hmac init error");
+                WOLFSSL_ERROR(rc);
+                ret = 0;
+            }
         }
     }
 
@@ -2154,8 +2240,17 @@ int wolfSSL_CMAC_Init(WOLFSSL_CMAC_CTX* ctx, const void *key, size_t keySz,
         ret = 0;
     }
     /* Only AES-CBC ciphers are supported. */
-    if ((ret == 1) && (cipher != EVP_AES_128_CBC) &&
-            (cipher != EVP_AES_192_CBC) && (cipher != EVP_AES_256_CBC)) {
+    if ((ret == 1)
+    #ifdef WOLFSSL_AES_128
+        && (cipher != EVP_AES_128_CBC)
+    #endif
+    #ifdef WOLFSSL_AES_192
+        && (cipher != EVP_AES_192_CBC)
+    #endif
+    #ifdef WOLFSSL_AES_256
+        && (cipher != EVP_AES_256_CBC)
+    #endif
+    ) {
         WOLFSSL_MSG("wolfSSL_CMAC_Init: requested cipher is unsupported");
         ret = 0;
     }
@@ -2543,21 +2638,23 @@ WOLFSSL_DES_LONG wolfSSL_DES_cbc_cksum(const unsigned char* in,
     if ((!err) && (dataSz % DES_BLOCK_SIZE)) {
         /* Allocate a buffer big enough to hold padded input. */
         dataSz += DES_BLOCK_SIZE - (dataSz % DES_BLOCK_SIZE);
-        data = (unsigned char*)XMALLOC(dataSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        data = (unsigned char*)XMALLOC((size_t)dataSz, NULL,
+        DYNAMIC_TYPE_TMP_BUFFER);
         if (data == NULL) {
             WOLFSSL_MSG("Issue creating temporary buffer");
             err = 1;
         }
         else {
             /* Copy input and pad with 0s. */
-            XMEMCPY(data, in, length);
-            XMEMSET(data + length, 0, dataSz - length);
+            XMEMCPY(data, in, (size_t)length);
+            XMEMSET(data + length, 0, (size_t)(dataSz - length));
         }
     }
 
     if (!err) {
         /* Allocate buffer to hold encrypted data. */
-        tmp = (unsigned char*)XMALLOC(dataSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        tmp = (unsigned char*)XMALLOC((size_t)dataSz, NULL,
+        DYNAMIC_TYPE_TMP_BUFFER);
         if (tmp == NULL) {
             WOLFSSL_MSG("Issue creating temporary buffer");
             err = 1;
@@ -2637,7 +2734,7 @@ void wolfSSL_DES_cbc_encrypt(const unsigned char* input, unsigned char* output,
             if (lb_sz != 0) {
                 /* Create a 0 padded block from remaining bytes. */
                 XMEMSET(lastBlock, 0, DES_BLOCK_SIZE);
-                XMEMCPY(lastBlock, input + len, lb_sz);
+                XMEMCPY(lastBlock, input + len, (size_t)lb_sz);
                 /* Encrypt last block into output. */
                 wc_Des_CbcEncrypt(des, output + len, lastBlock,
                     (word32)DES_BLOCK_SIZE);
@@ -2651,7 +2748,7 @@ void wolfSSL_DES_cbc_encrypt(const unsigned char* input, unsigned char* output,
                 wc_Des_CbcDecrypt(des, lastBlock, input + len,
                     (word32)DES_BLOCK_SIZE);
                 /* Copy out the required amount of the decrypted block. */
-                XMEMCPY(output + len, lastBlock, lb_sz);
+                XMEMCPY(output + len, lastBlock, (size_t)lb_sz);
             }
         }
     }
@@ -2775,7 +2872,7 @@ void wolfSSL_DES_ede3_cbc_encrypt(const unsigned char* input,
                 if (lb_sz != 0) {
                     /* Create a 0 padded block from remaining bytes. */
                     XMEMSET(lastBlock, 0, DES_BLOCK_SIZE);
-                    XMEMCPY(lastBlock, input + len, lb_sz);
+                    XMEMCPY(lastBlock, input + len, (size_t)lb_sz);
                     /* Encrypt last block into output. */
                     ret = wc_Des3_CbcEncrypt(des3, output + len, lastBlock,
                         (word32)DES_BLOCK_SIZE);
@@ -2825,7 +2922,7 @@ void wolfSSL_DES_ede3_cbc_encrypt(const unsigned char* input,
                     (void)ret;
                 #endif
                     /* Copy out the required amount of the decrypted block. */
-                    XMEMCPY(output + len, lastBlock, lb_sz);
+                    XMEMCPY(output + len, lastBlock, (size_t)lb_sz);
                 }
             }
         }
@@ -2940,7 +3037,7 @@ static int wolfssl_aes_set_key(const unsigned char *key, const int bits,
         return WOLFSSL_FATAL_ERROR;
     }
 
-    if (wc_AesSetKey((Aes*)aes, key, ((bits)/8), NULL, enc) != 0) {
+    if (wc_AesSetKey((Aes*)aes, key, (word32)((bits)/8), NULL, enc) != 0) {
         WOLFSSL_MSG("Error in setting AES key");
         return WOLFSSL_FATAL_ERROR;
     }

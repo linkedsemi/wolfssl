@@ -17,7 +17,7 @@ jobs:
     name: Build wolfSSL
     if: github.repository_owner == 'wolfssl'
     # Just to keep it the same as the testing target
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     # This should be a safe limit for the tests to run.
     timeout-minutes: 4
     steps:
@@ -107,7 +107,7 @@ jobs:
               stream_proxy_ssl_verify.t
     name: ${{ matrix.ref }}
     if: github.repository_owner == 'wolfssl'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     # This should be a safe limit for the tests to run.
     timeout-minutes: 6
     needs: build_wolfssl
@@ -122,7 +122,28 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo cpan -iT Proc::Find Net::SSLeay IO::Socket::SSL
+          sudo cpan -iT Proc::Find
+
+      # Locking in the version of SSLeay used with testing
+      - name: Download and install Net::SSLeay 1.94 manually
+        run: |
+          curl -LO https://www.cpan.org/modules/by-module/Net/CHRISN/Net-SSLeay-1.94.tar.gz
+          tar -xzf Net-SSLeay-1.94.tar.gz
+          cd Net-SSLeay-1.94
+          perl Makefile.PL
+          make
+          sudo make install
+
+      # SSL version 2.091 changes '' return to undef causing test case to fail.
+      # Locking in the test version to use as 2.090
+      - name: Download and install IO::Socket::SSL 2.090 manually
+        run: |
+          curl -LO https://www.cpan.org/modules/by-module/IO/IO-Socket-SSL-2.090.tar.gz
+          tar -xzf IO-Socket-SSL-2.090.tar.gz
+          cd IO-Socket-SSL-2.090
+          perl Makefile.PL
+          make
+          sudo make install
 
       - name: Checkout wolfssl-nginx
         uses: actions/checkout@v4

@@ -1,12 +1,12 @@
 /* ecc.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -191,6 +191,8 @@ enum {
     ECC_MAX_CRYPTO_HW_SIZE = 66,
 #elif defined(WOLFSSL_XILINX_CRYPT_VERSAL)
     ECC_MAX_CRYPTO_HW_SIZE = MAX_ECC_BYTES,
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
+    ECC_MAX_CRYPTO_HW_SIZE = 66,
 #endif
 
 
@@ -215,7 +217,7 @@ enum {
 #if defined(HAVE_ECC) || defined(HAVE_CURVE25519) || \
     defined(HAVE_CURVE448) || defined(WOLFCRYPT_HAVE_SAKKE)
 /* Curve Types */
-typedef enum ecc_curve_id {
+enum ecc_curve_ids {
     ECC_CURVE_INVALID = -1,
     ECC_CURVE_DEF = 0, /* NIST or SECP */
 
@@ -272,7 +274,8 @@ typedef enum ecc_curve_id {
     ECC_CURVE_CUSTOM,
 #endif
     ECC_CURVE_MAX
-} ecc_curve_id;
+};
+typedef enum ecc_curve_ids ecc_curve_id;
 #endif
 
 #ifdef HAVE_ECC
@@ -287,7 +290,8 @@ typedef byte   ecc_oid_t;
 #endif
 
 
-#if !defined(WOLFSSL_ECC_CURVE_STATIC) && defined(USE_WINDOWS_API)
+#if !defined(WOLFSSL_ECC_CURVE_STATIC) && defined(USE_WINDOWS_API) && \
+        !defined(__WATCOMC__)
     /* MSC does something different with the pointers to the arrays than GCC,
      * and it causes the FIPS checksum to fail. In the case of windows builds,
      * store everything as arrays instead of pointers to strings. */

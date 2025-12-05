@@ -1,12 +1,12 @@
 /* server.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -75,7 +75,7 @@ static const char *wolfsentry_config_path = NULL;
 
 #include "examples/server/server.h"
 
-#ifndef NO_WOLFSSL_SERVER
+#if !defined(NO_WOLFSSL_SERVER) && !defined(NO_TLS)
 
 #if defined(WOLFSSL_TLS13) && ( \
        defined(HAVE_ECC) \
@@ -744,16 +744,40 @@ static void SetKeyShare(WOLFSSL* ssl, int onlyKeyShare, int useX25519,
             if (XSTRCMP(pqcAlg, "P384_ML_KEM_768") == 0) {
                 groups[count] = WOLFSSL_P384_ML_KEM_768;
             }
+            else if (XSTRCMP(pqcAlg, "P256_ML_KEM_768") == 0) {
+                groups[count] = WOLFSSL_P256_ML_KEM_768;
+            }
             else
         #endif
         #ifndef WOLFSSL_NO_ML_KEM_1024
             if (XSTRCMP(pqcAlg, "P521_ML_KEM_1024") == 0) {
                 groups[count] = WOLFSSL_P521_ML_KEM_1024;
             }
+            else if (XSTRCMP(pqcAlg, "P384_ML_KEM_1024") == 0) {
+                groups[count] = WOLFSSL_P384_ML_KEM_1024;
+            }
+            else
+        #endif
+        #if !defined(WOLFSSL_NO_ML_KEM_512) && defined(HAVE_CURVE25519)
+            if (XSTRCMP(pqcAlg, "X25519_ML_KEM_512") == 0) {
+                groups[count] = WOLFSSL_X25519_ML_KEM_512;
+            }
+            else
+        #endif
+        #if !defined(WOLFSSL_NO_ML_KEM_768) && defined(HAVE_CURVE25519)
+            if (XSTRCMP(pqcAlg, "X25519_ML_KEM_768") == 0) {
+                groups[count] = WOLFSSL_X25519_ML_KEM_768;
+            }
+            else
+        #endif
+        #if !defined(WOLFSSL_NO_ML_KEM_768) && defined(HAVE_CURVE448)
+            if (XSTRCMP(pqcAlg, "X448_ML_KEM_768") == 0) {
+                groups[count] = WOLFSSL_X448_ML_KEM_768;
+            }
             else
         #endif
     #endif /* WOLFSSL_NO_ML_KEM */
-    #ifdef WOLFSSL_KYBER_ORIGINAL
+    #ifdef WOLFSSL_MLKEM_KYBER
         #ifndef WOLFSSL_NO_KYBER512
             if (XSTRCMP(pqcAlg, "KYBER_LEVEL1") == 0) {
                 groups[count] = WOLFSSL_KYBER_LEVEL1;
@@ -782,11 +806,32 @@ static void SetKeyShare(WOLFSSL* ssl, int onlyKeyShare, int useX25519,
             if (XSTRCMP(pqcAlg, "P384_KYBER_LEVEL3") == 0) {
                 groups[count] = WOLFSSL_P384_KYBER_LEVEL3;
             }
+            else if (XSTRCMP(pqcAlg, "P256_KYBER_LEVEL3") == 0) {
+                groups[count] = WOLFSSL_P256_KYBER_LEVEL3;
+            }
             else
         #endif
         #ifndef WOLFSSL_NO_KYBER1024
             if (XSTRCMP(pqcAlg, "P521_KYBER_LEVEL5") == 0) {
                 groups[count] = WOLFSSL_P521_KYBER_LEVEL5;
+            }
+            else
+        #endif
+        #if !defined(WOLFSSL_NO_KYBER512) && defined(HAVE_CURVE25519)
+            if (XSTRCMP(pqcAlg, "X25519_KYBER_LEVEL1") == 0) {
+                groups[count] = WOLFSSL_X25519_KYBER_LEVEL1;
+            }
+            else
+        #endif
+        #if !defined(WOLFSSL_NO_KYBER768) && defined(HAVE_CURVE25519)
+            if (XSTRCMP(pqcAlg, "X25519_KYBER_LEVEL3") == 0) {
+                groups[count] = WOLFSSL_X25519_KYBER_LEVEL3;
+            }
+            else
+        #endif
+        #if !defined(WOLFSSL_NO_KYBER768) && defined(HAVE_CURVE448)
+            if (XSTRCMP(pqcAlg, "X448_KYBER_LEVEL3") == 0) {
+                groups[count] = WOLFSSL_X448_KYBER_LEVEL3;
             }
             else
         #endif
@@ -873,7 +918,7 @@ static void SetKeyShare(WOLFSSL* ssl, int onlyKeyShare, int useX25519,
 /*  4. add the same message into Japanese section         */
 /*     (will be translated later)                         */
 /*  5. add printf() into suitable position of Usage()     */
-static const char* server_usage_msg[][65] = {
+static const char* server_usage_msg[][66] = {
     /* English */
     {
         " NOTE: All files relative to wolfSSL home dir\n",               /* 0 */
@@ -1027,12 +1072,18 @@ static const char* server_usage_msg[][65] = {
 #ifndef WOLFSSL_NO_ML_KEM
             "            ML_KEM_512, ML_KEM_768, ML_KEM_1024, P256_ML_KEM_512,"
             "\n"
-            "            P384_ML_KEM_768, P521_ML_KEM_1024\n"
+            "            P384_ML_KEM_768, P256_ML_KEM_768, P521_ML_KEM_1024,\n"
+            "            P384_ML_KEM_1024, X25519_ML_KEM_512, "
+            "X25519_ML_KEM_768,\n"
+            "            X448_ML_KEM_768\n"
 #endif
-#ifdef WOLFSSL_KYBER_ORIGINAL
+#ifdef WOLFSSL_MLKEM_KYBER
             "            KYBER_LEVEL1, KYBER_LEVEL3, KYBER_LEVEL5, "
             "P256_KYBER_LEVEL1,\n"
-            "            P384_KYBER_LEVEL3, P521_KYBER_LEVEL5\n"
+            "            P384_KYBER_LEVEL3, P256_KYBER_LEVEL3, "
+            "P521_KYBER_LEVEL5,\n"
+            "            X25519_KYBER_LEVEL1, X25519_KYBER_LEVEL3, "
+            "X448_KYBER_LEVEL3\n"
 #endif
             "",
                                                                         /* 60 */
@@ -1057,10 +1108,13 @@ static const char* server_usage_msg[][65] = {
         "--altPrivKey <file> Generate alternative signature with this key.\n",
                                                                         /* 65 */
 #endif
+#ifdef WOLFSSL_SYS_CRYPTO_POLICY
+        "--crypto-policy  <path to crypto policy file>\n", /* 66 */
+#endif
         "\n"
            "For simpler wolfSSL TLS server examples, visit\n"
            "https://github.com/wolfSSL/wolfssl-examples/tree/master/tls\n",
-                                                                        /* 66 */
+                                                                        /* 67 */
         NULL,
     },
 #ifndef NO_MULTIBYTE_PRINT
@@ -1232,7 +1286,7 @@ static const char* server_usage_msg[][65] = {
             "\n"
             "            P384_ML_KEM_768, P521_ML_KEM_1024\n"
 #endif
-#ifdef WOLFSSL_KYBER_ORIGINAL
+#ifdef WOLFSSL_MLKEM_KYBER
             "            KYBER_LEVEL1, KYBER_LEVEL3, KYBER_LEVEL5, "
             "P256_KYBER_LEVEL1,\n"
             "            P384_KYBER_LEVEL3, P521_KYBER_LEVEL5\n"
@@ -1262,11 +1316,14 @@ static const char* server_usage_msg[][65] = {
         "--altPrivKey <file> Generate alternative signature with this key.\n",
                                                                         /* 65 */
 #endif
+#ifdef WOLFSSL_SYS_CRYPTO_POLICY
+        "--crypto-policy  <path to crypto policy file>\n", /* 66 */
+#endif
         "\n"
         "より簡単なwolfSSL TSL クライアントの例については"
                                           "下記にアクセスしてください\n"
         "https://github.com/wolfSSL/wolfssl-examples/tree/master/tls\n",
-                                                                        /* 66 */
+                                                                        /* 67 */
         NULL,
     },
 #endif
@@ -1545,6 +1602,9 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
 #ifdef WOLFSSL_DUAL_ALG_CERTS
         { "altPrivKey", 1, 267},
 #endif
+#if defined(WOLFSSL_SYS_CRYPTO_POLICY)
+        { "crypto-policy", 1, 268 },
+#endif /* WOLFSSL_SYS_CRYPTO_POLICY */
         { 0, 0, 0 }
     };
 #endif
@@ -1669,6 +1729,9 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
 #if defined(HAVE_CRL) && !defined(NO_FILESYSTEM)
     char* crlDir = NULL;
 #endif
+#if defined(WOLFSSL_SYS_CRYPTO_POLICY)
+    const char * policy = NULL;
+#endif /* WOLFSSL_SYS_CRYPTO_POLICY */
 
 #ifdef WOLFSSL_STATIC_MEMORY
     /* Note: Actual memory used is much less, this is the entire buffer buckets,
@@ -2319,10 +2382,13 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
 
 #ifdef HAVE_PQC
             case 259:
+            {
                 usePqc = 1;
+    #if defined(WOLFSSL_TLS13) && defined(HAVE_SUPPORTED_CURVES)
                 onlyKeyShare = 2;
+    #endif
                 pqcAlg = myoptarg;
-                break;
+            } break;
 #endif
 
 #if defined(WOLFSSL_TLS13) && defined(HAVE_SESSION_TICKET)
@@ -2411,7 +2477,7 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
                     err_sys("provided connection ID is too big");
                 }
                 else {
-                    strcpy(dtlsCID, myoptarg);
+                    XSTRLCPY(dtlsCID, myoptarg, DTLS_CID_BUFFER_SIZE);
                 }
             }
             break;
@@ -2438,6 +2504,11 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
             altPrivKey = myoptarg;
             break;
 #endif
+            case 268:
+#if defined(WOLFSSL_SYS_CRYPTO_POLICY)
+                policy = myoptarg;
+#endif /* WOLFSSL_SYS_CRYPTO_POLICY */
+                break;
 
         case -1:
             default:
@@ -2592,6 +2663,14 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
     if (method == NULL)
         err_sys_ex(runWithErrors, "unable to get method");
 
+#if defined(WOLFSSL_SYS_CRYPTO_POLICY)
+    if (policy != NULL) {
+        if (wolfSSL_crypto_policy_enable(policy) != WOLFSSL_SUCCESS) {
+            err_sys("wolfSSL_crypto_policy_enable failed");
+        }
+    }
+#endif /* WOLFSSL_SYS_CRYPTO_POLICY */
+
 #ifdef WOLFSSL_STATIC_MEMORY
     #if defined(DEBUG_WOLFSSL) && !defined(WOLFSSL_STATIC_MEMORY_LEAN)
     /* print off helper buffer sizes for use with static memory
@@ -2655,7 +2734,7 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
 #ifdef WOLFSSL_SRTP
     if (dtlsSrtpProfiles != NULL) {
         if (wolfSSL_CTX_set_tlsext_use_srtp(ctx, dtlsSrtpProfiles)
-                                                           != WOLFSSL_SUCCESS) {
+                                                           != 0) {
             err_sys_ex(catastrophic, "unable to set DTLS SRTP profile");
         }
     }
@@ -3986,7 +4065,7 @@ exit:
     WOLFSSL_RETURN_FROM_THREAD(0);
 }
 
-#endif /* !NO_WOLFSSL_SERVER */
+#endif /* !NO_WOLFSSL_SERVER && !NO_TLS */
 
 
 /* so overall tests can pull in test function */
@@ -4017,7 +4096,7 @@ exit:
 #endif
         ChangeToWolfRoot();
 
-#ifndef NO_WOLFSSL_SERVER
+#if !defined(NO_WOLFSSL_SERVER) && !defined(NO_TLS)
 #ifdef HAVE_STACK_SIZE
         StackSizeCheck(&args, server_test);
 #else

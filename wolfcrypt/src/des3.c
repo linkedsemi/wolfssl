@@ -1,12 +1,12 @@
 /* des3.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,15 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
-#include <wolfssl/wolfcrypt/logging.h>
-
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #ifndef NO_DES3
 
@@ -447,8 +439,6 @@
     }
 
 #elif defined(HAVE_COLDFIRE_SEC)
-
-    #include <wolfssl/wolfcrypt/types.h>
 
     #include "sec.h"
     #include "mcf5475_sec.h"
@@ -1687,7 +1677,7 @@
 
     static void DesProcessBlock(Des* des, const byte* in, byte* out)
     {
-        word32 l, r;
+        word32 l = 0, r = 0;
 
         XMEMCPY(&l, in, sizeof(l));
         XMEMCPY(&r, in + sizeof(l), sizeof(r));
@@ -1710,7 +1700,7 @@
 
     static void Des3ProcessBlock(Des3* des, const byte* in, byte* out)
     {
-        word32 l, r;
+        word32 l = 0, r = 0;
 
         XMEMCPY(&l, in, sizeof(l));
         XMEMCPY(&r, in + sizeof(l), sizeof(r));
@@ -1737,6 +1727,10 @@
     {
         word32 blocks = sz / DES_BLOCK_SIZE;
 
+        if (des == NULL || out == NULL || in == NULL) {
+            return BAD_FUNC_ARG;
+        }
+
         while (blocks--) {
             xorbuf((byte*)des->reg, in, DES_BLOCK_SIZE);
             DesProcessBlock(des, (byte*)des->reg, (byte*)des->reg);
@@ -1751,6 +1745,10 @@
     int wc_Des_CbcDecrypt(Des* des, byte* out, const byte* in, word32 sz)
     {
         word32 blocks = sz / DES_BLOCK_SIZE;
+
+        if (des == NULL || out == NULL || in == NULL) {
+            return BAD_FUNC_ARG;
+        }
 
         while (blocks--) {
             XMEMCPY(des->tmp, in, DES_BLOCK_SIZE);

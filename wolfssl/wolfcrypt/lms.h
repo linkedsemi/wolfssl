@@ -1,12 +1,12 @@
 /* lms.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -30,6 +30,9 @@
 #include <wolfssl/wolfcrypt/random.h>
 
 #ifdef WOLFSSL_HAVE_LMS
+
+/* Length of the Key ID. */
+#define WC_LMS_I_LEN    16
 
 typedef struct LmsKey LmsKey;
 
@@ -127,6 +130,9 @@ enum wc_LmsParm {
     WC_LMS_PARM_SHA256_192_L1_H10_W8 = 42,
     WC_LMS_PARM_SHA256_192_L1_H15_W2 = 43,
     WC_LMS_PARM_SHA256_192_L1_H15_W4 = 44,
+    WC_LMS_PARM_SHA256_192_L1_H20_W2 = 53,
+    WC_LMS_PARM_SHA256_192_L1_H20_W4 = 54,
+    WC_LMS_PARM_SHA256_192_L1_H20_W8 = 55,
     WC_LMS_PARM_SHA256_192_L2_H10_W2 = 45,
     WC_LMS_PARM_SHA256_192_L2_H10_W4 = 46,
     WC_LMS_PARM_SHA256_192_L2_H10_W8 = 47,
@@ -183,6 +189,11 @@ WOLFSSL_API int  wc_LmsKey_Verify(LmsKey * key, const byte * sig, word32 sigSz,
     const byte * msg, int msgSz);
 WOLFSSL_API const char * wc_LmsKey_ParmToStr(enum wc_LmsParm lmsParm);
 WOLFSSL_API const char * wc_LmsKey_RcToStr(enum wc_LmsRc lmsRc);
+
+WOLFSSL_API int wc_LmsKey_GetKid(LmsKey * key, const byte ** kid,
+    word32* kidSz);
+WOLFSSL_API const byte * wc_LmsKey_GetKidFromPrivRaw(const byte * priv,
+    word32 privSz);
 #ifdef __cplusplus
     } /* extern "C" */
 #endif

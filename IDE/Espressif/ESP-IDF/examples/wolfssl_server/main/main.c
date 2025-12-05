@@ -1,12 +1,12 @@
 /* main.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -131,9 +131,13 @@ void my_atmel_free(int slotId)
 /* Entry for FreeRTOS */
 void app_main(void)
 {
-    int stack_start = 0;
-    int this_heap = 0;
     esp_err_t ret = 0;
+#ifndef SINGLE_THREADED
+    int this_heap = 0;
+    #ifdef INCLUDE_uxTaskGetStackHighWaterMark
+        int stack_start = 0;
+    #endif
+#endif
     ESP_LOGI(TAG, "---------------- wolfSSL TLS Server Example ------------");
     ESP_LOGI(TAG, "--------------------------------------------------------");
     ESP_LOGI(TAG, "--------------------------------------------------------");
@@ -143,7 +147,7 @@ void app_main(void)
 #if !defined(CONFIG_WOLFSSL_EXAMPLE_NAME_TLS_SERVER)
     ESP_LOGW(TAG, "Warning: Example wolfSSL misconfigured? Check menuconfig.");
 #endif
-#ifdef ESP_SDK_MEM_LIB_VERSION
+#if defined(ESP_SDK_MEM_LIB_VERSION) && defined(DEBUG_WOLFSSL)
     sdk_init_meminfo();
 #endif
 #ifdef ESP_TASK_MAIN_STACK

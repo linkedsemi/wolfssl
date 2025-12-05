@@ -1,12 +1,12 @@
 /* error-ssl.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -220,7 +220,9 @@ enum wolfSSL_ErrorCodes {
     POST_HAND_AUTH_ERROR         = -504,   /* client won't do post-hand auth */
     HRR_COOKIE_ERROR             = -505,   /* HRR msg cookie mismatch */
     UNSUPPORTED_CERTIFICATE      = -506,   /* unsupported certificate type */
+    DTLS_PARTIAL_RECORD_READ     = -455,   /* received a partial record in a datagram */
 
+    /* PEM and EVP errors */
     WOLFSSL_PEM_R_NO_START_LINE_E = -507,
     WOLFSSL_PEM_R_PROBLEMS_GETTING_PASSWORD_E = -508,
     WOLFSSL_PEM_R_BAD_PASSWORD_READ_E = -509,
@@ -232,7 +234,10 @@ enum wolfSSL_ErrorCodes {
     WOLFSSL_EVP_R_DECODE_ERROR   = -514,
     WOLFSSL_EVP_R_PRIVATE_KEY_DECODE_ERROR = -515,
 
-    WOLFSSL_LAST_E               = -515
+    CRYPTO_POLICY_FORBIDDEN      = -516,   /* operation forbidden by system
+                                            * crypto-policy */
+
+    WOLFSSL_LAST_E               = -516
 
     /* codes -1000 to -1999 are reserved for wolfCrypt. */
 };

@@ -1,12 +1,12 @@
 /* ed25519.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -187,7 +187,6 @@ ed25519_key* wc_ed25519_new(void* heap, int devId, int *result_code);
 WOLFSSL_API
 int wc_ed25519_delete(ed25519_key* key, ed25519_key** key_p);
 #endif
-WOLFSSL_API
 
 #ifdef HAVE_ED25519_KEY_IMPORT
 WOLFSSL_API

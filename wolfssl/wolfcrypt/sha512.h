@@ -1,12 +1,12 @@
 /* sha512.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -75,6 +75,10 @@
 
 #ifdef STM32_HASH
     #include <wolfssl/wolfcrypt/port/st/stm32.h>
+#endif
+
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
+    #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
 #endif
 
 #if defined(_MSC_VER)
@@ -209,6 +213,9 @@ struct wc_Sha512 {
 #if defined(STM32_HASH_SHA512)
     STM32_HASH_Context stmCtx;
 #endif
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
+    LS_HASH_Context lsCtx;
+#endif
 #endif /* WOLFSSL_PSOC6_CRYPTO */
 };
 
@@ -224,18 +231,15 @@ struct wc_Sha512 {
 
 #endif /* HAVE_FIPS */
 
-#ifdef WOLFSSL_SHA512
+#if defined(WOLFSSL_SHA512) || defined(WOLFSSL_SHA384)
 
 #ifdef WOLFSSL_ARMASM
 #ifdef __aarch64__
-#ifndef WOLFSSL_ARMASM_CRYPTO_SHA512
     void Transform_Sha512_Len_neon(wc_Sha512* sha512, const byte* data,
         word32 len);
-    #define Transform_Sha512_Len    Transform_Sha512_Len_neon
-#else
+#ifdef WOLFSSL_ARMASM_CRYPTO_SHA512
     void Transform_Sha512_Len_crypto(wc_Sha512* sha512, const byte* data,
         word32 len);
-    #define Transform_Sha512_Len    Transform_Sha512_Len_crypto
 #endif
 #else
 extern void Transform_Sha512_Len(wc_Sha512* sha512, const byte* data,

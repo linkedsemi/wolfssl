@@ -1,12 +1,12 @@
 /* riscv-sha512.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,12 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #ifdef WOLFSSL_RISCV_ASM
 #if !defined(NO_SHA512) || defined(WOLFSSL_SHA384)
@@ -47,8 +42,6 @@
         return 0;
     }
 #endif
-#include <wolfssl/wolfcrypt/logging.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
 
 #include <wolfssl/wolfcrypt/port/riscv/riscv-64-asm.h>
 
@@ -1063,10 +1056,23 @@ int wc_Sha512Update(wc_Sha512* sha512, const byte* data, word32 len)
  */
 static void Sha512FinalRaw(wc_Sha512* sha512, byte* hash, int hashLen)
 {
-    word32 digest[WC_SHA512_DIGEST_SIZE / sizeof(word32)];
+    word64 digest[WC_SHA512_DIGEST_SIZE / sizeof(word64)];
 
+#ifndef WOLFSSL_RISCV_VECTOR_CRYPTO_ASM
     ByteReverseWords64((word64*)digest, (word64*)sha512->digest,
         WC_SHA512_DIGEST_SIZE);
+#else
+    /* f, e, b, a, h, g, d, c */
+    digest[0] = ByteReverseWord64(sha512->digest[3]);
+    digest[1] = ByteReverseWord64(sha512->digest[2]);
+    digest[2] = ByteReverseWord64(sha512->digest[7]);
+    digest[3] = ByteReverseWord64(sha512->digest[6]);
+    digest[4] = ByteReverseWord64(sha512->digest[1]);
+    digest[5] = ByteReverseWord64(sha512->digest[0]);
+    digest[6] = ByteReverseWord64(sha512->digest[5]);
+    digest[7] = ByteReverseWord64(sha512->digest[4]);
+#endif
+
     XMEMCPY(hash, digest, hashLen);
 }
 
@@ -1595,8 +1601,19 @@ int wc_Sha384FinalRaw(wc_Sha384* sha384, byte* hash)
         return BAD_FUNC_ARG;
     }
 
+#ifndef WOLFSSL_RISCV_VECTOR_CRYPTO_ASM
     ByteReverseWords64((word64*)digest, (word64*)sha384->digest,
         WC_SHA384_DIGEST_SIZE);
+#else
+    /* f, e, b, a, h, g, d, c */
+    digest[0] = ByteReverseWord64(sha384->digest[3]);
+    digest[1] = ByteReverseWord64(sha384->digest[2]);
+    digest[2] = ByteReverseWord64(sha384->digest[7]);
+    digest[3] = ByteReverseWord64(sha384->digest[6]);
+    digest[4] = ByteReverseWord64(sha384->digest[1]);
+    digest[5] = ByteReverseWord64(sha384->digest[0]);
+#endif
+
     XMEMCPY(hash, digest, WC_SHA384_DIGEST_SIZE);
 
     return 0;

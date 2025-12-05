@@ -1,12 +1,12 @@
 /* armv8-sha3-asm
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,15 +19,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif /* HAVE_CONFIG_H */
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources_asm.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 
 /* Generated using (from wolfssl):
  *   cd ../scripts
- *   ruby ./sha3/sha3.rb arm64 ../wolfssl/wolfcrypt/src/port/arm/armv8-sha3-asm.c
+ *   ruby ./sha3/sha3.rb arm64 \
+ *       ../wolfssl/wolfcrypt/src/port/arm/armv8-sha3-asm.c
  */
 #ifdef WOLFSSL_ARMASM
 #ifdef __aarch64__
@@ -37,33 +35,21 @@
 #ifdef WOLFSSL_SHA3
 #ifdef WOLFSSL_ARMASM_CRYPTO_SHA3
 static const word64 L_SHA3_transform_crypto_r[] = {
-    0x1UL,
-    0x8082UL,
-    0x800000000000808aUL,
-    0x8000000080008000UL,
-    0x808bUL,
-    0x80000001UL,
-    0x8000000080008081UL,
-    0x8000000000008009UL,
-    0x8aUL,
-    0x88UL,
-    0x80008009UL,
-    0x8000000aUL,
-    0x8000808bUL,
-    0x800000000000008bUL,
-    0x8000000000008089UL,
-    0x8000000000008003UL,
-    0x8000000000008002UL,
-    0x8000000000000080UL,
-    0x800aUL,
-    0x800000008000000aUL,
-    0x8000000080008081UL,
-    0x8000000000008080UL,
-    0x80000001UL,
-    0x8000000080008008UL,
+    0x0000000000000001, 0x0000000000008082,
+    0x800000000000808a, 0x8000000080008000,
+    0x000000000000808b, 0x0000000080000001,
+    0x8000000080008081, 0x8000000000008009,
+    0x000000000000008a, 0x0000000000000088,
+    0x0000000080008009, 0x000000008000000a,
+    0x000000008000808b, 0x800000000000008b,
+    0x8000000000008089, 0x8000000000008003,
+    0x8000000000008002, 0x8000000000000080,
+    0x000000000000800a, 0x800000008000000a,
+    0x8000000080008081, 0x8000000000008080,
+    0x0000000080000001, 0x8000000080008008,
 };
 
-void BlockSha3(word64* state)
+void BlockSha3_crypto(word64* state)
 {
     __asm__ __volatile__ (
 #ifdef __APPLE__
@@ -167,7 +153,7 @@ void BlockSha3(word64* state)
         "ld1r	{v30.2d}, [x1], #8\n\t"
         "subs	x2, x2, #1\n\t"
         "eor	v0.16b, v0.16b, v30.16b\n\t"
-        "bne	L_sha3_crypto_begin_%=\n\t"
+        "b.ne	L_sha3_crypto_begin_%=\n\t"
         "st4	{v0.d, v1.d, v2.d, v3.d}[0], [%x[state]], #32\n\t"
         "st4	{v4.d, v5.d, v6.d, v7.d}[0], [%x[state]], #32\n\t"
         "st4	{v8.d, v9.d, v10.d, v11.d}[0], [%x[state]], #32\n\t"
@@ -176,40 +162,31 @@ void BlockSha3(word64* state)
         "st4	{v20.d, v21.d, v22.d, v23.d}[0], [%x[state]], #32\n\t"
         "st1	{v24.1d}, [%x[state]]\n\t"
         : [state] "+r" (state)
-        : [L_SHA3_transform_crypto_r] "S" (L_SHA3_transform_crypto_r)
-        : "memory", "x1", "x2", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31", "cc"
+        : [L_SHA3_transform_crypto_r] "i" (L_SHA3_transform_crypto_r)
+        : "memory", "cc", "x1", "x2", "v0", "v1", "v2", "v3", "v4", "v5", "v6",
+            "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16",
+            "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25",
+            "v26", "v27", "v28", "v29", "v30", "v31"
     );
 }
 
-#else
+#endif /* WOLFSSL_ARMASM_CRYPTO_SHA3 */
 static const word64 L_SHA3_transform_base_r[] = {
-    0x1UL,
-    0x8082UL,
-    0x800000000000808aUL,
-    0x8000000080008000UL,
-    0x808bUL,
-    0x80000001UL,
-    0x8000000080008081UL,
-    0x8000000000008009UL,
-    0x8aUL,
-    0x88UL,
-    0x80008009UL,
-    0x8000000aUL,
-    0x8000808bUL,
-    0x800000000000008bUL,
-    0x8000000000008089UL,
-    0x8000000000008003UL,
-    0x8000000000008002UL,
-    0x8000000000000080UL,
-    0x800aUL,
-    0x800000008000000aUL,
-    0x8000000080008081UL,
-    0x8000000000008080UL,
-    0x80000001UL,
-    0x8000000080008008UL,
+    0x0000000000000001, 0x0000000000008082,
+    0x800000000000808a, 0x8000000080008000,
+    0x000000000000808b, 0x0000000080000001,
+    0x8000000080008081, 0x8000000000008009,
+    0x000000000000008a, 0x0000000000000088,
+    0x0000000080008009, 0x000000008000000a,
+    0x000000008000808b, 0x800000000000008b,
+    0x8000000000008089, 0x8000000000008003,
+    0x8000000000008002, 0x8000000000000080,
+    0x000000000000800a, 0x800000008000000a,
+    0x8000000080008081, 0x8000000000008080,
+    0x0000000080000001, 0x8000000080008008,
 };
 
-void BlockSha3(word64* state)
+void BlockSha3_base(word64* state)
 {
     __asm__ __volatile__ (
         "stp	x29, x30, [sp, #-64]!\n\t"
@@ -375,7 +352,7 @@ void BlockSha3(word64* state)
         "ldr	%x[state], [x27], #8\n\t"
         "subs	x28, x28, #1\n\t"
         "eor	x1, x1, %x[state]\n\t"
-        "bne	L_SHA3_transform_base_begin_%=\n\t"
+        "b.ne	L_SHA3_transform_base_begin_%=\n\t"
         "ldr	%x[state], [x29, #40]\n\t"
         "stp	x1, x2, [%x[state]]\n\t"
         "stp	x3, x4, [%x[state], #16]\n\t"
@@ -392,12 +369,13 @@ void BlockSha3(word64* state)
         "str	x26, [%x[state], #192]\n\t"
         "ldp	x29, x30, [sp], #0x40\n\t"
         : [state] "+r" (state)
-        : [L_SHA3_transform_base_r] "S" (L_SHA3_transform_base_r)
-        : "memory", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "cc"
+        : [L_SHA3_transform_base_r] "i" (L_SHA3_transform_base_r)
+        : "memory", "cc", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9",
+            "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x19",
+            "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28"
     );
 }
 
-#endif /* WOLFSSL_ARMASM_CRYPTO_SHA3 */
 #endif /* WOLFSSL_SHA3 */
 #endif /* __aarch64__ */
 #endif /* WOLFSSL_ARMASM */

@@ -1,12 +1,12 @@
 /* thumb2-sha3-asm
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -21,13 +21,11 @@
 
 /* Generated using (from wolfssl):
  *   cd ../scripts
- *   ruby ./sha3/sha3.rb thumb2 ../wolfssl/wolfcrypt/src/port/arm/thumb2-sha3-asm.c
+ *   ruby ./sha3/sha3.rb \
+ *       thumb2 ../wolfssl/wolfcrypt/src/port/arm/thumb2-sha3-asm.c
  */
 
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif /* HAVE_CONFIG_H */
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources_asm.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 
 #ifdef WOLFSSL_ARMASM
@@ -43,6 +41,7 @@
 #define __asm__        __asm
 #define __volatile__   volatile
 #endif /* __KEIL__ */
+
 #ifdef WOLFSSL_SHA3
 static const word64 L_sha3_thumb2_rt[] = {
     0x0000000000000001UL, 0x0000000000008082UL,
@@ -62,14 +61,19 @@ static const word64 L_sha3_thumb2_rt[] = {
 #include <wolfssl/wolfcrypt/sha3.h>
 
 #ifndef WOLFSSL_NO_VAR_ASSIGN_REG
-void BlockSha3(word64* state_p)
+WC_OMIT_FRAME_POINTER void BlockSha3(word64* state_p)
 #else
-void BlockSha3(word64* state)
+WC_OMIT_FRAME_POINTER void BlockSha3(word64* state)
 #endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
 {
 #ifndef WOLFSSL_NO_VAR_ASSIGN_REG
     register word64* state __asm__ ("r0") = (word64*)state_p;
-    register word64* L_sha3_thumb2_rt_c __asm__ ("r1") = (word64*)&L_sha3_thumb2_rt;
+    register word64* L_sha3_thumb2_rt_c __asm__ ("r1") =
+        (word64*)&L_sha3_thumb2_rt;
+
+#else
+    register word64* L_sha3_thumb2_rt_c = (word64*)&L_sha3_thumb2_rt;
+
 #endif /* !WOLFSSL_NO_VAR_ASSIGN_REG */
 
     __asm__ __volatile__ (
@@ -1149,20 +1153,15 @@ void BlockSha3(word64* state)
         "BNE.W	L_sha3_thumb2_begin_%=\n\t"
 #endif
         "ADD	sp, sp, #0xcc\n\t"
-#ifndef WOLFSSL_NO_VAR_ASSIGN_REG
-        : [state] "+r" (state),
-          [L_sha3_thumb2_rt] "+r" (L_sha3_thumb2_rt_c)
+        : [state] "+r" (state), [L_sha3_thumb2_rt] "+r" (L_sha3_thumb2_rt_c)
         :
-        : "memory", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "lr", "cc"
-#else
-        : [state] "+r" (state)
-        : [L_sha3_thumb2_rt] "r" (L_sha3_thumb2_rt)
-        : "memory", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "lr", "cc"
-#endif /* WOLFSSL_NO_VAR_ASSIGN_REG */
+        : "memory", "cc", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10",
+            "r11", "r12", "lr"
     );
 }
 
 #endif /* WOLFSSL_SHA3 */
 #endif /* WOLFSSL_ARMASM_THUMB2 */
 #endif /* WOLFSSL_ARMASM */
+
 #endif /* WOLFSSL_ARMASM_INLINE */

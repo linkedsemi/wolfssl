@@ -1,12 +1,12 @@
 /* x509_str.c
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -19,12 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-
-#ifdef HAVE_CONFIG_H
-    #include <config.h>
-#endif
-
-#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/wolfcrypt/libwolfssl_sources.h>
 
 #if !defined(WOLFSSL_X509_STORE_INCLUDED)
     #ifndef WOLFSSL_IGNORE_FILE_WARN
@@ -105,6 +100,7 @@ void wolfSSL_X509_STORE_CTX_free(WOLFSSL_X509_STORE_CTX* ctx)
 
         if (ctx->current_issuer != NULL) {
             wolfSSL_X509_free(ctx->current_issuer);
+            ctx->current_issuer = NULL;
         }
 #endif
 
@@ -114,8 +110,7 @@ void wolfSSL_X509_STORE_CTX_free(WOLFSSL_X509_STORE_CTX* ctx)
 
 #ifdef OPENSSL_EXTRA
 
-#if ((defined(SESSION_CERTS) && !defined(WOLFSSL_QT)) || \
-      defined(WOLFSSL_SIGNER_DER_CERT))
+#if defined(SESSION_CERTS) || defined(WOLFSSL_SIGNER_DER_CERT)
 
 /**
  * Find the issuing cert of the input cert. On a self-signed cert this
@@ -410,7 +405,7 @@ exit:
 }
 
 /* Verifies certificate chain using WOLFSSL_X509_STORE_CTX
- * returns 0 on success or < 0 on failure.
+ * returns 1 on success or <= 0 on failure.
  */
 int wolfSSL_X509_verify_cert(WOLFSSL_X509_STORE_CTX* ctx)
 {
@@ -582,33 +577,15 @@ exit:
 
 #endif /* OPENSSL_EXTRA */
 
-#if defined(OPENSSL_EXTRA) || defined(WOLFSSL_WPAS_SMALL)
-    WOLFSSL_X509* wolfSSL_X509_STORE_CTX_get_current_cert(
-                                                WOLFSSL_X509_STORE_CTX* ctx)
-    {
-        WOLFSSL_ENTER("wolfSSL_X509_STORE_CTX_get_current_cert");
-        if (ctx)
-            return ctx->current_cert;
-        return NULL;
-    }
-
-
-    int wolfSSL_X509_STORE_CTX_get_error(WOLFSSL_X509_STORE_CTX* ctx)
-    {
-        WOLFSSL_ENTER("wolfSSL_X509_STORE_CTX_get_error");
-        if (ctx != NULL)
-            return ctx->error;
-        return 0;
-    }
-
-
-    int wolfSSL_X509_STORE_CTX_get_error_depth(WOLFSSL_X509_STORE_CTX* ctx)
-    {
-        WOLFSSL_ENTER("wolfSSL_X509_STORE_CTX_get_error_depth");
-        if(ctx)
-            return ctx->error_depth;
-        return WOLFSSL_FATAL_ERROR;
-    }
+#if defined(OPENSSL_EXTRA) || defined(OPENSSL_EXTRA_X509_SMALL)
+WOLFSSL_X509* wolfSSL_X509_STORE_CTX_get_current_cert(
+                                            WOLFSSL_X509_STORE_CTX* ctx)
+{
+    WOLFSSL_ENTER("wolfSSL_X509_STORE_CTX_get_current_cert");
+    if (ctx)
+        return ctx->current_cert;
+    return NULL;
+}
 
 /* get X509_STORE_CTX ex_data, max idx is MAX_EX_DATA */
 void* wolfSSL_X509_STORE_CTX_get_ex_data(WOLFSSL_X509_STORE_CTX* ctx, int idx)
@@ -624,7 +601,27 @@ void* wolfSSL_X509_STORE_CTX_get_ex_data(WOLFSSL_X509_STORE_CTX* ctx, int idx)
 #endif
     return NULL;
 }
-#endif /* OPENSSL_EXTRA || WOLFSSL_WPAS_SMALL */
+#endif /* OPENSSL_EXTRA || OPENSSL_EXTRA_X509_SMALL */
+
+
+#if defined(OPENSSL_EXTRA) || defined(OPENSSL_EXTRA_X509_SMALL) || \
+    defined(WOLFSSL_EXTRA)
+    int wolfSSL_X509_STORE_CTX_get_error(WOLFSSL_X509_STORE_CTX* ctx)
+    {
+        WOLFSSL_ENTER("wolfSSL_X509_STORE_CTX_get_error");
+        if (ctx != NULL)
+            return ctx->error;
+        return 0;
+    }
+
+    int wolfSSL_X509_STORE_CTX_get_error_depth(WOLFSSL_X509_STORE_CTX* ctx)
+    {
+        WOLFSSL_ENTER("wolfSSL_X509_STORE_CTX_get_error_depth");
+        if (ctx)
+            return ctx->error_depth;
+        return WOLFSSL_FATAL_ERROR;
+    }
+#endif
 
 #ifdef OPENSSL_EXTRA
     void wolfSSL_X509_STORE_CTX_set_verify_cb(WOLFSSL_X509_STORE_CTX *ctx,
@@ -809,10 +806,28 @@ WOLFSSL_STACK* wolfSSL_X509_STORE_CTX_get_chain(WOLFSSL_X509_STORE_CTX* ctx)
         if (sk == NULL)
             return NULL;
 
+        for (i = 0; i < c->count; i++) {
+            WOLFSSL_X509* x509 = wolfSSL_get_chain_X509(c, i);
+
+            if (x509 == NULL) {
+                WOLFSSL_MSG("Unable to get x509 from chain");
+                error = 1;
+                break;
+            }
+
+            if (wolfSSL_sk_X509_push(sk, x509) <= 0) {
+                WOLFSSL_MSG("Unable to load x509 into stack");
+                wolfSSL_X509_free(x509);
+                x509 = NULL;
+                error = 1;
+                break;
+            }
+        }
+
 #if defined(WOLFSSL_NGINX) || defined(WOLFSSL_HAPROXY) || \
     defined(OPENSSL_EXTRA)
         /* add CA used to verify top of chain to the list */
-        if (c->count > 0) {
+        if (!error && c->count > 0) {
             WOLFSSL_X509* x509 = wolfSSL_get_chain_X509(c, c->count - 1);
             WOLFSSL_X509* issuer = NULL;
             if (x509 != NULL) {
@@ -825,11 +840,14 @@ WOLFSSL_STACK* wolfSSL_X509_STORE_CTX_get_chain(WOLFSSL_X509_STORE_CTX* ctx)
                         if (wolfSSL_sk_X509_push(sk, issuer) <= 0) {
                             WOLFSSL_MSG("Unable to load CA x509 into stack");
                             error = 1;
+                            wolfSSL_X509_free(issuer);
+                            issuer = NULL;
                         }
                     }
                     else {
                         WOLFSSL_MSG("Certificate is self signed");
                         wolfSSL_X509_free(issuer);
+                        issuer = NULL;
                     }
                 }
                 else {
@@ -837,30 +855,9 @@ WOLFSSL_STACK* wolfSSL_X509_STORE_CTX_get_chain(WOLFSSL_X509_STORE_CTX* ctx)
                 }
             }
             wolfSSL_X509_free(x509);
-            if (error) {
-                wolfSSL_sk_X509_pop_free(sk, NULL);
-                wolfSSL_X509_free(issuer);
-                return NULL;
-            }
+            x509 = NULL;
         }
 #endif
-
-        for (i = c->count - 1; i >= 0; i--) {
-            WOLFSSL_X509* x509 = wolfSSL_get_chain_X509(c, i);
-
-            if (x509 == NULL) {
-                WOLFSSL_MSG("Unable to get x509 from chain");
-                error = 1;
-                break;
-            }
-
-            if (wolfSSL_sk_X509_push(sk, x509) <= 0) {
-                WOLFSSL_MSG("Unable to load x509 into stack");
-                wolfSSL_X509_free(x509);
-                error = 1;
-                break;
-            }
-        }
         if (error) {
             wolfSSL_sk_X509_pop_free(sk, NULL);
             return NULL;
@@ -978,6 +975,7 @@ WOLF_STACK_OF(WOLFSSL_X509)* wolfSSL_X509_STORE_get1_certs(
                                 <= 0) {
                         err = 1;
                         wolfSSL_X509_free(filteredCert);
+                        filteredCert = NULL;
                         break;
                     }
                 }
@@ -1102,10 +1100,8 @@ WOLFSSL_X509_STORE* wolfSSL_X509_STORE_new(void)
     if ((store->owned = wolfSSL_sk_X509_new_null()) == NULL)
         goto err_exit;
 
-#if !defined(WOLFSSL_SIGNER_DER_CERT)
     if ((store->trusted = wolfSSL_sk_X509_new_null()) == NULL)
         goto err_exit;
-#endif
 #endif
 
 #ifdef HAVE_CRL
@@ -1156,8 +1152,11 @@ static void X509StoreFreeObjList(WOLFSSL_X509_STORE* store,
     WOLFSSL_X509_OBJECT *obj = NULL;
     int cnt = store->numAdded;
 
+    /* -1 here because it is later used as an index value into the object stack.
+     * With there being the chance that the only object in the stack is one from
+     * the numAdded to the store >= is used when comparing to 0. */
     i = wolfSSL_sk_X509_OBJECT_num(objs) - 1;
-    while (cnt > 0 && i > 0) {
+    while (cnt > 0 && i >= 0) {
         /* The inner X509 is owned by somebody else, NULL out the reference */
         obj = (WOLFSSL_X509_OBJECT *)wolfSSL_sk_X509_OBJECT_value(objs, i);
         if (obj != NULL) {
@@ -1196,19 +1195,17 @@ void wolfSSL_X509_STORE_free(WOLFSSL_X509_STORE* store)
             }
 #if defined(OPENSSL_EXTRA)
             if (store->certs != NULL) {
-                wolfSSL_sk_X509_free(store->certs);
+                wolfSSL_sk_X509_pop_free(store->certs, NULL);
                 store->certs = NULL;
             }
             if (store->owned != NULL) {
-                wolfSSL_sk_X509_pop_free(store->owned, wolfSSL_X509_free);
+                wolfSSL_sk_X509_pop_free(store->owned, NULL);
                 store->owned = NULL;
             }
-#if !defined(WOLFSSL_SIGNER_DER_CERT)
             if (store->trusted != NULL) {
-                wolfSSL_sk_X509_free(store->trusted);
+                wolfSSL_sk_X509_pop_free(store->trusted, NULL);
                 store->trusted = NULL;
             }
-#endif
 #endif
 #ifdef OPENSSL_ALL
             if (store->objs != NULL) {
@@ -1406,26 +1403,34 @@ int wolfSSL_X509_STORE_add_cert(WOLFSSL_X509_STORE* store, WOLFSSL_X509* x509)
          * CA=TRUE */
         if (wolfSSL_X509_NAME_cmp(&x509->issuer, &x509->subject) == 0) {
             result = X509StoreAddCa(store, x509, WOLFSSL_USER_CA);
-    #if !defined(WOLFSSL_SIGNER_DER_CERT)
             if (result == WOLFSSL_SUCCESS && store->trusted != NULL) {
-                result = wolfSSL_sk_X509_push(store->trusted, x509);
-                if (result > 0) {
-                    result = WOLFSSL_SUCCESS;
-                }
-                else {
-                    result = WOLFSSL_FATAL_ERROR;
+                result = wolfSSL_X509_up_ref(x509);
+                if (result == WOLFSSL_SUCCESS) {
+                    result = wolfSSL_sk_X509_push(store->trusted, x509);
+                    if (result > 0) {
+                        result = WOLFSSL_SUCCESS;
+                    }
+                    else {
+                        result = WOLFSSL_FATAL_ERROR;
+                        wolfSSL_X509_free(x509);
+                        x509 = NULL;
+                    }
                 }
             }
-    #endif
         }
         else {
             if (store->certs != NULL) {
-                result = wolfSSL_sk_X509_push(store->certs, x509);
-                if (result > 0) {
-                    result = WOLFSSL_SUCCESS;
-                }
-                else {
-                    result = WOLFSSL_FATAL_ERROR;
+                result = wolfSSL_X509_up_ref(x509);
+                if (result == WOLFSSL_SUCCESS) {
+                    result = wolfSSL_sk_X509_push(store->certs, x509);
+                    if (result > 0) {
+                        result = WOLFSSL_SUCCESS;
+                    }
+                    else {
+                        result = WOLFSSL_FATAL_ERROR;
+                        wolfSSL_X509_free(x509);
+                        x509 = NULL;
+                    }
                 }
             }
             else {
@@ -1469,18 +1474,10 @@ int wolfSSL_X509_STORE_set_flags(WOLFSSL_X509_STORE* store, unsigned long flag)
     return ret;
 }
 
-
-int wolfSSL_X509_STORE_set_default_paths(WOLFSSL_X509_STORE* store)
-{
-    (void)store;
-    return WOLFSSL_SUCCESS;
-}
-
 int X509StoreLoadCertBuffer(WOLFSSL_X509_STORE *str,
                                         byte *buf, word32 bufLen, int type)
 {
     int ret = WOLFSSL_SUCCESS;
-
     WOLFSSL_X509 *x509 = NULL;
 
     if (str == NULL || buf == NULL) {
@@ -1489,20 +1486,25 @@ int X509StoreLoadCertBuffer(WOLFSSL_X509_STORE *str,
 
     /* OpenSSL X509_STORE_load_file fails on DER file, we will as well */
     x509 = wolfSSL_X509_load_certificate_buffer(buf, bufLen, type);
-    if (str->owned != NULL) {
-        if (wolfSSL_sk_X509_push(str->owned, x509) <= 0) {
+    if (x509 != NULL) {
+        ret = wolfSSL_X509_STORE_add_cert(str, x509);
+        if (ret != WOLFSSL_SUCCESS) {
+            WOLFSSL_MSG("Failed to load file");
             ret = WOLFSSL_FAILURE;
         }
-    }
-    if (ret == WOLFSSL_SUCCESS) {
-        ret = wolfSSL_X509_STORE_add_cert(str, x509);
-    }
-    if (ret != WOLFSSL_SUCCESS) {
-        WOLFSSL_MSG("Failed to load file");
-        ret = WOLFSSL_FAILURE;
-    }
-    if (ret != WOLFSSL_SUCCESS || str->owned == NULL) {
+        if (ret == WOLFSSL_SUCCESS && str->owned != NULL) {
+            if (wolfSSL_sk_X509_push(str->owned, x509) <= 0) {
+                ret = WOLFSSL_FAILURE;
+            }
+            else {
+                x509 = NULL;
+            }
+        }
         wolfSSL_X509_free(x509);
+        x509 = NULL;
+    }
+    else {
+        ret = WOLFSSL_FAILURE;
     }
 
     return ret;
@@ -1554,6 +1556,8 @@ static int X509StoreLoadFile(WOLFSSL_X509_STORE *str,
 #else
     static_buffer_init(&content, stackBuffer, FILE_BUFFER_SIZE);
 #endif
+
+    WOLFSSL_MSG_EX("X509StoreLoadFile: Loading file: %s", fname);
 
     ret = X509StoreReadFile(fname, &content, &contentLen, &type);
     if (ret != WOLFSSL_SUCCESS) {
@@ -1676,6 +1680,27 @@ WOLFSSL_API int wolfSSL_X509_STORE_load_locations(WOLFSSL_X509_STORE *str,
 
     return ret;
 }
+
+#if defined(XGETENV) && !defined(NO_GETENV)
+int wolfSSL_X509_STORE_set_default_paths(WOLFSSL_X509_STORE *str)
+{
+    int ret = WC_NO_ERR_TRACE(WOLFSSL_FAILURE);
+    char* certDir = NULL;
+    char* certFile = NULL;
+
+    WOLFSSL_ENTER("wolfSSL_X509_STORE_set_default_paths");
+
+    certFile = wc_strdup_ex(XGETENV("SSL_CERT_FILE"), DYNAMIC_TYPE_TMP_BUFFER);
+    certDir = wc_strdup_ex(XGETENV("SSL_CERT_DIR"), DYNAMIC_TYPE_TMP_BUFFER);
+
+    ret = wolfSSL_X509_STORE_load_locations(str, certFile, certDir);
+
+    XFREE(certFile, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(certDir, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    return ret;
+}
+#endif /* XGETENV && !NO_GETENV */
+
 #endif /* !NO_FILESYSTEM && !NO_WOLFSSL_DIR */
 
 int wolfSSL_X509_CA_num(WOLFSSL_X509_STORE* store)
@@ -1773,6 +1798,7 @@ WOLFSSL_STACK* wolfSSL_X509_STORE_GetCerts(WOLFSSL_X509_STORE_CTX* s)
             if (wolfSSL_sk_X509_push(sk, x509) <= 0) {
                 WOLFSSL_MSG("Unable to load x509 into stack");
                 wolfSSL_X509_free(x509);
+                x509 = NULL;
                 goto error;
             }
         }
@@ -1888,6 +1914,7 @@ WOLF_STACK_OF(WOLFSSL_X509_OBJECT)* wolfSSL_X509_STORE_get0_objects(
 
 #ifdef HAVE_CRL
     if (store->cm->crl != NULL) {
+        int res;
         obj = wolfSSL_X509_OBJECT_new();
         if (obj == NULL) {
             WOLFSSL_MSG("wolfSSL_X509_OBJECT_new error");
@@ -1899,6 +1926,11 @@ WOLF_STACK_OF(WOLFSSL_X509_OBJECT)* wolfSSL_X509_STORE_get0_objects(
             goto err_cleanup;
         }
         obj->type = WOLFSSL_X509_LU_CRL;
+        wolfSSL_RefInc(&store->cm->crl->ref, &res);
+        if (res != 0) {
+            WOLFSSL_MSG("Failed to lock crl mutex");
+            goto err_cleanup;
+        }
         obj->data.crl = store->cm->crl;
     }
 #endif

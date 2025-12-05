@@ -1,12 +1,12 @@
 /* sha256.h
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -100,6 +100,18 @@
 #define WOLFSSL_NO_HASH_RAW
 #endif
 
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
+    #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
+    typedef struct wc_Sha256 wc_Sha224;
+    typedef struct wc_Sha256 wc_Sha256;
+    WOLFSSL_API int wc_InitSha224_ex_dma(wc_Sha224* sha224, void* heap, int devId);
+    WOLFSSL_API int wc_Sha224Update_dma(wc_Sha224* sha224, const byte* data, word32 len);
+    WOLFSSL_API int wc_Sha224Final_dma(wc_Sha224* sha224, byte* hash);
+    WOLFSSL_API int wc_InitSha256_ex_dma(wc_Sha256* sha, void* heap, int devId);
+    WOLFSSL_API int wc_Sha256Update_dma(wc_Sha256* sha, const byte* data, word32 len);
+    WOLFSSL_API int wc_Sha256Final_dma(wc_Sha256* sha256, byte* hash);
+#endif
+
 #if defined(_MSC_VER)
     #define SHA256_NOINLINE __declspec(noinline)
 #elif defined(__IAR_SYSTEMS_ICC__) || defined(__GNUC__)
@@ -182,6 +194,8 @@ struct wc_Sha256 {
     cy_stc_crypto_v2_sha256_buffers_t sha_buffers;
 #elif defined(WOLFSSL_HAVE_PSA) && !defined(WOLFSSL_PSA_NO_HASH)
     psa_hash_operation_t psa_ctx;
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
+    LS_HASH_Context   lsCtx;
 #else
 #ifdef WC_64BIT_CPU
     /* alignment on digest and buffer speeds up ARMv8 crypto operations */
@@ -264,10 +278,14 @@ struct wc_Sha256 {
 WOLFSSL_API int wc_InitSha256(wc_Sha256* sha);
 WOLFSSL_API int wc_InitSha256_ex(wc_Sha256* sha, void* heap, int devId);
 WOLFSSL_API int wc_Sha256Update(wc_Sha256* sha, const byte* data, word32 len);
+
+#if !defined(WOLFSSL_KCAPI_HASH) && !defined(WOLFSSL_AFALG_HASH)
 WOLFSSL_API int wc_Sha256FinalRaw(wc_Sha256* sha256, byte* hash);
+#endif
 WOLFSSL_API int wc_Sha256Final(wc_Sha256* sha256, byte* hash);
 WOLFSSL_API void wc_Sha256Free(wc_Sha256* sha256);
-#if defined(OPENSSL_EXTRA) || defined(HAVE_CURL)
+#if (defined(OPENSSL_EXTRA) || defined(HAVE_CURL)) && \
+    !defined(WOLFSSL_KCAPI_HASH) && !defined(WOLFSSL_AFALG_HASH)
 WOLFSSL_API int wc_Sha256Transform(wc_Sha256* sha, const unsigned char* data);
 #endif
 #if defined(WOLFSSL_HAVE_LMS) && !defined(WOLFSSL_LMS_FULL_HASH)

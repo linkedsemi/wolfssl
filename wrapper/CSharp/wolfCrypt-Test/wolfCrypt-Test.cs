@@ -1,12 +1,12 @@
 /* wolfCrypt-Test.cs
  *
- * Copyright (C) 2006-2024 wolfSSL Inc.
+ * Copyright (C) 2006-2025 wolfSSL Inc.
  *
  * This file is part of wolfSSL.
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -548,7 +548,7 @@ public class wolfCrypt_Test_CSharp
         IntPtr keyB = IntPtr.Zero;
         IntPtr publicKeyA = IntPtr.Zero;
         IntPtr publicKeyB = IntPtr.Zero;
-        byte[] derKey;
+        byte[] rawPub, rawPrivate, derKey;
 
         Console.WriteLine("\nStarting Curve25519 shared secret test...");
 
@@ -568,6 +568,14 @@ public class wolfCrypt_Test_CSharp
             throw new Exception("Failed to generate key pair B.");
         }
         Console.WriteLine("Curve25519 Key generation test passed.");
+
+
+        /* Export Public Key A private and public to raw format */
+        wolfcrypt.Curve25519ExportKeyRaw(keyA, out rawPrivate, out rawPub);
+        /* Export Public Key B public to raw format */
+        rawPub = wolfcrypt.Curve25519ExportPublicKey(keyB);
+        /* rawPub / rawPrivate - not used */
+
 
         /* Export Public Key B to DER format */
         Console.WriteLine("Exporting Public Key B to DER format...");

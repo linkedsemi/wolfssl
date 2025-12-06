@@ -1803,19 +1803,19 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
 #ifdef WOLFSSL_SHA384
     if ( (ret = sha384_test()) != 0)
     {
-        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT
-            TEST_FAIL("SHA-384 LS hardware   test failed!\n", ret);
-        #else
-            TEST_FAIL("SHA-384 software   test failed!\n", ret);
-        #endif
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT
+    TEST_FAIL("SHA-384 LS hardware   test failed!\n", ret);
+    #else
+    TEST_FAIL("SHA-384 software   test failed!\n", ret);
+    #endif
     }
-    else
+else
     {
-        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT
-            TEST_PASS("SHA-384 LS hardware   test passed!\n");
-        #else
-            TEST_PASS("SHA-384 software   test passed!\n");
-        #endif
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT
+    TEST_PASS("SHA-384 LS hardware   test passed!\n");
+    #else
+    TEST_PASS("SHA-384 software   test passed!\n");
+    #endif
     }
 #endif
 
@@ -4770,8 +4770,8 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha512_test(void)
         return WC_TEST_RET_ENC_EC(ret);
 #ifndef NO_WOLFSSL_SHA512_INTERLEAVE
     ret = wc_InitSha512_ex(&i_sha, HEAP_HINT, devId);
-    if (ret != 0)
-        return WC_TEST_RET_ENC_EC(ret);
+        if (ret != 0)
+            return WC_TEST_RET_ENC_EC(ret);
 #endif
 
     ret = wc_InitSha512_ex(&shaCopy, HEAP_HINT, devId);
@@ -14984,170 +14984,6 @@ out:
 
 #ifdef HAVE_AES_CBC
 
-#ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
-WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes_cbc_test(void)
-{
-    Aes *enc = NULL;
-#ifdef HAVE_AES_DECRYPT
-    Aes *dec = NULL;
-#endif
-    byte cipher[WC_AES_BLOCK_SIZE * 4];
-#ifdef HAVE_AES_DECRYPT
-    byte plain [WC_AES_BLOCK_SIZE * 4];
-#endif
-    wc_test_ret_t ret = 0;
-
-    WOLFSSL_ENTER("aes_cbc_test");
-
-    enc = wc_AesNew(HEAP_HINT, devId, &ret);
-    if (enc == NULL)
-        ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-#ifdef HAVE_AES_DECRYPT
-    dec = wc_AesNew(HEAP_HINT, devId, &ret);
-    if (dec == NULL)
-        ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-#endif
-
-#ifdef WOLFSSL_AES_128
-    {
-        /* "Now is the time for all " w/o trailing 0 */
-        WOLFSSL_SMALL_STACK_STATIC const byte msg[] = {
-            0x6e,0x6f,0x77,0x20,0x69,0x73,0x20,0x74,
-            0x68,0x65,0x20,0x74,0x69,0x6d,0x65,0x20,
-            0x66,0x6f,0x72,0x20,0x61,0x6c,0x6c,0x20
-        };
-        WOLFSSL_SMALL_STACK_STATIC const byte verify[] =
-        {
-            0x95,0x94,0x92,0x57,0x5f,0x42,0x81,0x53,
-            0x2c,0xcc,0x9d,0x46,0x77,0xa2,0x33,0xcb
-        };
-
-        WOLFSSL_SMALL_STACK_STATIC const byte key[] = "0123456789abcdef   ";
-
-        WOLFSSL_SMALL_STACK_STATIC const byte iv[]  = "1234567890abcdef   ";
-
-        ret = wc_AesSetKey(enc, (byte *)key, WC_AES_BLOCK_SIZE, (byte *)iv, AES_ENCRYPTION);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-    #ifdef HAVE_AES_DECRYPT
-        ret = wc_AesSetKey(dec, (byte *)key, WC_AES_BLOCK_SIZE, (byte *)iv, AES_DECRYPTION);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-    #endif
-
-        XMEMSET(cipher, 0, sizeof(cipher));
-        ret = wc_AesCbcEncrypt(enc, cipher, msg, WC_AES_BLOCK_SIZE);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-    #ifdef HAVE_AES_DECRYPT
-        XMEMSET(plain, 0, sizeof(plain));
-        ret = wc_AesCbcDecrypt(dec, plain, cipher, WC_AES_BLOCK_SIZE);
-        if (ret != 0) {
-            WOLFSSL_MSG("failed wc_AesCbcDecrypt");
-            ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-        }
-
-        if (XMEMCMP(plain, msg, WC_AES_BLOCK_SIZE)) {
-            WOLFSSL_MSG("wc_AesCbcDecrypt failed plain compare");
-            ERROR_OUT(WC_TEST_RET_ENC_NC, out);
-        }
-    #endif /* HAVE_AES_DECRYPT */
-        /* skipped because wrapped key use in case of renesas sm */
-        #ifndef HAVE_RENESAS_SYNC
-        if (XMEMCMP(cipher, verify, WC_AES_BLOCK_SIZE)) {
-            WOLFSSL_MSG("wc_AesCbcDecrypt failed cipher-verify compare");
-            ERROR_OUT(WC_TEST_RET_ENC_NC, out);
-        }
-        #endif
-    }
-#endif /* WOLFSSL_AES_128 */
-
-    /* Test of AES IV state with encrypt/decrypt */
-#if defined(WOLFSSL_AES_128) && !defined(HAVE_RENESAS_SYNC)
-    {
-        /* Test Vector from "NIST Special Publication 800-38A, 2001 Edition"
-         * https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-38a.pdf
-         */
-        WOLFSSL_SMALL_STACK_STATIC const byte msg2[] =
-        {
-            0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
-            0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a,
-            0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c,
-            0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51
-        };
-
-        WOLFSSL_SMALL_STACK_STATIC const byte verify2[] =
-        {
-            0x76, 0x49, 0xab, 0xac, 0x81, 0x19, 0xb2, 0x46,
-            0xce, 0xe9, 0x8e, 0x9b, 0x12, 0xe9, 0x19, 0x7d,
-            0xbb, 0x44, 0x28, 0xe1, 0x37, 0x12, 0x72, 0x27,
-            0x50, 0xd4, 0xdb, 0xec, 0x82, 0x94, 0xbb, 0xa0
-        };
-        WOLFSSL_SMALL_STACK_STATIC const byte key2[] = {
-            0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
-            0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
-        };
-        WOLFSSL_SMALL_STACK_STATIC const byte iv2[]  = {
-            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-            0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
-        };
-
-        ret = wc_AesSetKey(enc, (byte *)key2, sizeof(key2), (byte *)iv2, AES_ENCRYPTION);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-        XMEMSET(cipher, 0, WC_AES_BLOCK_SIZE * 2);
-        ret = wc_AesCbcEncrypt(enc, cipher, msg2, WC_AES_BLOCK_SIZE);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-    #ifndef HAVE_RENESAS_SYNC
-        if (XMEMCMP(cipher, verify2, WC_AES_BLOCK_SIZE))
-            ERROR_OUT(WC_TEST_RET_ENC_NC, out);
-    #endif
-
-        ret = wc_AesCbcEncrypt(enc, cipher + WC_AES_BLOCK_SIZE,
-                msg2 + WC_AES_BLOCK_SIZE, WC_AES_BLOCK_SIZE);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-        if (XMEMCMP(cipher + WC_AES_BLOCK_SIZE, verify2 + WC_AES_BLOCK_SIZE,
-                    WC_AES_BLOCK_SIZE))
-            ERROR_OUT(WC_TEST_RET_ENC_NC, out);
-
-        #if defined(HAVE_AES_DECRYPT)
-        ret = wc_AesSetKey(dec, (byte *)key2, sizeof(key2), (byte *)iv2, AES_DECRYPTION);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-        XMEMSET(plain, 0, WC_AES_BLOCK_SIZE * 2);
-        ret = wc_AesCbcDecrypt(dec, plain, verify2, WC_AES_BLOCK_SIZE);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-        if (XMEMCMP(plain, msg2, WC_AES_BLOCK_SIZE))
-            ERROR_OUT(WC_TEST_RET_ENC_NC, out);
-
-        ret = wc_AesCbcDecrypt(dec, plain + WC_AES_BLOCK_SIZE,
-                verify2 + WC_AES_BLOCK_SIZE, WC_AES_BLOCK_SIZE);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_EC(ret), out);
-        if (XMEMCMP(plain + WC_AES_BLOCK_SIZE, msg2 + WC_AES_BLOCK_SIZE,
-                    WC_AES_BLOCK_SIZE)) {
-            WOLFSSL_MSG("wc_AesCbcDecrypt failed plain-msg2 compare");
-            ERROR_OUT(WC_TEST_RET_ENC_NC, out);
-        }
-        #endif /* HAVE_AES_DECRYPT */
-
-        aes_cbc_oneshot_test();
-    }
-#endif /* WOLFSSL_AES_128 && !HAVE_RENESAS_SYNC */
-
-  out:
-
-    wc_AesDelete(enc, &enc);
-#ifdef HAVE_AES_DECRYPT
-    wc_AesDelete(dec, &dec);
-#endif
-
-    return ret;
-}
-#else
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes_cbc_test(void)
 {
 #if defined(WOLFSSL_SMALL_STACK) && !defined(WOLFSSL_NO_MALLOC)
@@ -15547,7 +15383,6 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t aes_cbc_test(void)
 
     return ret;
 }
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 #endif /* HAVE_AES_CBC */
 
 #if defined(HAVE_AES_ECB) || defined(WOLFSSL_AES_DIRECT)
@@ -35346,7 +35181,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t ecc_test(void)
     ret = ecc_test_cert_gen(&rng);
     if (ret != 0) {
         printf("ecc_test_cert_gen failed!\n");
-        goto done;-
+        goto done;
     }
 #endif
 #if !defined(HAVE_FIPS) && !defined(HAVE_SELFTEST) && !defined(WOLFSSL_NO_MALLOC) && \

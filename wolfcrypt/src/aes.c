@@ -4894,42 +4894,6 @@ static void AesSetKey_C(Aes* aes, const byte* key, word32 keySz, int dir)
     #endif /* WOLFSSL_AES_DIRECT || WOLFSSL_AES_COUNTER */
 #endif /* wc_AesSetKey block */
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
-    int wc_AesSetIV(Aes* aes, const byte* iv)
-    {
-        if (aes == NULL)
-            return BAD_FUNC_ARG;
-
-        /* Clear any unused bytes from last cipher op. */
-#if defined(WOLFSSL_AES_COUNTER) || defined(WOLFSSL_AES_CFB) || \
-    defined(WOLFSSL_AES_OFB) || defined(WOLFSSL_AES_XTS) || \
-    defined(WOLFSSL_AES_CTS)
-        aes->left = 0;
-#endif
-
-    #ifdef WC_DEBUG_CIPHER_LIFECYCLE
-        {
-            int ret = wc_debug_CipherLifecycleCheck(aes->CipherLifecycleTag, 0);
-            if (ret < 0)
-                return ret;
-        }
-    #endif
-
-        if (iv)
-        {
-            uint32_t *u32_iv = (uint32_t *)iv;
-            LSCRYPT->IVR3 = __builtin_bswap32(*u32_iv++);
-            LSCRYPT->IVR2 = __builtin_bswap32(*u32_iv++);
-            LSCRYPT->IVR1 = __builtin_bswap32(*u32_iv++);
-            LSCRYPT->IVR0 = __builtin_bswap32(*u32_iv++);
-            XMEMCPY(aes->reg, iv, WC_AES_BLOCK_SIZE);
-        }else{
-            XMEMSET(aes->reg,  0, WC_AES_BLOCK_SIZE);
-        }
-        return 0;
-    }
-#else
-
 /* wc_AesSetIV is shared between software and hardware */
 int wc_AesSetIV(Aes* aes, const byte* iv)
 {
@@ -4958,7 +4922,6 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
 
     return 0;
 }
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT */
 
 #ifdef WOLFSSL_AESNI
 
@@ -5856,7 +5819,11 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         uint32_t *output = (uint32_t *)out;
 
         aes_config(true, true, false, false, false, 0x0, 0x1);
-
+        uint32_t *u32_iv = (uint32_t *)aes->reg;
+        LSCRYPT->IVR3 = __builtin_bswap32(*u32_iv++);
+        LSCRYPT->IVR2 = __builtin_bswap32(*u32_iv++);
+        LSCRYPT->IVR1 = __builtin_bswap32(*u32_iv++);
+        LSCRYPT->IVR0 = __builtin_bswap32(*u32_iv++);
         while(input < (uint32_t*)end_addr)
         {
             LSCRYPT->DATA3 = __builtin_bswap32(*input++);
@@ -5872,6 +5839,7 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
             *output++ = __builtin_bswap32(LSCRYPT->RES1);
             *output++ = __builtin_bswap32(LSCRYPT->RES0);
         }
+        XMEMCPY(aes->reg, out, WC_AES_BLOCK_SIZE);
         return 0;
     }
 
@@ -5887,7 +5855,11 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         uint32_t *output = (uint32_t *)out;
 
         aes_config(true, false, false, false, false, 0x0, 0x1);
-
+        uint32_t *u32_iv = (uint32_t *)aes->reg;
+        LSCRYPT->IVR3 = __builtin_bswap32(*u32_iv++);
+        LSCRYPT->IVR2 = __builtin_bswap32(*u32_iv++);
+        LSCRYPT->IVR1 = __builtin_bswap32(*u32_iv++);
+        LSCRYPT->IVR0 = __builtin_bswap32(*u32_iv++);
         while(input < (uint32_t *)end_addr)
         {
             LSCRYPT->DATA3 = __builtin_bswap32(*input++);
@@ -5903,6 +5875,7 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
             *output++ = __builtin_bswap32(LSCRYPT->RES1);
             *output++ = __builtin_bswap32(LSCRYPT->RES0);
         }
+        XMEMCPY(aes->reg, in, WC_AES_BLOCK_SIZE);
         return 0;
     }
 #else

@@ -1010,6 +1010,7 @@ block cipher mechanism that uses n-bit binary string parameter key with 128-bits
         MODIFY_REG(LSCRYPT->CR,CRYPT_CRYSEL_MASK|CRYPT_DMAEN_MASK|CRYPT_FIFOODR_MASK|CRYPT_FIFOEN_MASK|CRYPT_TYPE_MASK|CRYPT_IE_MASK|CRYPT_IVREN_MASK|CRYPT_MODE_MASK|CRYPT_ENCS_MASK|CRYPT_AESKS_MASK,
             0<<CRYPT_CRYSEL_POS|(dmaen?1:0)<<CRYPT_DMAEN_POS|(fifoen?1:0)<<CRYPT_FIFOODR_POS|(fifoen?1:0)<<CRYPT_FIFOEN_POS|type<<CRYPT_TYPE_POS|(ie?1:0)<<CRYPT_IE_POS|(iv_en?1:0)<<CRYPT_IVREN_POS|mode<<CRYPT_MODE_POS|(enc?1:0)<<CRYPT_ENCS_POS|keysize<<CRYPT_AESKS_POS);
     }
+    static wolfSSL_Mutex doneLock;
 #else
 
     /* using wolfCrypt software implementation */
@@ -5759,7 +5760,7 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         ret = wc_AesGetKeySize(aes, &keylen);
         if(ret != 0)
             return ret;
-
+        wc_LockMutex(&doneLock);
         do{
             if(keylen == 16)
             {
@@ -5818,6 +5819,7 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
             *output++ = __builtin_bswap32(LSCRYPT->RES0);
         }
         XMEMCPY(aes->reg, out, WC_AES_BLOCK_SIZE);
+        wc_UnLockMutex(&doneLock);
         return 0;
     }
 
@@ -5838,7 +5840,7 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         ret = wc_AesGetKeySize(aes, &keylen);
         if(ret != 0)
             return ret;
-
+        wc_LockMutex(&doneLock);
         do{
             if(keylen == 16)
             {
@@ -5897,6 +5899,7 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
             *output++ = __builtin_bswap32(LSCRYPT->RES0);
         }
         XMEMCPY(aes->reg, in, WC_AES_BLOCK_SIZE);
+        wc_UnLockMutex(&doneLock);
         return 0;
     }
 #else
@@ -12084,7 +12087,7 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
         ret = wc_AesGetKeySize(aes, &keylen);
         if(ret != 0)
             return ret;
-
+        wc_LockMutex(&doneLock);
         do{
             if(keylen == 16)
             {
@@ -12148,6 +12151,7 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
         *output++ = LSCRYPT->RES2;
         *output++ = LSCRYPT->RES1;
         *output++ = LSCRYPT->RES0;
+        wc_UnLockMutex(&doneLock);
         return 0;
     }
 
@@ -12168,7 +12172,7 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
         ret = wc_AesGetKeySize(aes, &keylen);
         if(ret != 0)
             return ret;
-
+        wc_LockMutex(&doneLock);
         do{
             if(keylen == 16)
             {
@@ -12232,6 +12236,7 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
         *output++ = LSCRYPT->RES2;
         *output++ = LSCRYPT->RES1;
         *output++ = LSCRYPT->RES0;
+        wc_UnLockMutex(&doneLock);
         return 0;
     }
 

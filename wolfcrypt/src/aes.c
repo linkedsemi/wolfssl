@@ -4828,6 +4828,7 @@ static void AesSetKey_C(Aes* aes, const byte* key, word32 keySz, int dir)
     #endif /* WOLFSSL_AES_DIRECT || WOLFSSL_AES_COUNTER */
 #endif /* wc_AesSetKey block */
 
+
 /* wc_AesSetIV is shared between software and hardware */
 int wc_AesSetIV(Aes* aes, const byte* iv)
 {

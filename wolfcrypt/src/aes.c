@@ -1005,7 +1005,11 @@ block cipher mechanism that uses n-bit binary string parameter key with 128-bits
         Aes* aes, const byte* inBlock, byte* outBlock);
     static WARN_UNUSED_RESULT int wc_AesDecrypt(
         Aes* aes, const byte* inBlock, byte* outBlock);
-
+    static void aes_config(bool iv_en, bool enc, bool ie, bool dmaen, bool fifoen, uint8_t type, uint8_t mode, uint8_t keysize)
+    {
+        MODIFY_REG(LSCRYPT->CR,CRYPT_CRYSEL_MASK|CRYPT_DMAEN_MASK|CRYPT_FIFOODR_MASK|CRYPT_FIFOEN_MASK|CRYPT_TYPE_MASK|CRYPT_IE_MASK|CRYPT_IVREN_MASK|CRYPT_MODE_MASK|CRYPT_ENCS_MASK|CRYPT_AESKS_MASK,
+            0<<CRYPT_CRYSEL_POS|(dmaen?1:0)<<CRYPT_DMAEN_POS|(fifoen?1:0)<<CRYPT_FIFOODR_POS|(fifoen?1:0)<<CRYPT_FIFOEN_POS|type<<CRYPT_TYPE_POS|(ie?1:0)<<CRYPT_IE_POS|(iv_en?1:0)<<CRYPT_IVREN_POS|mode<<CRYPT_MODE_POS|(enc?1:0)<<CRYPT_ENCS_POS|keysize<<CRYPT_AESKS_POS);
+    }
 #else
 
     /* using wolfCrypt software implementation */
@@ -4179,76 +4183,6 @@ static WARN_UNUSED_RESULT int wc_AesDecrypt(
      !defined(NO_WOLFSSL_RENESAS_FSPSM_AES)
     /* implemented in wolfcrypt/src/port/renesas/renesas_fspsm_aes.c */
 
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
-
-    static void aes_config(bool iv_en, bool enc, bool ie, bool dmaen, bool fifoen, uint8_t type, uint8_t mode)
-    {
-        MODIFY_REG(LSCRYPT->CR,CRYPT_CRYSEL_MASK|CRYPT_DMAEN_MASK|CRYPT_FIFOODR_MASK|CRYPT_FIFOEN_MASK|CRYPT_TYPE_MASK|CRYPT_IE_MASK|CRYPT_IVREN_MASK|CRYPT_MODE_MASK|CRYPT_ENCS_MASK,
-            0<<CRYPT_CRYSEL_POS|(dmaen?1:0)<<CRYPT_DMAEN_POS|(fifoen?1:0)<<CRYPT_FIFOODR_POS|(fifoen?1:0)<<CRYPT_FIFOEN_POS|type<<CRYPT_TYPE_POS|(ie?1:0)<<CRYPT_IE_POS|(iv_en?1:0)<<CRYPT_IVREN_POS|mode<<CRYPT_MODE_POS|(enc?1:0)<<CRYPT_ENCS_POS);
-    }
-
-    int wc_AesSetKey(Aes* aes, const byte* userKey, word32 keylen,
-            const byte* iv, int dir)
-    {
-        (void)dir;
-
-        if (aes == NULL || (keylen != 16 &&
-        #ifdef WOLFSSL_AES_192
-            keylen != 24 &&
-        #endif
-            keylen != 32)) {
-            return BAD_FUNC_ARG;
-        }
-
-#ifdef WC_DEBUG_CIPHER_LIFECYCLE
-        {
-            int ret = wc_debug_CipherLifecycleCheck(aes->CipherLifecycleTag, 0);
-            if (ret < 0)
-                return ret;
-        }
-#endif
-        aes->rounds = keylen/4 + 6;
-        uint8_t keysize = 0;
-        uint32_t *u32_key = (uint32_t *)userKey;
-
-        do{
-            if(keylen == 16)
-            {
-                keysize = AES_KEY_128;
-                LSCRYPT->KEY3 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY2 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY1 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY0 = __builtin_bswap32(*u32_key++);
-                break;
-            }
-            if(keylen == 24)
-            {
-                keysize = AES_KEY_192;
-                LSCRYPT->KEY5 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY4 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY3 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY2 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY1 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY0 = __builtin_bswap32(*u32_key++);
-                break;
-            }
-            if(keylen == 32)
-            {
-                keysize = AES_KEY_256;
-                LSCRYPT->KEY7 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY6 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY5 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY4 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY3 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY2 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY1 = __builtin_bswap32(*u32_key++);
-                LSCRYPT->KEY0 = __builtin_bswap32(*u32_key++);
-                break;
-            }
-        }while(0);
-        REG_FIELD_WR(LSCRYPT->CR, CRYPT_AESKS, keysize);
-        return wc_AesSetIV(aes, iv);
-    }
 #else
     #define NEED_SOFTWARE_AES_SETKEY
 #endif
@@ -5817,8 +5751,51 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         const unsigned char *end_addr = in + sz;
         uint32_t *input = (uint32_t *)in;
         uint32_t *output = (uint32_t *)out;
+        uint8_t ret = 0;
+        uint8_t keysize = 0;
+        uint32_t keylen = 0;
+        uint32_t *u32_key = (uint32_t *)aes->key;
+        ret = wc_AesGetKeySize(aes, &keylen);
+        if(ret != 0)
+            return ret;
 
-        aes_config(true, true, false, false, false, 0x0, 0x1);
+        do{
+            if(keylen == 16)
+            {
+                keysize = AES_KEY_128;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+            if(keylen == 24)
+            {
+                keysize = AES_KEY_192;
+                LSCRYPT->KEY5 = *u32_key++;
+                LSCRYPT->KEY4 = *u32_key++;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+            if(keylen == 32)
+            {
+                keysize = AES_KEY_256;
+                LSCRYPT->KEY7 = *u32_key++;
+                LSCRYPT->KEY6 = *u32_key++;
+                LSCRYPT->KEY5 = *u32_key++;
+                LSCRYPT->KEY4 = *u32_key++;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+        }while(0);
+
+        aes_config(true, true, false, false, false, 0x0, 0x1, keysize);
         uint32_t *u32_iv = (uint32_t *)aes->reg;
         LSCRYPT->IVR3 = __builtin_bswap32(*u32_iv++);
         LSCRYPT->IVR2 = __builtin_bswap32(*u32_iv++);
@@ -5853,8 +5830,51 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         const unsigned char * end_addr = in + sz;
         uint32_t *input = (uint32_t *)in;
         uint32_t *output = (uint32_t *)out;
+        uint8_t ret = 0;
+        uint8_t keysize = 0;
+        uint32_t keylen = 0;
+        uint32_t *u32_key = (uint32_t *)aes->key;
+        ret = wc_AesGetKeySize(aes, &keylen);
+        if(ret != 0)
+            return ret;
 
-        aes_config(true, false, false, false, false, 0x0, 0x1);
+        do{
+            if(keylen == 16)
+            {
+                keysize = AES_KEY_128;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+            if(keylen == 24)
+            {
+                keysize = AES_KEY_192;
+                LSCRYPT->KEY5 = *u32_key++;
+                LSCRYPT->KEY4 = *u32_key++;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+            if(keylen == 32)
+            {
+                keysize = AES_KEY_256;
+                LSCRYPT->KEY7 = *u32_key++;
+                LSCRYPT->KEY6 = *u32_key++;
+                LSCRYPT->KEY5 = *u32_key++;
+                LSCRYPT->KEY4 = *u32_key++;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+        }while(0);
+
+        aes_config(true, false, false, false, false, 0x0, 0x1, keysize);
         uint32_t *u32_iv = (uint32_t *)aes->reg;
         LSCRYPT->IVR3 = __builtin_bswap32(*u32_iv++);
         LSCRYPT->IVR2 = __builtin_bswap32(*u32_iv++);
@@ -12056,8 +12076,51 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
         const unsigned char * end_addr = in + sz;
         uint32_t *input = (uint32_t *)in;
         uint32_t *output = (uint32_t *)out;
+        uint8_t ret = 0;
+        uint8_t keysize = 0;
+        uint32_t keylen = 0;
+        uint32_t *u32_key = (uint32_t *)aes->key;
+        ret = wc_AesGetKeySize(aes, &keylen);
+        if(ret != 0)
+            return ret;
 
-        aes_config(false, true, false, false, false, byte_swap, ecb);
+        do{
+            if(keylen == 16)
+            {
+                keysize = AES_KEY_128;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+            if(keylen == 24)
+            {
+                keysize = AES_KEY_192;
+                LSCRYPT->KEY5 = *u32_key++;
+                LSCRYPT->KEY4 = *u32_key++;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+            if(keylen == 32)
+            {
+                keysize = AES_KEY_256;
+                LSCRYPT->KEY7 = *u32_key++;
+                LSCRYPT->KEY6 = *u32_key++;
+                LSCRYPT->KEY5 = *u32_key++;
+                LSCRYPT->KEY4 = *u32_key++;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+        }while(0);
+
+        aes_config(false, true, false, false, false, byte_swap, ecb, keysize);
 
         LSCRYPT->DATA3 = *input++;
         LSCRYPT->DATA2 = *input++;
@@ -12097,8 +12160,51 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
         const unsigned char * end_addr = in + sz;
         uint32_t *input = (uint32_t *)in;
         uint32_t *output = (uint32_t *)out;
+        uint8_t ret = 0;
+        uint8_t keysize = 0;
+        uint32_t keylen = 0;
+        uint32_t *u32_key = (uint32_t *)aes->key;
+        ret = wc_AesGetKeySize(aes, &keylen);
+        if(ret != 0)
+            return ret;
 
-        aes_config(false, false, false, false, false, byte_swap, ecb);
+        do{
+            if(keylen == 16)
+            {
+                keysize = AES_KEY_128;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+            if(keylen == 24)
+            {
+                keysize = AES_KEY_192;
+                LSCRYPT->KEY5 = *u32_key++;
+                LSCRYPT->KEY4 = *u32_key++;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+            if(keylen == 32)
+            {
+                keysize = AES_KEY_256;
+                LSCRYPT->KEY7 = *u32_key++;
+                LSCRYPT->KEY6 = *u32_key++;
+                LSCRYPT->KEY5 = *u32_key++;
+                LSCRYPT->KEY4 = *u32_key++;
+                LSCRYPT->KEY3 = *u32_key++;
+                LSCRYPT->KEY2 = *u32_key++;
+                LSCRYPT->KEY1 = *u32_key++;
+                LSCRYPT->KEY0 = *u32_key++;
+                break;
+            }
+        }while(0);
+
+        aes_config(false, false, false, false, false, byte_swap, ecb, keysize);
 
         LSCRYPT->DATA3 = *input++;
         LSCRYPT->DATA2 = *input++;
@@ -12140,11 +12246,6 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
         return wc_AesEcbDecrypt(aes, outBlock, inBlock, WC_AES_BLOCK_SIZE);
     }
 
-    int wc_AesSetKeyDirect(Aes* aes, const byte* userKey, word32 keylen,
-                        const byte* iv, int dir)
-    {
-        return wc_AesSetKey(aes, userKey, keylen, iv, 0);
-    }
 #else
 
 /* Software AES - ECB */

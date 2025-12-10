@@ -201,6 +201,9 @@ extern "C" {
 #undef WOLFSSL_AES_DIRECT
 #define WOLFSSL_AES_DIRECT
 
+#undef NO_WOLFSSL_SHA256_INTERLEAVE
+#define NO_WOLFSSL_SHA256_INTERLEAVE
+
 #define DEBUG_WOLFSSL
 #ifdef __cplusplus
 }

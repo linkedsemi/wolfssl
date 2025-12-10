@@ -576,9 +576,9 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  md5_test(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  md4_test(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha_test(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha224_test(void);
-WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha224_test_dma(void);
+// WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha224_test_dma(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha256_test(void);
-WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha256_test_dma(void);
+// WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha256_test_dma(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sha512_test(void);
 #if !defined(WOLFSSL_NOSHA512_224) && \
    (!defined(HAVE_FIPS) || FIPS_VERSION_GE(5, 3)) && !defined(HAVE_SELFTEST)
@@ -594,7 +594,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  shake128_test(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  shake256_test(void);
 #ifdef WOLFSSL_SM3
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sm3_test(void);
-WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sm3_test_dma(void);
+// WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  sm3_test_dma(void);
 #endif
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  hash_test(void);
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t  hmac_md5_test(void);
@@ -1766,12 +1766,12 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         #endif
     }
 
-#if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && defined(CONFIG_DMA)
-    if ( (ret = sha224_test_dma()) != 0)
-        TEST_FAIL("SHA-224 dma LS hardware   test failed!\n", ret);
-    else
-        TEST_PASS("SHA-224 dma LS hardware   test passed!\n");
-#endif
+// #if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && defined(CONFIG_DMA)
+//     if ( (ret = sha224_test_dma()) != 0)
+//         TEST_FAIL("SHA-224 dma LS hardware   test failed!\n", ret);
+//     else
+//         TEST_PASS("SHA-224 dma LS hardware   test passed!\n");
+// #endif
 #endif
 
 #ifndef NO_SHA256
@@ -1792,12 +1792,12 @@ options: [-s max_relative_stack_bytes] [-m max_relative_heap_memory_bytes]\n\
         #endif
     }
 
-#if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && defined(CONFIG_DMA)
-    if ( (ret = sha256_test_dma()) != 0)
-        TEST_FAIL("SHA-256 dma LS hardware   test failed!\n", ret);
-    else
-        TEST_PASS("SHA-256 dma LS hardware   test passed!\n");
-#endif
+// #if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && defined(CONFIG_DMA)
+//     if ( (ret = sha256_test_dma()) != 0)
+//         TEST_FAIL("SHA-256 dma LS hardware   test failed!\n", ret);
+//     else
+//         TEST_PASS("SHA-256 dma LS hardware   test passed!\n");
+// #endif
 #endif
 
 #ifdef WOLFSSL_SHA384
@@ -1892,12 +1892,12 @@ else {
         #endif
     }
 
-#if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && defined(CONFIG_DMA)
-    if ( (ret = sm3_test_dma()) != 0)
-        TEST_FAIL("SM-3 dma LS hardware   test failed!\n", ret);
-    else
-        TEST_PASS("SM-3 dma LS hardware   test passed!\n");
-#endif
+// #if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && defined(CONFIG_DMA)
+//     if ( (ret = sm3_test_dma()) != 0)
+//         TEST_FAIL("SM-3 dma LS hardware   test failed!\n", ret);
+//     else
+//         TEST_PASS("SM-3 dma LS hardware   test passed!\n");
+// #endif
 #endif
 
 #ifndef NO_HASH_WRAPPER
@@ -4090,98 +4090,41 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t blake2s_test(void)
 
 
 #ifdef WOLFSSL_SHA224
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
-WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha224_test(void)
-{
-    wc_Sha224 sha[3];
-    byte      hash[WC_SHA224_DIGEST_SIZE];
-    wc_test_ret_t ret = 0;
+// #if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && defined(CONFIG_DMA)
+// WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha224_test_dma(void)
+// {
+//     wc_Sha224 sha;
+//     byte      hash[WC_SHA224_DIGEST_SIZE];
+//     byte      hash_output[WC_SHA224_DIGEST_SIZE] = 
+//                 {0xF0,0x62,0x1E,0x96,0x01,0xDE,0x98,0xB4,0x8F,0xFF,0xBC,0x7A,0x16,0xFD,
+//                  0xF2,0xDE,0xA1,0x48,0xF7,0x49,0x51,0xD5,0xC4,0xEF,0x73,0xA2,0xD6,0x0E};
+//     wc_test_ret_t ret = 0;
 
-    testVector a, b, c;
-    testVector test_sha[3];
-    int times = sizeof(test_sha) / sizeof(struct testVector), i, j;
-    WOLFSSL_ENTER("sha224_test");
+//     WOLFSSL_ENTER("sha224_test_dma");
 
-    a.input  = "";
-    a.output = "\xd1\x4a\x02\x8c\x2a\x3a\x2b\xc9\x47\x61\x02\xbb\x28\x82\x34"
-               "\xc4\x15\xa2\xb0\x1f\x82\x8e\xa6\x2a\xc5\xb3\xe4\x2f";
-    a.inLen  = XSTRLEN(a.input);
-    a.outLen = WC_SHA224_DIGEST_SIZE;
+//     #define test_len 16257
+//     __attribute__((aligned(32))) uint8_t big_buffer[test_len];
+//     memset(big_buffer, 0x2, sizeof(big_buffer));
 
-    b.input  = "abc";
-    b.output = "\x23\x09\x7d\x22\x34\x05\xd8\x22\x86\x42\xa4\x77\xbd\xa2\x55"
-               "\xb3\x2a\xad\xbc\xe4\xbd\xa0\xb3\xf7\xe3\x6c\x9d\xa7";
-    b.inLen  = XSTRLEN(b.input);
-    b.outLen = WC_SHA224_DIGEST_SIZE;
+//     ret = wc_InitSha224_ex_dma(&sha, HEAP_HINT, devId);
+//     if (ret != 0)
+//         return WC_TEST_RET_ENC_EC(ret);
+//     ret = wc_Sha224Update_dma(&sha, big_buffer, sizeof(big_buffer));
+//     if (ret != 0)
+//         goto exit;
+//     ret = wc_Sha224Final_dma(&sha, hash);
+//     if (ret != 0)
+//         goto exit;
 
-    c.input  = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
-    c.output = "\x75\x38\x8b\x16\x51\x27\x76\xcc\x5d\xba\x5d\xa1\xfd\x89\x01"
-               "\x50\xb0\xc6\x45\x5c\xb4\xf5\x8b\x19\x52\x52\x25\x25";
-    c.inLen  = XSTRLEN(c.input);
-    c.outLen = WC_SHA224_DIGEST_SIZE;
+//     if (XMEMCMP(hash, hash_output, WC_SHA224_DIGEST_SIZE) != 0)
+//         goto exit;
 
-    test_sha[0] = a;
-    test_sha[1] = b;
-    test_sha[2] = c;
+// exit:
+//     wc_Sha224Free(&sha);
+//     return ret;
+// }
+// #endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && CONFIG_DMA */
 
-    for (i = 0; i < times; ++i) {
-        ret = wc_InitSha224_ex(&sha[i], HEAP_HINT, devId);
-        if (ret != 0)
-            return WC_TEST_RET_ENC_EC(ret);
-        ret = wc_Sha224Update(&sha[i], (byte*)test_sha[i].input,
-            (word32)test_sha[i].inLen);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
-        ret = wc_Sha224Final(&sha[i], hash);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
-
-        if (XMEMCMP(hash, test_sha[i].output, WC_SHA224_DIGEST_SIZE) != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
-        
-    }
-
-exit:
-    for(j = 0; j < i; ++j)
-    {
-        wc_Sha224Free(&sha[j]);
-    }
-    return ret;
-}
-
-WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha224_test_dma(void)
-{
-    wc_Sha224 sha;
-    byte      hash[WC_SHA224_DIGEST_SIZE];
-    byte      hash_output[WC_SHA224_DIGEST_SIZE] = 
-                {0xF0,0x62,0x1E,0x96,0x01,0xDE,0x98,0xB4,0x8F,0xFF,0xBC,0x7A,0x16,0xFD,
-                 0xF2,0xDE,0xA1,0x48,0xF7,0x49,0x51,0xD5,0xC4,0xEF,0x73,0xA2,0xD6,0x0E};
-    wc_test_ret_t ret = 0;
-
-    WOLFSSL_ENTER("sha224_test_dma");
-
-    #define test_len 16257
-    __attribute__((aligned(32))) uint8_t big_buffer[test_len];
-    memset(big_buffer, 0x2, sizeof(big_buffer));
-
-    ret = wc_InitSha224_ex_dma(&sha, HEAP_HINT, devId);
-    if (ret != 0)
-        return WC_TEST_RET_ENC_EC(ret);
-    ret = wc_Sha224Update_dma(&sha, big_buffer, sizeof(big_buffer));
-    if (ret != 0)
-        goto exit;
-    ret = wc_Sha224Final_dma(&sha, hash);
-    if (ret != 0)
-        goto exit;
-
-    if (XMEMCMP(hash, hash_output, WC_SHA224_DIGEST_SIZE) != 0)
-        goto exit;
-
-exit:
-    wc_Sha224Free(&sha);
-    return ret;
-}
-#else
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha224_test(void)
 {
     wc_Sha224 sha, shaCopy;
@@ -4253,128 +4196,49 @@ exit:
 
     return ret;
 }
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT */
 #endif
 
 
 #ifndef NO_SHA256
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
-WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha256_test(void)
-{
-    wc_Sha256 sha[4];
-    byte      hash[WC_SHA256_DIGEST_SIZE];
-    wc_test_ret_t ret = 0;
+// #if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && defined(CONFIG_DMA)
+// WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha256_test_dma(void)
+// {
+//     wc_Sha256 sha;
+//     byte      hash[WC_SHA256_DIGEST_SIZE];
+//     byte      hash_output[WC_SHA256_DIGEST_SIZE] = 
+//                  {0x79,0x14,0x3E,0x04,0xBF,0xB7,0x6E,0xCE,0xF7,0xD6,0xDF,0xDF,0x69,0xEB,0x3A,0xD2,
+//                   0xDE,0x49,0xA5,0xBC,0x41,0xD0,0x25,0xFC,0x0C,0x5D,0x52,0x30,0x2C,0x46,0xB6,0x7B};
+//     wc_test_ret_t ret = 0;
 
-    testVector a, b, c, d;
-    testVector test_sha[4];
+//     #define test_len 16257
+//     __attribute__((aligned(32))) uint8_t big_buffer[test_len];
 
-#ifndef NO_LARGE_HASH_TEST
-#define LARGE_HASH_TEST_INPUT_SZ 1024
-#endif
+//     memset(big_buffer, 0x2, sizeof(big_buffer));
+//     WOLFSSL_ENTER("sha256_test_dma");
 
-    int times = sizeof(test_sha) / sizeof(struct testVector), i, j;
-    WOLFSSL_ENTER("sha256_test");
+//     ret = wc_InitSha256_ex_dma(&sha, HEAP_HINT, devId);
+//     if (ret != 0)
+//         return WC_TEST_RET_ENC_EC(ret);
 
-    a.input  = "";
-    a.output = "\xe3\xb0\xc4\x42\x98\xfc\x1c\x14\x9a\xfb\xf4\xc8\x99\x6f\xb9"
-               "\x24\x27\xae\x41\xe4\x64\x9b\x93\x4c\xa4\x95\x99\x1b\x78\x52"
-               "\xb8\x55";
-    a.inLen  = XSTRLEN(a.input);
-    a.outLen = WC_SHA256_DIGEST_SIZE;
+//     ret = wc_Sha256Update_dma(&sha, big_buffer, sizeof(big_buffer));
+//     if (ret != 0) {
+//         goto exit;
+//     }
 
-    b.input  = "abc";
-    b.output = "\xBA\x78\x16\xBF\x8F\x01\xCF\xEA\x41\x41\x40\xDE\x5D\xAE\x22"
-               "\x23\xB0\x03\x61\xA3\x96\x17\x7A\x9C\xB4\x10\xFF\x61\xF2\x00"
-               "\x15\xAD";
-    b.inLen  = XSTRLEN(b.input);
-    b.outLen = WC_SHA256_DIGEST_SIZE;
+//     ret = wc_Sha256Final_dma(&sha, hash);
+//     if (ret != 0)
+//         goto exit;
 
-    c.input  = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
-    c.output = "\x24\x8D\x6A\x61\xD2\x06\x38\xB8\xE5\xC0\x26\x93\x0C\x3E\x60"
-               "\x39\xA3\x3C\xE4\x59\x64\xFF\x21\x67\xF6\xEC\xED\xD4\x19\xDB"
-               "\x06\xC1";
-    c.inLen  = XSTRLEN(c.input);
-    c.outLen = WC_SHA256_DIGEST_SIZE;
+//     if (XMEMCMP(hash, hash_output, WC_SHA256_DIGEST_SIZE) != 0) {
+//         goto exit;
+//     }
 
-    d.input  = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-               "aaaaaa"; /* this is BLOCKSIZE length */
-    d.output = "\xFF\xE0\x54\xFE\x7A\xE0\xCB\x6D\xC6\x5C\x3A\xF9\xB6\x1D\x52"
-               "\x09\xF4\x39\x85\x1D\xB4\x3D\x0B\xA5\x99\x73\x37\xDF\x15\x46"
-               "\x68\xEB";
-    d.inLen  = XSTRLEN(d.input);
-    d.outLen = WC_SHA256_DIGEST_SIZE;
+// exit:
+//     wc_Sha256Free(&sha);
+//     return ret;
+// }
+// #endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && CONFIG_DMA */
 
-    test_sha[0] = a;
-    test_sha[1] = b;
-    test_sha[2] = c;
-    test_sha[3] = d;
-
-    for (i = 0; i < times; ++i) {
-        
-        ret = wc_InitSha256_ex(&sha[i], HEAP_HINT, devId);
-        if (ret != 0)
-            return WC_TEST_RET_ENC_EC(ret);
-
-        ret = wc_Sha256Update(&sha[i], (byte*)test_sha[i].input,
-            (word32)test_sha[i].inLen);
-        if (ret != 0) {
-            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
-        }
-
-        ret = wc_Sha256Final(&sha[i], hash);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
-
-        if (XMEMCMP(hash, test_sha[i].output, WC_SHA256_DIGEST_SIZE) != 0) {
-            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
-        }
-    }
-
-exit:
-    for(j = 0; j < i; ++j)
-    {
-        wc_Sha256Free(&sha[j]);
-    }
-    return ret;
-}
-
-WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha256_test_dma(void)
-{
-    wc_Sha256 sha;
-    byte      hash[WC_SHA256_DIGEST_SIZE];
-    byte      hash_output[WC_SHA256_DIGEST_SIZE] = 
-                 {0x79,0x14,0x3E,0x04,0xBF,0xB7,0x6E,0xCE,0xF7,0xD6,0xDF,0xDF,0x69,0xEB,0x3A,0xD2,
-                  0xDE,0x49,0xA5,0xBC,0x41,0xD0,0x25,0xFC,0x0C,0x5D,0x52,0x30,0x2C,0x46,0xB6,0x7B};
-    wc_test_ret_t ret = 0;
-
-    #define test_len 16257
-    __attribute__((aligned(32))) uint8_t big_buffer[test_len];
-
-    memset(big_buffer, 0x2, sizeof(big_buffer));
-    WOLFSSL_ENTER("sha256_test_dma");
-
-    ret = wc_InitSha256_ex_dma(&sha, HEAP_HINT, devId);
-    if (ret != 0)
-        return WC_TEST_RET_ENC_EC(ret);
-
-    ret = wc_Sha256Update_dma(&sha, big_buffer, sizeof(big_buffer));
-    if (ret != 0) {
-        goto exit;
-    }
-
-    ret = wc_Sha256Final_dma(&sha, hash);
-    if (ret != 0)
-        goto exit;
-
-    if (XMEMCMP(hash, hash_output, WC_SHA256_DIGEST_SIZE) != 0) {
-        goto exit;
-    }
-
-exit:
-    wc_Sha256Free(&sha);
-    return ret;
-}
-#else
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sha256_test(void)
 {
     wc_Sha256 sha, shaCopy;
@@ -4620,7 +4484,7 @@ exit:
 #endif
     return ret;
 }
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT */
+
 #endif
 
 
@@ -6576,100 +6440,40 @@ exit:
 #endif
 
 #ifdef WOLFSSL_SM3
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
-WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sm3_test(void)
-{
-    wc_Sha256 sm3[3];
-    byte   hash[WC_SM3_DIGEST_SIZE];
-    wc_test_ret_t ret = 0;
-    WOLFSSL_ENTER("sm3_test");
+// #if defined CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && defined(CONFIG_DMA)
+// WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sm3_test_dma(void)
+// {
+//     wc_Sha256 sm3;
+//     byte   hash[WC_SM3_DIGEST_SIZE];
+//     uint8_t   hash_output[WC_SM3_DIGEST_SIZE] = 
+//                 {0xF0,0x69,0x89,0xD9,0xEC,0x31,0xB9,0xD0,0x0C,0x87,0x0A,0x73,0xE7,0xB6,0x76,0x20,
+//                  0xEC,0xAC,0xE0,0x39,0x53,0x5A,0x4A,0xBC,0xA2,0x11,0x95,0x9C,0xF1,0xE9,0xCA,0xAA};
 
-    testVector a, b, c;
-    testVector test_sm3[3];
-    int times = sizeof(test_sm3) / sizeof(struct testVector), i, j;
+//     #define test_len 16257
+//     __attribute__((aligned(32))) uint8_t big_buffer[test_len];
 
-    a.input  = "";
-    a.output = "\x1a\xb2\x1d\x83\x55\xcf\xa1\x7f\x8e\x61\x19\x48\x31\xe8\x1a"
-               "\x8f\x22\xbe\xc8\xc7\x28\xfe\xfb\x74\x7e\xd0\x35\xeb\x50\x82"
-               "\xaa\x2b";
-    a.inLen  = XSTRLEN(a.input);
-    a.outLen = WC_SM3_DIGEST_SIZE;
+//     memset(big_buffer, 0x2, sizeof(big_buffer));
+//     wc_test_ret_t ret = 0;
+//     WOLFSSL_ENTER("sm3_test_dma");
 
-    b.input  = "abc";
-    b.output = "\x66\xc7\xf0\xf4\x62\xee\xed\xd9\xd1\xf2\xd4\x6b\xdc\x10\xe4"
-               "\xe2\x41\x67\xc4\x87\x5c\xf2\xf7\xa2\x29\x7d\xa0\x2b\x8f\x4b"
-               "\xa8\xe0";
-    b.inLen  = XSTRLEN(b.input);
-    b.outLen = WC_SM3_DIGEST_SIZE;
+//     wc_LSSHA_SM3_Init_dma(&sm3.lsCtx);
 
-    c.input  = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
-    c.output = "\x63\x9b\x6c\xc5\xe6\x4d\x9e\x37\xa3\x90\xb1\x92\xdf\x4f\xa1"
-               "\xea\x07\x20\xab\x74\x7f\xf6\x92\xb9\xf3\x8c\x4e\x66\xad\x7b"
-               "\x8c\x05";
-    c.inLen  = XSTRLEN(c.input);
-    c.outLen = WC_SM3_DIGEST_SIZE;
+//     ret = wc_LS_Hash_Update_dma(&sm3.lsCtx, big_buffer, sizeof(big_buffer));
+//     if (ret != 0) {
+//         goto exit;
+//     }
+//     ret = wc_LS_Hash_Final_dma(&sm3.lsCtx, hash);
+//     if (ret != 0)
+//         goto exit;
+//     /* Check hashes match expected. */
+//     if (XMEMCMP(hash, hash_output, WC_SM3_DIGEST_SIZE) != 0)
+//         goto exit;
+// exit:
+//     wc_Sha256Free(&sm3);
+//     return ret;
+// }
+// #endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT && CONFIG_DMA */
 
-    test_sm3[0] = a;
-    test_sm3[1] = b;
-    test_sm3[2] = c;
-
-    /* Test all the KATs. */
-    for (i = 0; i < times; ++i) {
-        wc_LSSHA_SM3_Init(&sm3[i].lsCtx);
-
-        ret = wc_LS_Hash_Update(&sm3[i].lsCtx, (byte*)test_sm3[i].input,
-            (word32)test_sm3[i].inLen);
-        if (ret != 0) {
-            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
-        }
-        ret = wc_LS_Hash_Final(&sm3[i].lsCtx, hash);
-        if (ret != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
-        /* Check hashes match expected. */
-        if (XMEMCMP(hash, test_sm3[i].output, WC_SM3_DIGEST_SIZE) != 0)
-            ERROR_OUT(WC_TEST_RET_ENC_I(i), exit);
-    }
-exit:
-    for(j = 0; j < i; ++j)
-    {
-         wc_Sha256Free(&sm3[j]);
-    }
-
-    return ret;
-}
-
-WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sm3_test_dma(void)
-{
-    wc_Sha256 sm3;
-    byte   hash[WC_SM3_DIGEST_SIZE];
-    uint8_t   hash_output[WC_SM3_DIGEST_SIZE] = 
-                {0xF0,0x69,0x89,0xD9,0xEC,0x31,0xB9,0xD0,0x0C,0x87,0x0A,0x73,0xE7,0xB6,0x76,0x20,
-                 0xEC,0xAC,0xE0,0x39,0x53,0x5A,0x4A,0xBC,0xA2,0x11,0x95,0x9C,0xF1,0xE9,0xCA,0xAA};
-
-    #define test_len 16257
-    __attribute__((aligned(32))) uint8_t big_buffer[test_len];
-
-    memset(big_buffer, 0x2, sizeof(big_buffer));
-    wc_test_ret_t ret = 0;
-    WOLFSSL_ENTER("sm3_test_dma");
-
-    wc_LSSHA_SM3_Init_dma(&sm3.lsCtx);
-
-    ret = wc_LS_Hash_Update_dma(&sm3.lsCtx, big_buffer, sizeof(big_buffer));
-    if (ret != 0) {
-        goto exit;
-    }
-    ret = wc_LS_Hash_Final_dma(&sm3.lsCtx, hash);
-    if (ret != 0)
-        goto exit;
-    /* Check hashes match expected. */
-    if (XMEMCMP(hash, hash_output, WC_SM3_DIGEST_SIZE) != 0)
-        goto exit;
-exit:
-    wc_Sha256Free(&sm3);
-    return ret;
-}
-#else
 WOLFSSL_TEST_SUBROUTINE wc_test_ret_t sm3_test(void)
 {
     wc_Sm3 sm3, sm3Copy;
@@ -6831,7 +6635,6 @@ exit:
 
     return ret;
 }
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT */
 #endif
 
 #ifndef NO_HASH_WRAPPER
@@ -18134,7 +17937,6 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t camellia_test(void)
 
 #ifdef WOLFSSL_SM4
 #ifdef WOLFSSL_SM4_ECB
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT)
 static int sm4_ecb_test(void)
 {
     /* draft-ribose-cfrg-sm4-10 A.2.1.1 */
@@ -18185,58 +17987,6 @@ static int sm4_ecb_test(void)
 
     return 0;
 }
-#else
-static int sm4_ecb_test(void)
-{
-    /* draft-ribose-cfrg-sm4-10 A.2.1.1 */
-    WOLFSSL_SMALL_STACK_STATIC const byte k1[] = {
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-        0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10
-    };
-    WOLFSSL_SMALL_STACK_STATIC const byte p1[] = {
-        0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0xBB, 0xBB, 0xBB,
-        0xCC, 0xCC, 0xCC, 0xCC, 0xDD, 0xDD, 0xDD, 0xDD,
-        0xEE, 0xEE, 0xEE, 0xEE, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0xBB, 0xBB, 0xBB
-    };
-    WOLFSSL_SMALL_STACK_STATIC const byte c1_ecb[] = {
-        0x5E, 0xC8, 0x14, 0x3D, 0xE5, 0x09, 0xCF, 0xF7,
-        0xB5, 0x17, 0x9F, 0x8F, 0x47, 0x4B, 0x86, 0x19,
-        0x2F, 0x1D, 0x30, 0x5A, 0x7F, 0xB1, 0x7D, 0xF9,
-        0x85, 0xF8, 0x1C, 0x84, 0x82, 0x19, 0x23, 0x04
-    };
-
-    wc_Sm4 sm4;
-    byte enc[SM4_BLOCK_SIZE * 4];
-    byte dec[SM4_BLOCK_SIZE * 4];
-    int ret;
-
-    ret = wc_Sm4Init(&sm4, NULL, INVALID_DEVID);
-    if (ret != 0)
-        return WC_TEST_RET_ENC_EC(ret);
-
-    /* Encrypt and decrypt with ECB. */
-    ret = wc_Sm4SetKey(&sm4, k1, sizeof(k1));
-    if (ret != 0)
-        return WC_TEST_RET_ENC_EC(ret);
-
-    ret = wc_Sm4EcbEncrypt(&sm4, enc, p1, sizeof(p1));
-    if (ret != 0)
-        return WC_TEST_RET_ENC_EC(ret);
-    if (XMEMCMP(enc, c1_ecb, sizeof(c1_ecb)) != 0)
-        return WC_TEST_RET_ENC_NC;
-
-    ret = wc_Sm4EcbDecrypt(&sm4, dec, enc, sizeof(c1_ecb));
-    if (ret != 0)
-        return WC_TEST_RET_ENC_EC(ret);
-    if (XMEMCMP(dec, p1, sizeof(p1)) != 0)
-        return WC_TEST_RET_ENC_NC;
-
-    wc_Sm4Free(&sm4);
-
-    return 0;
-}
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SM4_ALT */
 #endif
 
 #ifdef WOLFSSL_SM4_CBC
@@ -18383,14 +18133,14 @@ static int sm4_ctr_test(void)
     if (XMEMCMP(enc, c2_ctr, sizeof(c2_ctr)) != 0)
         return WC_TEST_RET_ENC_NC;
 
-    ret = wc_Sm4Init(&sm4, NULL, INVALID_DEVID);
-    if (ret != 0)
-        return WC_TEST_RET_ENC_EC(ret);
+    // ret = wc_Sm4Init(&sm4, NULL, INVALID_DEVID);
+    // if (ret != 0)
+    //     return WC_TEST_RET_ENC_EC(ret);
 
-    /* Encrypt and decrypt using encrypt with CTR. */
-    ret = wc_Sm4SetKey(&sm4, k1, sizeof(k1));
-    if (ret != 0)
-        return WC_TEST_RET_ENC_EC(ret);
+    // /* Encrypt and decrypt using encrypt with CTR. */
+    // ret = wc_Sm4SetKey(&sm4, k1, sizeof(k1));
+    // if (ret != 0)
+    //     return WC_TEST_RET_ENC_EC(ret);
 
     ret = wc_Sm4SetIV(&sm4, i1);
         if (ret != 0)

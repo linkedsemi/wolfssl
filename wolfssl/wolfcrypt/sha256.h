@@ -196,6 +196,11 @@ struct wc_Sha256 {
     psa_hash_operation_t psa_ctx;
 #elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
     LS_HASH_Context   lsCtx;
+    word32  digest[WC_SHA256_DIGEST_SIZE / sizeof(word32)];
+    ALIGN16 word32  buffer[WC_SHA256_BLOCK_SIZE  / sizeof(word32)];
+    word32  buffLen;   /* in bytes          */
+    word32  loLen;     /* length in bytes   */
+    word32  hiLen;     /* length in bytes   */
 #else
 #ifdef WC_64BIT_CPU
     /* alignment on digest and buffer speeds up ARMv8 crypto operations */

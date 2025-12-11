@@ -578,7 +578,7 @@ int ls_otbn_sign_hash(uint32_t curve, uint32_t curve_size, uint8_t *private_key,
         goto exit;
     }
 
-    if(HAL_OTBN_DMEM_Write(remote_random_addr, (uint32_t *)random, 32))
+    if(HAL_OTBN_DMEM_Write(remote_random_addr, (uint32_t *)random, curve_size))
     {
         err = WC_HW_E;
         goto exit;

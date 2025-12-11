@@ -285,7 +285,7 @@
         #include <posix/posix_types.h>
         #include <posix/pthread.h>
     #endif
-    #define max MAX
+    // #define max MAX
     #endif
 #elif defined(WOLFSSL_TELIT_M2MB)
 

@@ -13,7 +13,15 @@
 #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA224_SHA256_SM3_ALT)
     struct k_sem dma_sem;
     struct k_sem sha224_sha256_sm3_sem;
-    void LSSHA224_SHA256_SM3_IRQHandler(void);
+    void LSSHA224_SHA256_SM3_IRQHandler(void)
+    {
+        if(LSSHA->INTR_S & SHA_FSM_END_INTR_MASK)
+        {
+            LSSHA->INTR_C = LSSHA->INTR_S;
+            LSSHA->INTR_M = 0;
+            k_sem_give(&sha224_sha256_sm3_sem);
+        }
+    }
 
     void wc_LS_Hash_Init()
     {
@@ -196,16 +204,6 @@
             *digest++ = val;
         }
         return 0;
-    }
-
-    void LSSHA224_SHA256_SM3_IRQHandler(void)
-    {
-        if(LSSHA->INTR_S & SHA_FSM_END_INTR_MASK)
-        {
-            LSSHA->INTR_C = LSSHA->INTR_S;
-            LSSHA->INTR_M = 0;
-            k_sem_give(&sha224_sha256_sm3_sem);
-        }
     }
 
     static void sha224_sha256_sm3_dma_callback(const struct device *dev, void *user_data,

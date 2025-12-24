@@ -1314,6 +1314,7 @@ static int InitSha256(wc_Sha256* sha256)
         return wc_Sha256Final(sha256, hash);
     }
 
+#ifdef CONFIG_DMA
     int wc_InitSha256_ex_dma(wc_Sha256* sha256, void* heap, int devId)
     {
         if (sha256 == NULL)
@@ -1358,6 +1359,7 @@ static int InitSha256(wc_Sha256* sha256)
 
         return ret;
     }
+#endif /*CONFIG_DMA*/
 #elif defined(WOLFSSL_PPC32_ASM)
 
 extern void Transform_Sha256_Len(wc_Sha256* sha256, const byte* data,
@@ -2418,6 +2420,7 @@ static int Transform_Sha256(wc_Sha256* sha256, const byte* data)
         return ret;
     }
 
+#ifdef CONFIG_DMA
     int wc_InitSha224_ex_dma(wc_Sha224* sha224, void* heap, int devId)
     {
         if (sha224 == NULL)
@@ -2462,6 +2465,7 @@ static int Transform_Sha256(wc_Sha256* sha256, const byte* data)
 
         return ret;
     }
+#endif /*CONFIG_DMA*/
 #else
 
     #define NEED_SOFT_SHA224

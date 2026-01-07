@@ -3,6 +3,7 @@
 
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/types.h> /* for MATH_INT_T */
+#include <wolfssl/wolfcrypt/error-crypt.h> 
 #include "ls_hal_otbn.h"
 #include "ls_msp_otbn.h"
 #include "field_manipulate.h"

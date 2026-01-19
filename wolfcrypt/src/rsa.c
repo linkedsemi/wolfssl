@@ -56,6 +56,11 @@ RSA keys can be used to encrypt, decrypt, sign and verify data.
 #include <wolfssl/wolfcrypt/sp.h>
 #endif
 
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_OTBN_RSA_ALT
+#include "ls_hal_otbn.h"
+#include "ls_msp_otbn.h"
+#endif
+
 #if defined(WOLFSSL_LINUXKM) && !defined(WOLFSSL_SP_ASM)
     /* force off unneeded vector register save/restore. */
     #undef SAVE_VECTOR_REGISTERS
@@ -2404,6 +2409,131 @@ static int wc_RsaFunctionSync(const byte* in, word32 inLen, byte* out,
 
     return ret;
 }
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_RSA_ALT)
+#include <stdlib.h>
+
+int ls_rsa_modexp_decrypt(const uint8_t* in, uint32_t inLen, uint8_t* out,
+    uint32_t* outLen, uint8_t *key_d, const uint8_t* key_n, uint32_t d_size);
+int ls_rsa_modexp_encrypt(const uint8_t* in, uint32_t inLen, uint8_t* out,
+    uint32_t* outLen, uint8_t *exp, const uint8_t* key_n, uint32_t n_size);
+
+#define CACHE_ALIGN   32
+
+#ifndef ERROR_OUT
+#define ERROR_OUT(x) ret = (x); goto done
+#endif
+
+/* max key size of 4096 bits / 512 bytes */
+#define MAX_RSA_KEY 512
+
+static int wc_RsaFunctionSync(const byte* in, word32 inLen, byte* out,
+                          word32* outLen, int type, RsaKey* key, WC_RNG* rng)
+{
+    int ret;
+    byte*  keyBuf_N   = NULL;
+    byte*  keyBuf_D   = NULL;
+    word32 keyBufSz = 0;
+    byte*  inBuf   = NULL;
+    // uint8_t inBuf[MAX_XILINX_RSA_KEY];
+    (void)rng;
+    word32 keyLen;
+    keyLen = wc_RsaEncryptSize(key);
+    if (keyLen > *outLen) {
+        ERROR_OUT(RSA_BUFFER_E);
+    }
+
+    if (keyLen > MAX_RSA_KEY) {
+        WOLFSSL_MSG("RSA key size larger than supported");
+        ERROR_OUT(BAD_FUNC_ARG);
+    }
+    // if ((inBuf = (byte*)XMALLOC(RSA_MAX_NUMER_SIZE, key->heap, DYNAMIC_TYPE_KEY))
+    //         == NULL) {
+    //     ERROR_OUT(MEMORY_E);
+    // }
+    // if ((keyBuf_N = (byte*)XMALLOC(RSA_MAX_NUMER_SIZE, key->heap, DYNAMIC_TYPE_KEY))
+    //         == NULL) {
+    //     ERROR_OUT(MEMORY_E);
+    // }
+    // if ((keyBuf_D = (byte*)XMALLOC(RSA_MAX_NUMER_SIZE, key->heap, DYNAMIC_TYPE_KEY))
+    //         == NULL) {
+    //     ERROR_OUT(MEMORY_E);
+    // }
+    if((inBuf = aligned_alloc(CACHE_ALIGN, MAX_RSA_KEY)) == NULL) {
+        ERROR_OUT(MEMORY_E);
+    }
+    if((keyBuf_N = aligned_alloc(CACHE_ALIGN, MAX_RSA_KEY)) == NULL) {
+        ERROR_OUT(MEMORY_E);
+    }
+    if((keyBuf_D = aligned_alloc(CACHE_ALIGN, MAX_RSA_KEY)) == NULL) {
+        ERROR_OUT(MEMORY_E);
+    }
+
+    ForceZero(keyBuf_N, MAX_RSA_KEY);
+    ForceZero(keyBuf_D, MAX_RSA_KEY);
+    if ((ret = mp_to_unsigned_bin(&(key->n), keyBuf_N)) != MP_OKAY) {
+        ERROR_OUT(MP_TO_E);
+    }
+    XMEMCPY(inBuf, (byte*)in, inLen);
+    switch(type) {
+        case RSA_PRIVATE_DECRYPT:
+        case RSA_PRIVATE_ENCRYPT:
+            mp_unsigned_bin_size(&(key->d));
+            if ((mp_to_unsigned_bin(&(key->d), keyBuf_D))
+                    != MP_OKAY) {
+                ERROR_OUT(MP_TO_E);
+            }
+            mp_reverse(keyBuf_D, keyLen);
+            mp_reverse(keyBuf_N, keyLen);
+            mp_reverse(inBuf, keyLen);
+            ls_rsa_modexp_decrypt(inBuf, inLen, out, outLen, keyBuf_D, keyBuf_N, keyLen*8);
+            mp_reverse(out, keyLen);
+            break;
+
+        case RSA_PUBLIC_DECRYPT:
+        case RSA_PUBLIC_ENCRYPT:
+            word32 exp = 0;
+            word32 eSz = mp_unsigned_bin_size(&(key->e));
+            if ((mp_to_unsigned_bin(&(key->e), (byte*)&exp +
+                            (sizeof(word32) - eSz))) != MP_OKAY) {
+                ERROR_OUT(MP_TO_E);
+            }
+            keyBufSz = sizeof(word32);
+            XMEMCPY(keyBuf_D, (byte*)&exp, keyBufSz);
+            mp_reverse(keyBuf_D, 4);
+            mp_reverse(keyBuf_N, keyLen);
+            mp_reverse(inBuf, keyLen);
+            ls_rsa_modexp_encrypt(inBuf, inLen, out, outLen, keyBuf_D, keyBuf_N, keyLen*8);
+            mp_reverse(out, keyLen);
+            break;
+
+        default:
+            ERROR_OUT(RSA_WRONG_TYPE_E);
+    }
+done:    /* clear key data and free buffer */
+    if (keyBuf_N != NULL) {
+        ForceZero(keyBuf_N, DYNAMIC_TYPE_KEY);
+        free(keyBuf_N);
+        // XFREE(keyBuf_N, key->heap, DYNAMIC_TYPE_KEY);
+    }
+    if(keyBuf_D != NULL)
+    {
+        ForceZero(keyBuf_D, DYNAMIC_TYPE_KEY);
+        free(keyBuf_D);
+        // XFREE(keyBuf_D, key->heap, DYNAMIC_TYPE_KEY);
+    }
+    if(inBuf != NULL)
+    {
+        free(inBuf);
+        // XFREE(inBuf, key->heap, DYNAMIC_TYPE_KEY);
+    }
+
+    if(ret == MEMORY_E)
+    {
+        WOLFSSL_MSG("RSA memory allocation failed");
+    }
+    return ret;
+}
+
 #else
 #ifndef WOLF_CRYPTO_CB_ONLY_RSA
 #ifdef WOLFSSL_HAVE_SP_RSA

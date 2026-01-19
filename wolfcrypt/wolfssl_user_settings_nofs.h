@@ -48,7 +48,7 @@ extern "C" {
 
 #define NO_HMAC
 #define WOLFSSL_AEAD_ONLY
-#define NO_RSA
+// #define NO_RSA
 #define NO_DH
 
 #undef  WOLFSSL_SM3
@@ -183,9 +183,9 @@ extern "C" {
 #undef WOLFSSL_TLS13
 
 #undef USE_CERT_BUFFERS_1024
-#define USE_CERT_BUFFERS_1024
-
 #undef USE_CERT_BUFFERS_2048
+#undef USE_CERT_BUFFERS_3072
+#define USE_CERT_BUFFERS_4096
 
 #define WOLFMEM_DEF_BUCKETS 20
 
@@ -203,6 +203,13 @@ extern "C" {
 
 #undef NO_WOLFSSL_SHA256_INTERLEAVE
 #define NO_WOLFSSL_SHA256_INTERLEAVE
+
+/* test config*/
+// #define NO_AES
+// #define NO_SIG_WRAPPER
+
+#undef FP_MAX_BITS
+#define FP_MAX_BITS 16384
 
 #define DEBUG_WOLFSSL
 #ifdef __cplusplus

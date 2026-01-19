@@ -183,7 +183,7 @@ int wolfCrypt_Init(void)
         wc_LS_Hash_sha512_Init();
     #endif
 
-    #if defined(HAVE_ECC) && defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ECC_ALT)
+    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ENABLE)
         wc_LS_Otbn_Module_Init();
     #endif
 

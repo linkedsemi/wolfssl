@@ -141,6 +141,8 @@ if(CONFIG_WOLFSSL)
     zephyr_library_sources(${ZEPHYR_CURRENT_MODULE_DIR}/wolfcrypt/src/sm4.c)
   endif()
     zephyr_library_sources(${ZEPHYR_CURRENT_MODULE_DIR}/wolfcrypt/src/port/linkedsemi/ecc.c)
+    zephyr_library_sources(${ZEPHYR_CURRENT_MODULE_DIR}/wolfcrypt/src/port/linkedsemi/rsa_modexp.c)
+    zephyr_library_sources(${ZEPHYR_CURRENT_MODULE_DIR}/wolfcrypt/src/port/linkedsemi/otbn_config.c)
     if(CONFIG_WOLFCRYPT_ARMASM)
       # tested with board: "qemu_kvm_arm64"
       zephyr_library_sources(${ZEPHYR_CURRENT_MODULE_DIR}/wolfcrypt/src/port/arm/armv8-aes.c)

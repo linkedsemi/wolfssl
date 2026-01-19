@@ -4,37 +4,19 @@
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/types.h> /* for MATH_INT_T */
 #include <wolfssl/wolfcrypt/error-crypt.h> 
+#include <wolfssl/wolfcrypt/port/linkedsemi/ls-otbn.h>
 #include "ls_hal_otbn.h"
 #include "ls_msp_otbn.h"
 #include "field_manipulate.h"
-#include "reg_sysc_sec_cpu.h"
 #include "core_rv32.h"
-#include "platform.h"
 #include "co_math.h"
-#include "qsh.h"
 #if defined(WOLFSSL_ZEPHYR)
 #include <zephyr/irq.h>
 #include <zephyr/kernel.h>
 #endif
 #include "ls_otbn_ecc.h"
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_DELEGATION_CLIENT)
-#define CACHE_ALIGN_32 __attribute__((aligned(32)))
-#else
-#define CACHE_ALIGN_32
-#endif
-struct current_otbn
-{
-    enum ecc_curve_ids cur_curve;
-    ecc_set_type ecc_type;
-    wolfSSL_Mutex doneLock;
-
-#if defined(WOLFSSL_ZEPHYR)
-    struct k_sem wait_complete;
-#endif
-
-}otbn_info;
-void wc_ls_otbn_cmd(enum HAL_OTBN_CMD cmd);
+extern struct current_otbn otbn_info;
 int wc_ecc_get_s_covers_n(struct ecc_key* key,mp_int * s);
 int wc_sm2_get_digest(struct ecc_key* key,const uint8_t *input_hash, const uint16_t hashSz, uint8_t *digest);
 void xor_mult_bit(unsigned char *result, const unsigned char *a, const unsigned char *b, uint16_t num_byte);
@@ -59,52 +41,46 @@ int ls_otbn_fireware_init(int curve_id)
         return WC_HW_E;
     }
 
-    if(otbn_info.cur_curve == curve_id)
+
+    HAL_OTBN_Checksum_Clear(); 
+    switch(curve_id)
     {
-        /* no to do*/
-    }else
-    {
-        HAL_OTBN_Checksum_Clear(); 
-        otbn_info.cur_curve = curve_id;
-        switch(curve_id)
-        {
-            case ECC_SECP256R1:
-                imem_size = LS_OTBN_ECDSA_P256_IMEM_SIZE;
-                dmem_size = LS_OTBN_ECDSA_P256_DMEM_SIZE;
-                dmem_end = LS_OTBN_ECDSA_P256_DMEM_END;
-                imem_image = (uint32_t *)p256_imem;
-                dmem_image = (uint32_t *)p256_dmem;
-                // check_sum = p256_checksum; 
-                break;
-            case ECC_SECP384R1:
-                imem_size = LS_OTBN_ECDSA_P384_IMEM_SIZE;
-                dmem_size = LS_OTBN_ECDSA_P384_DMEM_SIZE;
-                dmem_end = LS_OTBN_ECDSA_P384_DMEM_END;
-                imem_image = (uint32_t *)p384_imem;
-                dmem_image = (uint32_t *)p384_dmem;
-                // check_sum = p384_checksum;
-                break;
-            case ECC_SM2P256V1:
-                imem_size = LS_OTBN_SM2_IMEM_SIZE;
-                dmem_size = LS_OTBN_SM2_DMEM_SIZE;
-                dmem_end = LS_OTBN_SM2_DMEM_END;
-                imem_image = (uint32_t *)sm2_imem;
-                dmem_image = (uint32_t *)sm2_dmem;
-                // check_sum = sm2_checksum;
-                break;
-            default:
-                return WC_HW_E;
-        }
-        HAL_OTBN_DMEM_Set(0, 0, dmem_end);
-        HAL_OTBN_IMEM_Write(0, imem_image, imem_size);
-        HAL_OTBN_DMEM_Write(0, dmem_image, dmem_size);
-        // //printf("HAL_OTBN_Checksum_Get() = 0x%x\r\n",HAL_OTBN_Checksum_Get());
-        // if(HAL_OTBN_Checksum_Get()!= check_sum)
-        // {
-        //     while(1);
-        //     return WC_HW_E;
-        // }
+        case ECC_SECP256R1:
+            imem_size = LS_OTBN_ECDSA_P256_IMEM_SIZE;
+            dmem_size = LS_OTBN_ECDSA_P256_DMEM_SIZE;
+            dmem_end = LS_OTBN_ECDSA_P256_DMEM_END;
+            imem_image = (uint32_t *)p256_imem;
+            dmem_image = (uint32_t *)p256_dmem;
+            // check_sum = p256_checksum; 
+            break;
+        case ECC_SECP384R1:
+            imem_size = LS_OTBN_ECDSA_P384_IMEM_SIZE;
+            dmem_size = LS_OTBN_ECDSA_P384_DMEM_SIZE;
+            dmem_end = LS_OTBN_ECDSA_P384_DMEM_END;
+            imem_image = (uint32_t *)p384_imem;
+            dmem_image = (uint32_t *)p384_dmem;
+            // check_sum = p384_checksum;
+            break;
+        case ECC_SM2P256V1:
+            imem_size = LS_OTBN_SM2_IMEM_SIZE;
+            dmem_size = LS_OTBN_SM2_DMEM_SIZE;
+            dmem_end = LS_OTBN_SM2_DMEM_END;
+            imem_image = (uint32_t *)sm2_imem;
+            dmem_image = (uint32_t *)sm2_dmem;
+            // check_sum = sm2_checksum;
+            break;
+        default:
+            return WC_HW_E;
     }
+    HAL_OTBN_DMEM_Set(0, 0, dmem_end);
+    HAL_OTBN_IMEM_Write(0, imem_image, imem_size);
+    HAL_OTBN_DMEM_Write(0, dmem_image, dmem_size);
+    // //printf("HAL_OTBN_Checksum_Get() = 0x%x\r\n",HAL_OTBN_Checksum_Get());
+    // if(HAL_OTBN_Checksum_Get()!= check_sum)
+    // {
+    //     while(1);
+    //     return WC_HW_E;
+    // }
 
     return 0;
 }
@@ -349,82 +325,6 @@ void xor_mult_bit(unsigned char *result, const unsigned char *a, const unsigned 
         result[i] = a[i] ^ b[i];
     }
 }
-#if defined(WOLFSSL_ZEPHYR)
-void wc_LS_OTBN_IRQHandler()
-{
-    if (LSOTBN->INTR_STATE)
-    {
-        LSOTBN->INTR_STATE = OTBN_INTR_STATE_DONE_MASK;
-        k_sem_give(&otbn_info.wait_complete);
-
-    }
-}
-#endif
-
-extern void HAL_OTBN_SYSC_IRQHandler(void);
-extern void HAL_LSOTBN_MSP_Init(void);
-extern void HAL_LSOTBN_MSP_DeInit(void);
-void wc_LS_Otbn_Module_Init(void)
-{
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_DELEGATION_CLIENT)
-    return;
-#endif
-    // Supports both Zephyr and bare-metal operation
-#if defined(WOLFSSL_ZEPHYR)
-    uint32_t EDN_URND_BUS_IN = 0;
-    REG_FIELD_WR(SYSC_SEC_CPU->INTR_CTRL_INTR_MSK, SYSC_SEC_CPU_I_EDN_URND_REQ, 0);
-    SYSC_SEC_CPU->PD_CPU_CLKG[1] = SYSC_SEC_CPU_CLKG_CLR_OTBN_MASK;
-    SYSC_SEC_CPU->PD_CPU_SRST[1] = SYSC_SEC_CPU_SRST_CLR_OTBN_MASK;
-    SYSC_SEC_CPU->PD_CPU_SRST[1] = SYSC_SEC_CPU_SRST_SET_OTBN_MASK;
-    SYSC_SEC_CPU->PD_CPU_CLKG[1] = SYSC_SEC_CPU_CLKG_SET_OTBN_MASK;
-    for (uint8_t i = 0; i < 16; i++)
-    {
-        while (!REG_FIELD_RD(SYSC_SEC_CPU->OTBN_INTR_RAW, SYSC_SEC_CPU_I_EDN_URND_REQ)) ;
-        SYSC_SEC_CPU->EDN_URND_BUS = ++EDN_URND_BUS_IN;
-        REG_FIELD_WR(SYSC_SEC_CPU->OTBN_CTRL2, SYSC_SEC_CPU_EDN_URND_ACK, 1);
-        REG_FIELD_WR(SYSC_SEC_CPU->OTBN_CTRL2, SYSC_SEC_CPU_EDN_URND_ACK, 0);
-        SYSC_SEC_CPU->INTR_CLR_MSK = SYSC_SEC_CPU_I_EDN_URND_REQ_MASK;
-    }
-    SYSC_SEC_CPU->INTR_CLR_MSK = FIELD_BUILD(SYSC_SEC_CPU_I_EDN_RND_REQ, 1) |
-                            FIELD_BUILD(SYSC_SEC_CPU_I_EDN_URND_REQ, 1) |
-                            FIELD_BUILD(SYSC_SEC_CPU_I_OTBN_OTP_REQ, 1);
-    SYSC_SEC_CPU->INTR_CTRL_INTR_MSK = FIELD_BUILD(SYSC_SEC_CPU_I_EDN_RND_REQ, 1) |
-                              FIELD_BUILD(SYSC_SEC_CPU_I_EDN_URND_REQ, 1) |
-                              FIELD_BUILD(SYSC_SEC_CPU_I_OTBN_OTP_REQ, 1);
-
-
-    IRQ_CONNECT(OTBN_SYSC_IRQN, 3, HAL_OTBN_SYSC_IRQHandler,NULL, 0);
-    irq_enable(OTBN_SYSC_IRQN);
-    IRQ_CONNECT(OBTN_IRQN, 3, wc_LS_OTBN_IRQHandler,NULL, 0);
-    irq_enable(OBTN_IRQN);
-
-    k_sem_init(&otbn_info.wait_complete,0,1);
-#else
-    HAL_LSOTBN_MSP_Init();
-#endif
-    wc_InitMutex(&otbn_info.doneLock);
-
-}
-
-void wc_LS_Otbn_Module_DeInit(void)
-{
-    HAL_LSOTBN_MSP_DeInit();
-}
-
-void wc_ls_otbn_cmd(enum HAL_OTBN_CMD cmd)
-{
-#if defined(WOLFSSL_ZEPHYR)
-    if (LSOTBN->INTR_STATE)
-        LSOTBN->INTR_STATE = OTBN_INTR_STATE_DONE_MASK;
-    LSOTBN->INTR_ENABLE = OTBN_INTR_ENABLE_EN_MASK;
-    LSOTBN->CMD = cmd;
-    (void)k_sem_take(&otbn_info.wait_complete, K_FOREVER);
-#else
-    HAL_OTBN_CMD_Write_Polling(cmd);
-#endif
-
-}
-
 
 #if !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_DELEGATION_CLIENT)
 int ls_otbn_get_key_pair(uint32_t curve, uint32_t curve_size, uint8_t *private_key, uint8_t *public_x, uint8_t *public_y)

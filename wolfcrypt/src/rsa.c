@@ -2429,11 +2429,12 @@ int ls_rsa_modexp_encrypt(const uint8_t* in, uint32_t inLen, uint8_t* out,
 static int wc_RsaFunctionSync(const byte* in, word32 inLen, byte* out,
                           word32* outLen, int type, RsaKey* key, WC_RNG* rng)
 {
-    int ret;
+    int ret = 0;
     byte*  keyBuf_N   = NULL;
     byte*  keyBuf_D   = NULL;
     word32 keyBufSz = 0;
     byte*  inBuf   = NULL;
+    byte*  outBuf   = NULL;
     // uint8_t inBuf[MAX_XILINX_RSA_KEY];
     (void)rng;
     word32 keyLen;
@@ -2467,7 +2468,9 @@ static int wc_RsaFunctionSync(const byte* in, word32 inLen, byte* out,
     if((keyBuf_D = aligned_alloc(CACHE_ALIGN, MAX_RSA_KEY)) == NULL) {
         ERROR_OUT(MEMORY_E);
     }
-
+    if((outBuf = aligned_alloc(CACHE_ALIGN, MAX_RSA_KEY)) == NULL) {
+        ERROR_OUT(MEMORY_E);
+    }
     ForceZero(keyBuf_N, MAX_RSA_KEY);
     ForceZero(keyBuf_D, MAX_RSA_KEY);
     if ((ret = mp_to_unsigned_bin(&(key->n), keyBuf_N)) != MP_OKAY) {
@@ -2485,8 +2488,8 @@ static int wc_RsaFunctionSync(const byte* in, word32 inLen, byte* out,
             mp_reverse(keyBuf_D, keyLen);
             mp_reverse(keyBuf_N, keyLen);
             mp_reverse(inBuf, keyLen);
-            ls_rsa_modexp_decrypt(inBuf, inLen, out, outLen, keyBuf_D, keyBuf_N, keyLen*8);
-            mp_reverse(out, keyLen);
+            ls_rsa_modexp_decrypt(inBuf, inLen, outBuf, outLen, keyBuf_D, keyBuf_N, keyLen*8);
+            mp_reverse(outBuf, keyLen);
             break;
 
         case RSA_PUBLIC_DECRYPT:
@@ -2502,12 +2505,16 @@ static int wc_RsaFunctionSync(const byte* in, word32 inLen, byte* out,
             mp_reverse(keyBuf_D, 4);
             mp_reverse(keyBuf_N, keyLen);
             mp_reverse(inBuf, keyLen);
-            ls_rsa_modexp_encrypt(inBuf, inLen, out, outLen, keyBuf_D, keyBuf_N, keyLen*8);
-            mp_reverse(out, keyLen);
+            ls_rsa_modexp_encrypt(inBuf, inLen, outBuf, outLen, keyBuf_D, keyBuf_N, keyLen*8);
+            mp_reverse(outBuf, keyLen);
             break;
 
         default:
             ERROR_OUT(RSA_WRONG_TYPE_E);
+    }
+    if(ret == 0)
+    {
+        memcpy(out,outBuf,*outLen);
     }
 done:    /* clear key data and free buffer */
     if (keyBuf_N != NULL) {
@@ -2525,6 +2532,10 @@ done:    /* clear key data and free buffer */
     {
         free(inBuf);
         // XFREE(inBuf, key->heap, DYNAMIC_TYPE_KEY);
+    }
+    if(outBuf != NULL)
+    {
+        free(outBuf);
     }
 
     if(ret == MEMORY_E)
@@ -3238,7 +3249,9 @@ int cc310_RsaSSL_Verify(const byte* in, word32 inLen, byte* sig,
     return ret;
 }
 #endif /* WOLFSSL_CRYPTOCELL */
-
+#include "zephyr/kernel.h"
+uint64_t time_stamp;
+uint32_t milliseconds_spent;
 #ifndef WOLF_CRYPTO_CB_ONLY_RSA
 #if !defined(WOLFSSL_RSA_VERIFY_ONLY) && !defined(TEST_UNPAD_CONSTANT_TIME) && \
     !defined(NO_RSA_BOUNDS_CHECK)
@@ -3368,7 +3381,11 @@ static int wc_RsaFunction_ex(const byte* in, word32 inLen, byte* out,
     else
 #endif
     {
+        milliseconds_spent = 0;
+        time_stamp = k_uptime_get();
         ret = wc_RsaFunctionSync(in, inLen, out, outLen, type, key, rng);
+        milliseconds_spent += k_uptime_delta(&time_stamp);
+        printf("_____________________________________ %d ms\n",milliseconds_spent);
     }
 
     RESTORE_VECTOR_REGISTERS();

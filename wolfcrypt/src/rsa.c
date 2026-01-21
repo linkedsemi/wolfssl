@@ -3249,9 +3249,7 @@ int cc310_RsaSSL_Verify(const byte* in, word32 inLen, byte* sig,
     return ret;
 }
 #endif /* WOLFSSL_CRYPTOCELL */
-#include "zephyr/kernel.h"
-uint64_t time_stamp;
-uint32_t milliseconds_spent;
+
 #ifndef WOLF_CRYPTO_CB_ONLY_RSA
 #if !defined(WOLFSSL_RSA_VERIFY_ONLY) && !defined(TEST_UNPAD_CONSTANT_TIME) && \
     !defined(NO_RSA_BOUNDS_CHECK)
@@ -3381,11 +3379,7 @@ static int wc_RsaFunction_ex(const byte* in, word32 inLen, byte* out,
     else
 #endif
     {
-        milliseconds_spent = 0;
-        time_stamp = k_uptime_get();
         ret = wc_RsaFunctionSync(in, inLen, out, outLen, type, key, rng);
-        milliseconds_spent += k_uptime_delta(&time_stamp);
-        printf("_____________________________________ %d ms\n",milliseconds_spent);
     }
 
     RESTORE_VECTOR_REGISTERS();

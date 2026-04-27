@@ -11811,6 +11811,7 @@ int wc_AesInit(Aes* aes, void* heap, int devId)
 
 #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
     HAL_LSCRYPT_Init();
+    wc_InitMutex(&aesLock);
 #endif
 
     return ret;

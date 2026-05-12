@@ -48,7 +48,7 @@ extern "C" {
 
 #define NO_HMAC
 #define WOLFSSL_AEAD_ONLY
-// #define NO_RSA
+#define NO_RSA
 #define NO_DH
 
 #undef  WOLFSSL_SM3

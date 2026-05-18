@@ -1011,6 +1011,16 @@ block cipher mechanism that uses n-bit binary string parameter key with 128-bits
             0<<CRYPT_CRYSEL_POS|(dmaen?1:0)<<CRYPT_DMAEN_POS|(fifoen?1:0)<<CRYPT_FIFOODR_POS|(fifoen?1:0)<<CRYPT_FIFOEN_POS|type<<CRYPT_TYPE_POS|(ie?1:0)<<CRYPT_IE_POS|(iv_en?1:0)<<CRYPT_IVREN_POS|mode<<CRYPT_MODE_POS|(enc?1:0)<<CRYPT_ENCS_POS|keysize<<CRYPT_AESKS_POS);
     }
     static wolfSSL_Mutex aesLock;
+    void wc_LS_Crypt_Init(void)
+    {
+        wc_InitMutex(&aesLock);
+        SYSC_SEC_CPU->PD_CPU_CLKG[1] = SYSC_SEC_CPU_CLKG_CLR_CRYPT_MASK;
+        SYSC_SEC_CPU->PD_CPU_SRST[1] = SYSC_SEC_CPU_SRST_CLR_CRYPT_MASK;
+        SYSC_SEC_CPU->PD_CPU_SRST[1] = SYSC_SEC_CPU_SRST_SET_CRYPT_MASK;
+        SYSC_SEC_CPU->PD_CPU_CLKG[1] = SYSC_SEC_CPU_CLKG_SET_CRYPT_MASK;
+        IRQ_CONNECT(CALC_CRYPT_IRQN, 3, HAL_LSCRYPT_IRQHandler, NULL, 0);
+        irq_enable(CALC_CRYPT_IRQN);
+    }
 #else
 
     /* using wolfCrypt software implementation */
@@ -11807,11 +11817,6 @@ int wc_AesInit(Aes* aes, void* heap, int devId)
 #ifdef WC_DEBUG_CIPHER_LIFECYCLE
     if (ret == 0)
         ret = wc_debug_CipherLifecycleInit(&aes->CipherLifecycleTag, aes->heap);
-#endif
-
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
-    HAL_LSCRYPT_Init();
-    wc_InitMutex(&aesLock);
 #endif
 
     return ret;

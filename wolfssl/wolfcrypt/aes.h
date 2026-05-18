@@ -159,7 +159,10 @@ WOLFSSL_LOCAL void GHASH(Gcm* gcm, const byte* a, word32 aSz, const byte* c,
     #include <ls_hal_crypt.h>
     #include <reg_crypt_type.h>
     #include <field_manipulate.h>
+    #include <reg_sysc_sec_cpu.h>
+    #include <qsh.h>
     typedef struct Aes Aes;
+    void wc_LS_Crypt_Init(void);
 #endif
 
 

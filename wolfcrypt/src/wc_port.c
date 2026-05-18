@@ -44,6 +44,11 @@
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-otbn-ecc.h>
 #endif
 
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+    #include <wolfssl/wolfcrypt/aes.h>
+#endif
+
+
 #ifdef FREESCALE_LTC_TFM
     #include <wolfssl/wolfcrypt/port/nxp/ksdk_port.h>
 #endif
@@ -185,6 +190,10 @@ int wolfCrypt_Init(void)
 
     #if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ENABLE)
         wc_LS_Otbn_Module_Init();
+    #endif
+
+    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+        wc_LS_Crypt_Init();
     #endif
 
     #if defined(__aarch64__) && defined(WOLFSSL_ARMASM_BARRIER_DETECT)

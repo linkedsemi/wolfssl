@@ -5751,8 +5751,8 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         __ASSERT_NO_MSG(sz % 16 == 0);
 
         const unsigned char *end_addr = in + sz;
-        const uint8_t *input = in;
-        uint8_t *output = out;
+        uint32_t *input = (uint32_t *)in;
+        uint32_t *output = (uint32_t *)out;
         uint8_t ret = 0;
         uint8_t keysize = 0;
         uint32_t keylen = 0;
@@ -5803,20 +5803,20 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         LSCRYPT->IVR2 = __builtin_bswap32(*u32_iv++);
         LSCRYPT->IVR1 = __builtin_bswap32(*u32_iv++);
         LSCRYPT->IVR0 = __builtin_bswap32(*u32_iv++);
-        while(input < end_addr)
+        while(input < (uint32_t*)end_addr)
         {
-            LSCRYPT->DATA3 = __builtin_bswap32(UNALIGNED_GET((uint32_t *)input)); input += 4;
-            LSCRYPT->DATA2 = __builtin_bswap32(UNALIGNED_GET((uint32_t *)input)); input += 4;
-            LSCRYPT->DATA1 = __builtin_bswap32(UNALIGNED_GET((uint32_t *)input)); input += 4;
-            LSCRYPT->DATA0 = __builtin_bswap32(UNALIGNED_GET((uint32_t *)input)); input += 4;
+            LSCRYPT->DATA3 = __builtin_bswap32(*input++);
+            LSCRYPT->DATA2 = __builtin_bswap32(*input++);
+            LSCRYPT->DATA1 = __builtin_bswap32(*input++);
+            LSCRYPT->DATA0 = __builtin_bswap32(*input++);
             REG_FIELD_WR(LSCRYPT->CR, CRYPT_GO, 1);
             while (REG_FIELD_RD(LSCRYPT->SR, CRYPT_AESRIF) == 0);
             LSCRYPT->CR &= ~CRYPT_IVREN_MASK;
             LSCRYPT->ICFR = CRYPT_AESIF_MASK;
-            UNALIGNED_PUT(__builtin_bswap32(LSCRYPT->RES3), (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(__builtin_bswap32(LSCRYPT->RES2), (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(__builtin_bswap32(LSCRYPT->RES1), (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(__builtin_bswap32(LSCRYPT->RES0), (uint32_t *)output); output += 4;
+            *output++ = __builtin_bswap32(LSCRYPT->RES3);
+            *output++ = __builtin_bswap32(LSCRYPT->RES2);
+            *output++ = __builtin_bswap32(LSCRYPT->RES1);
+            *output++ = __builtin_bswap32(LSCRYPT->RES0);
         }
         XMEMCPY(aes->reg, out, WC_AES_BLOCK_SIZE);
         wc_UnLockMutex(&aesLock);
@@ -5831,8 +5831,8 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         __ASSERT_NO_MSG(sz % 16 == 0);
 
         const unsigned char * end_addr = in + sz;
-        const uint8_t *input = in;
-        uint8_t *output = out;
+        uint32_t *input = (uint32_t *)in;
+        uint32_t *output = (uint32_t *)out;
         uint8_t ret = 0;
         uint8_t keysize = 0;
         uint32_t keylen = 0;
@@ -5883,20 +5883,20 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         LSCRYPT->IVR2 = __builtin_bswap32(*u32_iv++);
         LSCRYPT->IVR1 = __builtin_bswap32(*u32_iv++);
         LSCRYPT->IVR0 = __builtin_bswap32(*u32_iv++);
-        while(input < end_addr)
+        while(input < (uint32_t *)end_addr)
         {
-            LSCRYPT->DATA3 = __builtin_bswap32(UNALIGNED_GET((uint32_t *)input)); input += 4;
-            LSCRYPT->DATA2 = __builtin_bswap32(UNALIGNED_GET((uint32_t *)input)); input += 4;
-            LSCRYPT->DATA1 = __builtin_bswap32(UNALIGNED_GET((uint32_t *)input)); input += 4;
-            LSCRYPT->DATA0 = __builtin_bswap32(UNALIGNED_GET((uint32_t *)input)); input += 4;
+            LSCRYPT->DATA3 = __builtin_bswap32(*input++);
+            LSCRYPT->DATA2 = __builtin_bswap32(*input++);
+            LSCRYPT->DATA1 = __builtin_bswap32(*input++);
+            LSCRYPT->DATA0 = __builtin_bswap32(*input++);
             REG_FIELD_WR(LSCRYPT->CR, CRYPT_GO, 1);
             while (REG_FIELD_RD(LSCRYPT->SR, CRYPT_AESRIF) == 0);
             LSCRYPT->CR &= ~CRYPT_IVREN_MASK;
             LSCRYPT->ICFR = CRYPT_AESIF_MASK;
-            UNALIGNED_PUT(__builtin_bswap32(LSCRYPT->RES3), (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(__builtin_bswap32(LSCRYPT->RES2), (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(__builtin_bswap32(LSCRYPT->RES1), (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(__builtin_bswap32(LSCRYPT->RES0), (uint32_t *)output); output += 4;
+            *output++ = __builtin_bswap32(LSCRYPT->RES3);
+            *output++ = __builtin_bswap32(LSCRYPT->RES2);
+            *output++ = __builtin_bswap32(LSCRYPT->RES1);
+            *output++ = __builtin_bswap32(LSCRYPT->RES0);
         }
         XMEMCPY(aes->reg, in, WC_AES_BLOCK_SIZE);
         wc_UnLockMutex(&aesLock);
@@ -12079,8 +12079,8 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
         __ASSERT_NO_MSG(sz % AES_BLOCK_SIZE == 0);
 
         const unsigned char * end_addr = in + sz;
-        const uint8_t *input = in;
-        uint8_t *output = out;
+        uint32_t *input = (uint32_t *)in;
+        uint32_t *output = (uint32_t *)out;
         uint8_t ret = 0;
         uint8_t keysize = 0;
         uint32_t keylen = 0;
@@ -12127,31 +12127,31 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
 
         aes_config(false, true, false, false, false, byte_swap, ecb, keysize);
 
-        LSCRYPT->DATA3 = UNALIGNED_GET((uint32_t *)input); input += 4;
-        LSCRYPT->DATA2 = UNALIGNED_GET((uint32_t *)input); input += 4;
-        LSCRYPT->DATA1 = UNALIGNED_GET((uint32_t *)input); input += 4;
-        LSCRYPT->DATA0 = UNALIGNED_GET((uint32_t *)input); input += 4;
+        LSCRYPT->DATA3 = *input++;
+        LSCRYPT->DATA2 = *input++;
+        LSCRYPT->DATA1 = *input++;
+        LSCRYPT->DATA0 = *input++;
         REG_FIELD_WR(LSCRYPT->CR,CRYPT_GO,1);
-        while(input < end_addr)
+        while(input < (uint32_t*)end_addr)
         {
-            LSCRYPT->DATA3 = UNALIGNED_GET((uint32_t *)input); input += 4;
-            LSCRYPT->DATA2 = UNALIGNED_GET((uint32_t *)input); input += 4;
-            LSCRYPT->DATA1 = UNALIGNED_GET((uint32_t *)input); input += 4;
-            LSCRYPT->DATA0 = UNALIGNED_GET((uint32_t *)input); input += 4;
+            LSCRYPT->DATA3 = *input++;
+            LSCRYPT->DATA2 = *input++;
+            LSCRYPT->DATA1 = *input++;
+            LSCRYPT->DATA0 = *input++;
             while (REG_FIELD_RD(LSCRYPT->SR, CRYPT_AESRIF) == 0);
             LSCRYPT->ICFR = CRYPT_AESIF_MASK;
-            UNALIGNED_PUT(LSCRYPT->RES3, (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(LSCRYPT->RES2, (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(LSCRYPT->RES1, (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(LSCRYPT->RES0, (uint32_t *)output); output += 4;
+            *output++ = LSCRYPT->RES3;
+            *output++ = LSCRYPT->RES2;
+            *output++ = LSCRYPT->RES1;
+            *output++ = LSCRYPT->RES0;
             REG_FIELD_WR(LSCRYPT->CR,CRYPT_GO,1);
         }
         while (REG_FIELD_RD(LSCRYPT->SR, CRYPT_AESRIF) == 0);
         LSCRYPT->ICFR = CRYPT_AESIF_MASK;
-        UNALIGNED_PUT(LSCRYPT->RES3, (uint32_t *)output); output += 4;
-        UNALIGNED_PUT(LSCRYPT->RES2, (uint32_t *)output); output += 4;
-        UNALIGNED_PUT(LSCRYPT->RES1, (uint32_t *)output); output += 4;
-        UNALIGNED_PUT(LSCRYPT->RES0, (uint32_t *)output); output += 4;
+        *output++ = LSCRYPT->RES3;
+        *output++ = LSCRYPT->RES2;
+        *output++ = LSCRYPT->RES1;
+        *output++ = LSCRYPT->RES0;
         wc_UnLockMutex(&aesLock);
         return 0;
     }
@@ -12164,8 +12164,8 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
         __ASSERT_NO_MSG(sz % AES_BLOCK_SIZE == 0);
 
         const unsigned char * end_addr = in + sz;
-        const uint8_t *input = in;
-        uint8_t *output = out;
+        uint32_t *input = (uint32_t *)in;
+        uint32_t *output = (uint32_t *)out;
         uint8_t ret = 0;
         uint8_t keysize = 0;
         uint32_t keylen = 0;
@@ -12212,31 +12212,31 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
 
         aes_config(false, false, false, false, false, byte_swap, ecb, keysize);
 
-        LSCRYPT->DATA3 = UNALIGNED_GET((uint32_t *)input); input += 4;
-        LSCRYPT->DATA2 = UNALIGNED_GET((uint32_t *)input); input += 4;
-        LSCRYPT->DATA1 = UNALIGNED_GET((uint32_t *)input); input += 4;
-        LSCRYPT->DATA0 = UNALIGNED_GET((uint32_t *)input); input += 4;
+        LSCRYPT->DATA3 = *input++;
+        LSCRYPT->DATA2 = *input++;
+        LSCRYPT->DATA1 = *input++;
+        LSCRYPT->DATA0 = *input++;
         REG_FIELD_WR(LSCRYPT->CR,CRYPT_GO,1);
-        while(input < end_addr)
+        while(input < (uint32_t*)end_addr)
         {
-            LSCRYPT->DATA3 = UNALIGNED_GET((uint32_t *)input); input += 4;
-            LSCRYPT->DATA2 = UNALIGNED_GET((uint32_t *)input); input += 4;
-            LSCRYPT->DATA1 = UNALIGNED_GET((uint32_t *)input); input += 4;
-            LSCRYPT->DATA0 = UNALIGNED_GET((uint32_t *)input); input += 4;
+            LSCRYPT->DATA3 = *input++;
+            LSCRYPT->DATA2 = *input++;
+            LSCRYPT->DATA1 = *input++;
+            LSCRYPT->DATA0 = *input++;
             while (REG_FIELD_RD(LSCRYPT->SR, CRYPT_AESRIF) == 0);
             LSCRYPT->ICFR = CRYPT_AESIF_MASK;
-            UNALIGNED_PUT(LSCRYPT->RES3, (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(LSCRYPT->RES2, (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(LSCRYPT->RES1, (uint32_t *)output); output += 4;
-            UNALIGNED_PUT(LSCRYPT->RES0, (uint32_t *)output); output += 4;
+            *output++ = LSCRYPT->RES3;
+            *output++ = LSCRYPT->RES2;
+            *output++ = LSCRYPT->RES1;
+            *output++ = LSCRYPT->RES0;
             REG_FIELD_WR(LSCRYPT->CR,CRYPT_GO,1);
         }
         while (REG_FIELD_RD(LSCRYPT->SR, CRYPT_AESRIF) == 0);
         LSCRYPT->ICFR = CRYPT_AESIF_MASK;
-        UNALIGNED_PUT(LSCRYPT->RES3, (uint32_t *)output); output += 4;
-        UNALIGNED_PUT(LSCRYPT->RES2, (uint32_t *)output); output += 4;
-        UNALIGNED_PUT(LSCRYPT->RES1, (uint32_t *)output); output += 4;
-        UNALIGNED_PUT(LSCRYPT->RES0, (uint32_t *)output); output += 4;
+        *output++ = LSCRYPT->RES3;
+        *output++ = LSCRYPT->RES2;
+        *output++ = LSCRYPT->RES1;
+        *output++ = LSCRYPT->RES0;
         wc_UnLockMutex(&aesLock);
         return 0;
     }

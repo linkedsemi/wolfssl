@@ -1018,8 +1018,6 @@ block cipher mechanism that uses n-bit binary string parameter key with 128-bits
         SYSC_SEC_CPU->PD_CPU_SRST[1] = SYSC_SEC_CPU_SRST_CLR_CRYPT_MASK;
         SYSC_SEC_CPU->PD_CPU_SRST[1] = SYSC_SEC_CPU_SRST_SET_CRYPT_MASK;
         SYSC_SEC_CPU->PD_CPU_CLKG[1] = SYSC_SEC_CPU_CLKG_SET_CRYPT_MASK;
-        IRQ_CONNECT(CALC_CRYPT_IRQN, 3, HAL_LSCRYPT_IRQHandler, NULL, 0);
-        irq_enable(CALC_CRYPT_IRQN);
     }
 #else
 

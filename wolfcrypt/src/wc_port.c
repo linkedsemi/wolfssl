@@ -519,6 +519,10 @@ int wolfCrypt_Cleanup(void)
     #endif
 #endif /* HAVE_ECC */
 
+    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ENABLE)
+        wc_LS_Otbn_Module_DeInit();
+    #endif
+
     #if defined(OPENSSL_EXTRA) || defined(DEBUG_WOLFSSL_VERBOSE)
         ret = wc_LoggingCleanup();
     #endif

@@ -23,7 +23,9 @@ void wc_LS_OTBN_IRQHandler()
 }
 #endif
 
-void HAL_OTBN_SYSC_IRQHandler(void);
+#if defined(WOLFSSL_ZEPHYR)
+void LS_OTBN_SYSC_IRQHandler(void);
+#endif
 void HAL_LSOTBN_MSP_Init(void);
 void HAL_LSOTBN_MSP_DeInit(void);
 void wc_LS_Otbn_Module_Init(void)
@@ -55,7 +57,7 @@ void wc_LS_Otbn_Module_Init(void)
                               FIELD_BUILD(SYSC_SEC_CPU_I_OTBN_OTP_REQ, 1);
 
 
-    IRQ_CONNECT(OTBN_SYSC_IRQN, 3, HAL_OTBN_SYSC_IRQHandler,NULL, 0);
+    IRQ_CONNECT(OTBN_SYSC_IRQN, 3, LS_OTBN_SYSC_IRQHandler,NULL, 0);
     irq_enable(OTBN_SYSC_IRQN);
     IRQ_CONNECT(OBTN_IRQN, 3, wc_LS_OTBN_IRQHandler,NULL, 0);
     irq_enable(OBTN_IRQN);

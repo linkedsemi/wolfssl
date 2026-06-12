@@ -14,8 +14,8 @@
 #include <zephyr/irq.h>
 #include <zephyr/kernel.h>
 #endif
+#include "ls_otbn_config.h"
 #include "ls_otbn_ecc.h"
-
 extern struct current_otbn otbn_info;
 int wc_ecc_get_s_covers_n(struct ecc_key* key,mp_int * s);
 int wc_sm2_get_digest(struct ecc_key* key,const uint8_t *input_hash, const uint16_t hashSz, uint8_t *digest);
@@ -26,6 +26,22 @@ int ls_otbn_sign_hash(uint32_t curve, uint32_t curve_size, uint8_t *private_key,
 int ls_otbn_verify_hash(uint32_t curve, uint32_t curve_size, uint8_t *r, uint8_t *s, uint8_t *msg, uint8_t *pub_x, uint8_t *pub_y);
 int ls_otbn_shared_secret(uint32_t curve, uint32_t curve_size, uint8_t *private_key, uint8_t *public_x, uint8_t *public_y);
 int ls_wolfssl_get_random(uint8_t *buf, uint16_t need_size);
+
+uint32_t get_otbn_fireware_id(int curve_id)
+{
+    switch(curve_id)
+    {
+        case ECC_SECP256R1:
+            return OTBN_FIRMWARE_ECDSA_P256;
+        case ECC_SECP384R1:
+            return OTBN_FIRMWARE_ECDSA_P384;
+        case ECC_SM2P256V1:
+            return OTBN_FIRMWARE_SM2;
+        default:
+            return OTBN_FIRMWARE_UNUSED;
+    }
+}
+
 int ls_otbn_fireware_init(int curve_id)
 {
     uint32_t imem_size;
@@ -72,9 +88,9 @@ int ls_otbn_fireware_init(int curve_id)
         default:
             return WC_HW_E;
     }
-    HAL_OTBN_DMEM_Set(0, 0, dmem_end);
-    HAL_OTBN_IMEM_Write(0, imem_image, imem_size);
-    HAL_OTBN_DMEM_Write(0, dmem_image, dmem_size);
+    ls_otbn_dmem_set(0, 0, dmem_end);
+    ls_otbn_imem_write(0, imem_image, imem_size);
+    ls_otbn_dmem_write(0, dmem_image, dmem_size);
     // //printf("HAL_OTBN_Checksum_Get() = 0x%x\r\n",HAL_OTBN_Checksum_Get());
     // if(HAL_OTBN_Checksum_Get()!= check_sum)
     // {
@@ -339,7 +355,7 @@ int ls_otbn_get_key_pair(uint32_t curve, uint32_t curve_size, uint8_t *private_k
     uint32_t remote_addr_y;
     uint8_t random[ECC_MAXSIZE];
 
-    wc_LockMutex(&otbn_info.doneLock);
+    ls_otbn_session_acquire(get_otbn_fireware_id(curve), 10);
     err = ls_otbn_fireware_init(curve);
     if(err != 0)
     {
@@ -383,18 +399,18 @@ int ls_otbn_get_key_pair(uint32_t curve, uint32_t curve_size, uint8_t *private_k
         break;
     }
 
-    if(HAL_OTBN_DMEM_Write(remote_random_addr, (uint32_t *)random, curve_size))
+    if(ls_otbn_dmem_write(remote_random_addr, (uint32_t *)random, curve_size))
     {
-        //printf("errors HAL_OTBN_DMEM_Write  8\r\n");
+        //printf("errors ls_otbn_dmem_write  8\r\n");
         return WC_HW_E;
     }
-    if(HAL_OTBN_DMEM_Write(remote_mode_addr, &mode, 4))
+    if(ls_otbn_dmem_write(remote_mode_addr, &mode, 4))
     {
-        //printf("errors HAL_OTBN_DMEM_Write  9 \r\n");
+        //printf("errors ls_otbn_dmem_write  9 \r\n");
         return WC_HW_E;
     }
 
-    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
+    ls_otbn_cmd(OTBN_CMD_EXECUTE);
 
     err = HAL_OTBN_Error_Bit_Get();
     if(err)
@@ -403,11 +419,11 @@ int ls_otbn_get_key_pair(uint32_t curve, uint32_t curve_size, uint8_t *private_k
         return WC_HW_E;
     }
     
-    HAL_OTBN_DMEM_Read(remote_addr_d0, (uint32_t *)private_key, curve_size);
-    HAL_OTBN_DMEM_Read(remote_addr_x, (uint32_t *)public_x, curve_size);
-    HAL_OTBN_DMEM_Read(remote_addr_y, (uint32_t *)public_y, curve_size);
+    ls_otbn_dmem_read(remote_addr_d0, (uint32_t *)private_key, curve_size);
+    ls_otbn_dmem_read(remote_addr_x, (uint32_t *)public_x, curve_size);
+    ls_otbn_dmem_read(remote_addr_y, (uint32_t *)public_y, curve_size);
 
-    wc_UnLockMutex(&otbn_info.doneLock);
+    ls_otbn_session_release();
 
 exit:
     return err;
@@ -428,7 +444,7 @@ int ls_otbn_sign_hash(uint32_t curve, uint32_t curve_size, uint8_t *private_key,
     uint32_t remote_addr_msg;
     uint8_t random[ECC_MAXSIZE];
 
-    wc_LockMutex(&otbn_info.doneLock);
+    ls_otbn_session_acquire(get_otbn_fireware_id(curve), 10);
 
     err = ls_otbn_fireware_init(curve);
     if(err != 0)
@@ -479,37 +495,38 @@ int ls_otbn_sign_hash(uint32_t curve, uint32_t curve_size, uint8_t *private_key,
         goto exit;
     }
 
-    if(HAL_OTBN_DMEM_Write(remote_random_addr, (uint32_t *)random, curve_size))
+    if(ls_otbn_dmem_write(remote_random_addr, (uint32_t *)random, curve_size))
     {
         err = WC_HW_E;
         goto exit;
     }
-    if(HAL_OTBN_DMEM_Write(remote_mode_addr, (uint32_t *)&mode, 4))
-    {
-        err = WC_HW_E;
-        goto exit;
-    }
-
-    if(HAL_OTBN_DMEM_Set(remote_addr_d1,0,curve_size))
+    
+    if(ls_otbn_dmem_write(remote_mode_addr, (uint32_t *)&mode, 4))
     {
         err = WC_HW_E;
         goto exit;
     }
 
-
-    if(HAL_OTBN_DMEM_Write(remote_addr_d0, (uint32_t *)private_key, curve_size))
+    if(ls_otbn_dmem_set(remote_addr_d1,0,curve_size))
     {
         err = WC_HW_E;
         goto exit;
     }
 
-    if(HAL_OTBN_DMEM_Write(remote_addr_msg, (uint32_t *)msg, curve_size))
+
+    if(ls_otbn_dmem_write(remote_addr_d0, (uint32_t *)private_key, curve_size))
     {
         err = WC_HW_E;
         goto exit;
     }
 
-    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
+    if(ls_otbn_dmem_write(remote_addr_msg, (uint32_t *)msg, curve_size))
+    {
+        err = WC_HW_E;
+        goto exit;
+    }
+
+    ls_otbn_cmd(OTBN_CMD_EXECUTE);
 
     err = HAL_OTBN_Error_Bit_Get();
     if(err)
@@ -520,11 +537,11 @@ int ls_otbn_sign_hash(uint32_t curve, uint32_t curve_size, uint8_t *private_key,
     }
     
 
-    HAL_OTBN_DMEM_Read(remote_addr_r, (uint32_t *)r, curve_size);
-    HAL_OTBN_DMEM_Read(remote_addr_s, (uint32_t *)s, curve_size);
+    ls_otbn_dmem_read(remote_addr_r, (uint32_t *)r, curve_size);
+    ls_otbn_dmem_read(remote_addr_s, (uint32_t *)s, curve_size);
 
 exit:
-    wc_UnLockMutex(&otbn_info.doneLock);
+    ls_otbn_session_release();
     return err;
 }
 
@@ -545,7 +562,7 @@ int ls_otbn_verify_hash(uint32_t curve, uint32_t curve_size, uint8_t *r, uint8_t
     uint32_t remote_addr_qy;
     uint32_t remote_addr_r_x;
 
-    wc_LockMutex(&otbn_info.doneLock);
+    ls_otbn_session_acquire(get_otbn_fireware_id(curve), 10);
 
     err = ls_otbn_fireware_init(curve);
     if(err != 0)
@@ -600,44 +617,44 @@ int ls_otbn_verify_hash(uint32_t curve, uint32_t curve_size, uint8_t *r, uint8_t
         break;
     }
 
-    if(HAL_OTBN_DMEM_Write(remote_mode_addr, (uint32_t *)&mode, 4))
+    if(ls_otbn_dmem_write(remote_mode_addr, (uint32_t *)&mode, 4))
     {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        //printf("errors ls_otbn_dmem_write 2 \n");
         err = WC_HW_E;
         goto exit;
     }
-    if(HAL_OTBN_DMEM_Write(remote_addr_qx, (uint32_t *)pub_x, curve_size))
+    if(ls_otbn_dmem_write(remote_addr_qx, (uint32_t *)pub_x, curve_size))
     {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        //printf("errors ls_otbn_dmem_write 2 \n");
         err = WC_HW_E;
         goto exit;
     }
-    if(HAL_OTBN_DMEM_Write(remote_addr_qy, (uint32_t *)pub_y, curve_size))
+    if(ls_otbn_dmem_write(remote_addr_qy, (uint32_t *)pub_y, curve_size))
     {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        //printf("errors ls_otbn_dmem_write 2 \n");
         err = WC_HW_E;
         goto exit;
     }
-    if(HAL_OTBN_DMEM_Write(remote_addr_r, (uint32_t *)r, curve_size))
+    if(ls_otbn_dmem_write(remote_addr_r, (uint32_t *)r, curve_size))
     {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        //printf("errors ls_otbn_dmem_write 2 \n");
         err = WC_HW_E;
         goto exit;
     }
-    if(HAL_OTBN_DMEM_Write(remote_addr_s, (uint32_t *)s, curve_size))
+    if(ls_otbn_dmem_write(remote_addr_s, (uint32_t *)s, curve_size))
     {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        //printf("errors ls_otbn_dmem_write 2 \n");
         err = WC_HW_E;
         goto exit;
     }
-    if(HAL_OTBN_DMEM_Write(remote_addr_msg, (uint32_t *)msg, curve_size))
+    if(ls_otbn_dmem_write(remote_addr_msg, (uint32_t *)msg, curve_size))
     {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \n");
+        //printf("errors ls_otbn_dmem_write 2 \n");
         err = WC_HW_E;
         goto exit;
     }
 
-    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
+    ls_otbn_cmd(OTBN_CMD_EXECUTE);
 
     err = HAL_OTBN_Error_Bit_Get();
     if(err)
@@ -647,10 +664,10 @@ int ls_otbn_verify_hash(uint32_t curve, uint32_t curve_size, uint8_t *r, uint8_t
         goto exit;
     }
     
-    err = HAL_OTBN_DMEM_Read(remote_addr_r_x, (uint32_t *)s, curve_size);
+    err = ls_otbn_dmem_read(remote_addr_r_x, (uint32_t *)s, curve_size);
 
 exit:
-    wc_UnLockMutex(&otbn_info.doneLock);
+    ls_otbn_session_release();
     return err;
 }
 
@@ -667,7 +684,7 @@ int ls_otbn_shared_secret(uint32_t curve, uint32_t curve_size, uint8_t *private_
     uint32_t remote_addr_ok;
     uint32_t is_ok;
 
-    wc_LockMutex(&otbn_info.doneLock);
+    ls_otbn_session_acquire(get_otbn_fireware_id(curve), 10);
     
     err = ls_otbn_fireware_init(curve);
     if(err != 0)
@@ -710,35 +727,35 @@ int ls_otbn_shared_secret(uint32_t curve, uint32_t curve_size, uint8_t *private_
         break;
     }
 
-    if(HAL_OTBN_DMEM_Write(remote_mode_addr, (uint32_t *)&mode, 4))
+    if(ls_otbn_dmem_write(remote_mode_addr, (uint32_t *)&mode, 4))
     {
-        //printf("errors HAL_OTBN_DMEM_Write 2 \r\n");
+        //printf("errors ls_otbn_dmem_write 2 \r\n");
         err = WC_HW_E;
         goto exit;
     }
 
-    HAL_OTBN_DMEM_Set(remote_addr_d1,0,curve_size);
+    ls_otbn_dmem_set(remote_addr_d1,0,curve_size);
 
-    if(HAL_OTBN_DMEM_Write(remote_addr_d0, (uint32_t *)private_key, curve_size))
+    if(ls_otbn_dmem_write(remote_addr_d0, (uint32_t *)private_key, curve_size))
     {
-        //printf("errors HAL_OTBN_DMEM_Write 4 \r\n");
+        //printf("errors ls_otbn_dmem_write 4 \r\n");
         err = WC_HW_E;
         goto exit;
     }
-    if(HAL_OTBN_DMEM_Write(remote_addr_x, (uint32_t *)public_x, curve_size))
+    if(ls_otbn_dmem_write(remote_addr_x, (uint32_t *)public_x, curve_size))
     {
-        //printf("errors HAL_OTBN_DMEM_Write 4 \r\n");
+        //printf("errors ls_otbn_dmem_write 4 \r\n");
         err = WC_HW_E;
         goto exit;
     }
-    if(HAL_OTBN_DMEM_Write(remote_addr_y, (uint32_t *)public_y, curve_size))
+    if(ls_otbn_dmem_write(remote_addr_y, (uint32_t *)public_y, curve_size))
     {
-        //printf("errors HAL_OTBN_DMEM_Write 4 \n");
+        //printf("errors ls_otbn_dmem_write 4 \n");
         err = WC_HW_E;
         goto exit;
     }
 
-    wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
+    ls_otbn_cmd(OTBN_CMD_EXECUTE);
 
     err = HAL_OTBN_Error_Bit_Get();
     if(err)
@@ -750,7 +767,7 @@ int ls_otbn_shared_secret(uint32_t curve, uint32_t curve_size, uint8_t *private_
 
     if(curve  != ECC_SECP384R1)
     {
-        err |= HAL_OTBN_DMEM_Read(remote_addr_ok, (uint32_t *)&is_ok, 4);
+        err |= ls_otbn_dmem_read(remote_addr_ok, (uint32_t *)&is_ok, 4);
         if(err == 0 && is_ok == LS_OTBN_FALSE)
         {
             //printf("inpiut public key is not on curve\n");
@@ -758,11 +775,11 @@ int ls_otbn_shared_secret(uint32_t curve, uint32_t curve_size, uint8_t *private_
         }
     }
 
-    err |= HAL_OTBN_DMEM_Read(remote_addr_x, (uint32_t *)public_x, curve_size);
-    err |= HAL_OTBN_DMEM_Read(remote_addr_y, (uint32_t *)public_y, curve_size);
+    err |= ls_otbn_dmem_read(remote_addr_x, (uint32_t *)public_x, curve_size);
+    err |= ls_otbn_dmem_read(remote_addr_y, (uint32_t *)public_y, curve_size);
 
 exit:
-    wc_UnLockMutex(&otbn_info.doneLock);
+    ls_otbn_session_release();
 
     return err;
 }

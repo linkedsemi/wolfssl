@@ -26,7 +26,6 @@ struct current_otbn
 #define CACHE_ALIGN_32
 #endif
 
-void wc_ls_otbn_cmd(enum HAL_OTBN_CMD cmd);
 void wc_LS_Otbn_Module_Init(void);
 void wc_LS_Otbn_Module_DeInit(void);
 

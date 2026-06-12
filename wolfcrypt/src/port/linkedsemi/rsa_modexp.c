@@ -2,8 +2,12 @@
 #include "reg_otbn_type.h"
 #include "ls_hal_otbn.h"
 #include "ls_msp_otbn.h"
+#include "ls_otbn_config.h"
 #include <wolfssl/wolfcrypt/port/linkedsemi/ls-otbn.h>
 #include <wolfssl/wolfcrypt/port/linkedsemi/ls-rsa.h>
+
+#define OTBN_FIRMWARE_RSA_MODEXP    OTBN_FIRMWARE_USER_BASE
+
 enum {
   /**
    * Common RSA exponent with a specialized implementation.
@@ -19,8 +23,8 @@ static int load_rsa_modexp_app(void) {
     if((LSOTBN->STATUS != 0))
         return -1;
     
-    HAL_OTBN_IMEM_Write(0, (uint32_t *)rsa_imem, RSA_IMEM_SIZE);
-    // HAL_OTBN_DMEM_Write(0, rsa_dmem, RSA_DMEM_SIZE);
+    ls_otbn_imem_write(0, (uint32_t *)rsa_imem, RSA_IMEM_SIZE);
+    // ls_otbn_dmem_write(0, rsa_dmem, RSA_DMEM_SIZE);
 
     return 0;
 }
@@ -33,7 +37,7 @@ static int rsa_modexp_wait(size_t *num_words) {
 
   // Read the application mode.
   uint32_t mode;
-  HAL_OTBN_DMEM_Read(RSA_OFFSET_MODE, &mode, sizeof(mode));
+  ls_otbn_dmem_read(RSA_OFFSET_MODE, &mode, sizeof(mode));
 
   *num_words = 0;
   if (mode == MODE_RSA_2048_MODEXP || mode == MODE_RSA_2048_MODEXP_F4) {
@@ -71,7 +75,7 @@ static int rsa_modexp_finalize(const size_t num_words, uint32_t *result) {
   }
 
   // Read the result.
-  HAL_OTBN_DMEM_Read(RSA_OFFSET_INOUT, result, num_words*4);
+  ls_otbn_dmem_read(RSA_OFFSET_INOUT, result, num_words*4);
 
   // Wipe DMEM.
   return 0;
@@ -81,9 +85,16 @@ int ls_rsa_modexp_encrypt(const uint8_t* in, uint32_t inLen, uint8_t* out,
     uint32_t* outLen, uint8_t *exp, const uint8_t* key_n, uint32_t n_size)
 {
   int err = 0;
+  int ret;
   uint32_t mode;
   uint32_t num_bytes = n_size / 8;
   uint32_t rsa_exp = exp[0] | (exp[1] << 8) | (exp[2] << 16) | (exp[3] << 24);
+
+  ret = ls_otbn_session_acquire(OTBN_FIRMWARE_RSA_MODEXP, 10);
+  if (ret != 0) {
+      return WC_HW_E;
+  }
+
   if(rsa_exp != kExponentF4)
   {
     switch (n_size)
@@ -122,38 +133,47 @@ int ls_rsa_modexp_encrypt(const uint8_t* in, uint32_t inLen, uint8_t* out,
   // Load the OTBN app. Fails if OTBN is not idle.
   load_rsa_modexp_app();
 
-  HAL_OTBN_DMEM_Write(RSA_OFFSET_MODE, (uint32_t *)&mode, sizeof(mode));
+  ls_otbn_dmem_write(RSA_OFFSET_MODE, (uint32_t *)&mode, sizeof(mode));
 
   if(rsa_exp != kExponentF4)
   {
-      HAL_OTBN_DMEM_Write(RSA_OFFSET_D, (uint32_t *)exp, num_bytes);
+      ls_otbn_dmem_write(RSA_OFFSET_D, (uint32_t *)exp, num_bytes);
   }
 
   // Set the base and the modulus n.
-  HAL_OTBN_DMEM_Write(RSA_OFFSET_INOUT, (uint32_t *)in, num_bytes);
-  HAL_OTBN_DMEM_Write(RSA_OFFSET_N, (uint32_t *)key_n, num_bytes);
+  ls_otbn_dmem_write(RSA_OFFSET_INOUT, (uint32_t *)in, num_bytes);
+  ls_otbn_dmem_write(RSA_OFFSET_N, (uint32_t *)key_n, num_bytes);
 
   // Start OTBN.
-  wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
+  ls_otbn_cmd(OTBN_CMD_EXECUTE);
   err = HAL_OTBN_Error_Bit_Get();
   if(err)
   {
       //printf("errors detected during an operation 0x%x",err);
-      return WC_HW_E;
+      err = WC_HW_E;
+      goto exit;
   }
-    
+
   rsa_modexp_finalize(num_bytes/4, (uint32_t *)out);
   *outLen = num_bytes;
 
-  return 0;
+exit:
+  ls_otbn_session_release();
+  return err;
 }
 
 int ls_rsa_modexp_decrypt(const uint8_t* in, uint32_t inLen, uint8_t* out,
     uint32_t* outLen, uint8_t *key_d, const uint8_t* key_n, uint32_t d_size)
 {
   int err = 0;
+  int ret;
   uint32_t mode;
   uint32_t num_bytes = d_size / 8;
+
+  ret = ls_otbn_session_acquire(OTBN_FIRMWARE_RSA_MODEXP, 10);
+  if (ret != 0) {
+      return WC_HW_E;
+  }
 
   switch (d_size)
   {
@@ -174,27 +194,30 @@ int ls_rsa_modexp_decrypt(const uint8_t* in, uint32_t inLen, uint8_t* out,
   // Load the OTBN app. Fails if OTBN is not idle.
   load_rsa_modexp_app();
 
-  HAL_OTBN_DMEM_Write(RSA_OFFSET_MODE, (uint32_t *)&mode, sizeof(mode));
+  ls_otbn_dmem_write(RSA_OFFSET_MODE, (uint32_t *)&mode, sizeof(mode));
 
 
-  HAL_OTBN_DMEM_Write(RSA_OFFSET_D, (uint32_t *)key_d, num_bytes);
+  ls_otbn_dmem_write(RSA_OFFSET_D, (uint32_t *)key_d, num_bytes);
   // Set the base and the modulus n.
-  HAL_OTBN_DMEM_Write(RSA_OFFSET_INOUT, (uint32_t *)in, num_bytes);
-  HAL_OTBN_DMEM_Write(RSA_OFFSET_N, (uint32_t *)key_n, num_bytes);
+  ls_otbn_dmem_write(RSA_OFFSET_INOUT, (uint32_t *)in, num_bytes);
+  ls_otbn_dmem_write(RSA_OFFSET_N, (uint32_t *)key_n, num_bytes);
 
   // Start OTBN.
-  wc_ls_otbn_cmd(HAL_OTBN_CMD_EXECUTE);
+  ls_otbn_cmd(OTBN_CMD_EXECUTE);
   err = HAL_OTBN_Error_Bit_Get();
   if(err)
   {
       //printf("errors detected during an operation 0x%x",err);
-      return WC_HW_E;
+      err = WC_HW_E;
+      goto exit;
   }
-    
+
   rsa_modexp_finalize(num_bytes/4, (uint32_t *)out);
   *outLen = num_bytes;
 
-  return 0;
+exit:
+  ls_otbn_session_release();
+  return err;
 }
 
 

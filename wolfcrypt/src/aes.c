@@ -1001,16 +1001,54 @@ block cipher mechanism that uses n-bit binary string parameter key with 128-bits
 #elif defined(WOLFSSL_RISCV_ASM)
 /* implemented in wolfcrypt/src/port/risc-v/riscv-64-aes.c */
 #elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+    static wolfSSL_Mutex aesLock;
+
     static WARN_UNUSED_RESULT int wc_AesEncrypt(
         Aes* aes, const byte* inBlock, byte* outBlock);
     static WARN_UNUSED_RESULT int wc_AesDecrypt(
         Aes* aes, const byte* inBlock, byte* outBlock);
+
     static void aes_config(bool iv_en, bool enc, bool ie, bool dmaen, bool fifoen, uint8_t type, uint8_t mode, uint8_t keysize)
     {
         MODIFY_REG(LSCRYPT->CR,CRYPT_CRYSEL_MASK|CRYPT_DMAEN_MASK|CRYPT_FIFOODR_MASK|CRYPT_FIFOEN_MASK|CRYPT_TYPE_MASK|CRYPT_IE_MASK|CRYPT_IVREN_MASK|CRYPT_MODE_MASK|CRYPT_ENCS_MASK|CRYPT_AESKS_MASK,
             0<<CRYPT_CRYSEL_POS|(dmaen?1:0)<<CRYPT_DMAEN_POS|(fifoen?1:0)<<CRYPT_FIFOODR_POS|(fifoen?1:0)<<CRYPT_FIFOEN_POS|type<<CRYPT_TYPE_POS|(ie?1:0)<<CRYPT_IE_POS|(iv_en?1:0)<<CRYPT_IVREN_POS|mode<<CRYPT_MODE_POS|(enc?1:0)<<CRYPT_ENCS_POS|keysize<<CRYPT_AESKS_POS);
     }
-    static wolfSSL_Mutex aesLock;
+
+    static int aes_setkey(uint32_t *u32_key, uint32_t keylen)
+    {
+        if(keylen == 16)
+        {
+            LSCRYPT->KEY3 = *u32_key++;
+            LSCRYPT->KEY2 = *u32_key++;
+            LSCRYPT->KEY1 = *u32_key++;
+            LSCRYPT->KEY0 = *u32_key++;
+            return AES_KEY_128;
+        }
+        if(keylen == 24)
+        {
+            LSCRYPT->KEY5 = *u32_key++;
+            LSCRYPT->KEY4 = *u32_key++;
+            LSCRYPT->KEY3 = *u32_key++;
+            LSCRYPT->KEY2 = *u32_key++;
+            LSCRYPT->KEY1 = *u32_key++;
+            LSCRYPT->KEY0 = *u32_key++;
+            return AES_KEY_192;
+        }
+        if(keylen == 32)
+        {
+            LSCRYPT->KEY7 = *u32_key++;
+            LSCRYPT->KEY6 = *u32_key++;
+            LSCRYPT->KEY5 = *u32_key++;
+            LSCRYPT->KEY4 = *u32_key++;
+            LSCRYPT->KEY3 = *u32_key++;
+            LSCRYPT->KEY2 = *u32_key++;
+            LSCRYPT->KEY1 = *u32_key++;
+            LSCRYPT->KEY0 = *u32_key++;
+            return AES_KEY_256;
+        }
+        return -EINVAL;
+    }
+
     void wc_LS_Crypt_Init(void)
     {
         wc_InitMutex(&aesLock);
@@ -5756,56 +5794,21 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         if ((in == NULL) || (out == NULL) || (aes == NULL))
             return BAD_FUNC_ARG;
 
-        __ASSERT_NO_MSG(sz % 16 == 0);
+        if(sz % 16 != 0)
+            return -EINVAL;
 
         const unsigned char *end_addr = in + sz;
         uint32_t *input = (uint32_t *)in;
         uint32_t *output = (uint32_t *)out;
         uint8_t ret = 0;
-        uint8_t keysize = 0;
-        uint32_t keylen = 0;
-        uint32_t *u32_key = (uint32_t *)aes->key;
+        uint8_t keysize;
+        uint32_t keylen;
         ret = wc_AesGetKeySize(aes, &keylen);
         if(ret != 0)
             return ret;
         wc_LockMutex(&aesLock);
-        do{
-            if(keylen == 16)
-            {
-                keysize = AES_KEY_128;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-            if(keylen == 24)
-            {
-                keysize = AES_KEY_192;
-                LSCRYPT->KEY5 = *u32_key++;
-                LSCRYPT->KEY4 = *u32_key++;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-            if(keylen == 32)
-            {
-                keysize = AES_KEY_256;
-                LSCRYPT->KEY7 = *u32_key++;
-                LSCRYPT->KEY6 = *u32_key++;
-                LSCRYPT->KEY5 = *u32_key++;
-                LSCRYPT->KEY4 = *u32_key++;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-        }while(0);
-
-        aes_config(true, true, false, false, false, 0x0, 0x1, keysize);
+        keysize = aes_setkey((uint32_t *)aes->key, keylen);
+        aes_config(true, true, false, false, false, NOT_SWAPPED, CBC, keysize);
         uint32_t *u32_iv = (uint32_t *)aes->reg;
         LSCRYPT->IVR3 = __builtin_bswap32(*u32_iv++);
         LSCRYPT->IVR2 = __builtin_bswap32(*u32_iv++);
@@ -5836,56 +5839,21 @@ int wc_AesSetIV(Aes* aes, const byte* iv)
         if ((in == NULL) || (out == NULL) || (aes == NULL))
             return BAD_FUNC_ARG;
 
-        __ASSERT_NO_MSG(sz % 16 == 0);
+        if(sz % 16 != 0)
+            return -EINVAL;
 
         const unsigned char * end_addr = in + sz;
         uint32_t *input = (uint32_t *)in;
         uint32_t *output = (uint32_t *)out;
         uint8_t ret = 0;
-        uint8_t keysize = 0;
-        uint32_t keylen = 0;
-        uint32_t *u32_key = (uint32_t *)aes->key;
+        uint8_t keysize;
+        uint32_t keylen;
         ret = wc_AesGetKeySize(aes, &keylen);
         if(ret != 0)
             return ret;
         wc_LockMutex(&aesLock);
-        do{
-            if(keylen == 16)
-            {
-                keysize = AES_KEY_128;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-            if(keylen == 24)
-            {
-                keysize = AES_KEY_192;
-                LSCRYPT->KEY5 = *u32_key++;
-                LSCRYPT->KEY4 = *u32_key++;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-            if(keylen == 32)
-            {
-                keysize = AES_KEY_256;
-                LSCRYPT->KEY7 = *u32_key++;
-                LSCRYPT->KEY6 = *u32_key++;
-                LSCRYPT->KEY5 = *u32_key++;
-                LSCRYPT->KEY4 = *u32_key++;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-        }while(0);
-
-        aes_config(true, false, false, false, false, 0x0, 0x1, keysize);
+        keysize = aes_setkey((uint32_t *)aes->key, keylen);
+        aes_config(true, false, false, false, false, NOT_SWAPPED, CBC, keysize);
         uint32_t *u32_iv = (uint32_t *)aes->reg;
         LSCRYPT->IVR3 = __builtin_bswap32(*u32_iv++);
         LSCRYPT->IVR2 = __builtin_bswap32(*u32_iv++);
@@ -8725,6 +8693,23 @@ static WARN_UNUSED_RESULT int wc_AesGcmEncrypt_STM32(
 
 #endif /* STM32_CRYPTO_AES_GCM */
 
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+    void aes_gcm_calc(uint32_t *input, uint32_t *output)
+    {
+        LSCRYPT->DATA3 = *input++;
+        LSCRYPT->DATA2 = *input++;
+        LSCRYPT->DATA1 = *input++;
+        LSCRYPT->DATA0 = *input++;
+        REG_FIELD_WR(LSCRYPT->CR,CRYPT_GO,1);
+        while (REG_FIELD_RD(LSCRYPT->SR, CRYPT_AESRIF) == 0);
+        LSCRYPT->ICFR = CRYPT_AESIF_MASK;
+        *output++ = LSCRYPT->RES3;
+        *output++ = LSCRYPT->RES2;
+        *output++ = LSCRYPT->RES1;
+        *output++ = LSCRYPT->RES0;
+    }
+#endif
+
 #ifdef WOLFSSL_AESNI
 /* For performance reasons, this code needs to be not inlined. */
 WARN_UNUSED_RESULT int AES_GCM_encrypt_C(
@@ -8745,7 +8730,9 @@ WARN_UNUSED_RESULT int AES_GCM_encrypt_C(
     word32 blocks = sz / WC_AES_BLOCK_SIZE;
     word32 partial = sz % WC_AES_BLOCK_SIZE;
     const byte* p = in;
+#if !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
     byte* c = out;
+#endif
     ALIGN16 byte counter[WC_AES_BLOCK_SIZE];
     ALIGN16 byte initialCounter[WC_AES_BLOCK_SIZE];
     ALIGN16 byte scratch[WC_AES_BLOCK_SIZE];
@@ -8785,6 +8772,35 @@ WARN_UNUSED_RESULT int AES_GCM_encrypt_C(
     /* process remainder using partial handling */
 #endif
 
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+    if (blocks > 0) { /* can not handle inline encryption */
+        IncrementGcmCounter(counter);
+        uint32_t *init_iv = (uint32_t *)counter;
+        const unsigned char * end_addr = in + sz - partial;
+        uint32_t *input = (uint32_t *)in;
+        uint32_t *output = (uint32_t *)out;
+        uint8_t keysize;
+        uint32_t keylen;
+        ret = wc_AesGetKeySize(aes, &keylen);
+        if(ret != 0)
+            return ret;
+        wc_LockMutex(&aesLock);
+        keysize = aes_setkey((uint32_t *)aes->key, keylen);
+        aes_config(false, true, false, false, false, BYTE_SWAP, CTR, keysize);
+        LSCRYPT->IVR3 = __builtin_bswap32(*init_iv++);
+        LSCRYPT->IVR2 = __builtin_bswap32(*init_iv++);
+        LSCRYPT->IVR1 = __builtin_bswap32(*init_iv++);
+        LSCRYPT->IVR0 = __builtin_bswap32(*init_iv++);
+
+        while (input < (uint32_t*)end_addr)
+        {
+            aes_gcm_calc(input, output);
+            input+=4;
+            output+=4;
+        }
+        p += WC_AES_BLOCK_SIZE * blocks;
+    }
+#else
 #if defined(HAVE_AES_ECB) && !defined(WOLFSSL_PIC32MZ_CRYPT)
     /* some hardware acceleration can gain performance from doing AES encryption
      * of the whole buffer at once */
@@ -8816,14 +8832,50 @@ WARN_UNUSED_RESULT int AES_GCM_encrypt_C(
             c += WC_AES_BLOCK_SIZE;
         }
     }
+#endif
 
     if (partial != 0) {
+    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+        uint32_t temp_buf[WC_AES_BLOCK_SIZE/sizeof(uint32_t)];
+        uint32_t temp_buf_out[WC_AES_BLOCK_SIZE/sizeof(uint32_t)];
+        uint32_t *input = temp_buf;
+        uint32_t *output = temp_buf_out;
+        XMEMCPY(temp_buf, p, partial);
+        if(blocks > 0)
+        {
+            aes_gcm_calc(input, output);
+            XMEMCPY(out + sz - partial, temp_buf_out, partial);
+        }else{
+            IncrementGcmCounter(counter);
+            uint32_t *init_iv = (uint32_t *)counter;
+            uint8_t keysize;
+            uint32_t keylen;
+            ret = wc_AesGetKeySize(aes, &keylen);
+            if(ret != 0)
+                return ret;
+            wc_LockMutex(&aesLock);
+            keysize = aes_setkey((uint32_t *)aes->key, keylen);
+            aes_config(false, true, false, false, false, BYTE_SWAP, CTR, keysize);
+            LSCRYPT->IVR3 = __builtin_bswap32(*init_iv++);
+            LSCRYPT->IVR2 = __builtin_bswap32(*init_iv++);
+            LSCRYPT->IVR1 = __builtin_bswap32(*init_iv++);
+            LSCRYPT->IVR0 = __builtin_bswap32(*init_iv++);
+            aes_gcm_calc(input, output);
+            XMEMCPY(out, temp_buf_out, partial);
+        }
+    #else
         IncrementGcmCounter(counter);
         ret = wc_AesEncrypt(aes, counter, scratch);
         if (ret != 0)
             return ret;
         xorbufout(c, scratch, p, partial);
+    #endif
     }
+    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+        if(blocks || partial)
+            wc_UnLockMutex(&aesLock);
+    #endif
+
     if (authTag) {
         GHASH(&aes->gcm, authIn, authInSz, out, sz, authTag, authTagSz);
         ret = wc_AesEncrypt(aes, initialCounter, scratch);
@@ -9293,9 +9345,13 @@ int WARN_UNUSED_RESULT AES_GCM_decrypt_C(
     word32 blocks = sz / WC_AES_BLOCK_SIZE;
     word32 partial = sz % WC_AES_BLOCK_SIZE;
     const byte* c = in;
+#if !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
     byte* p = out;
+#endif
     ALIGN16 byte counter[WC_AES_BLOCK_SIZE];
+#if !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
     ALIGN16 byte scratch[WC_AES_BLOCK_SIZE];
+#endif
     ALIGN16 byte Tprime[WC_AES_BLOCK_SIZE];
     ALIGN16 byte EKY0[WC_AES_BLOCK_SIZE];
     sword32 res;
@@ -9362,6 +9418,35 @@ int WARN_UNUSED_RESULT AES_GCM_decrypt_C(
     /* process remainder using partial handling */
 #endif
 
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+    if (blocks > 0) { /* can not handle inline encryption */
+        IncrementGcmCounter(counter);
+        uint32_t *init_iv = (uint32_t *)counter;
+        const unsigned char * end_addr = in + sz - partial;
+        uint32_t *input = (uint32_t *)in;
+        uint32_t *output = (uint32_t *)out;
+        uint8_t keysize;
+        uint32_t keylen;
+        ret = wc_AesGetKeySize(aes, &keylen);
+        if(ret != 0)
+            return ret;
+        wc_LockMutex(&aesLock);
+        keysize = aes_setkey((uint32_t *)aes->key, keylen);
+        aes_config(false, true, false, false, false, BYTE_SWAP, CTR, keysize);
+        LSCRYPT->IVR3 = __builtin_bswap32(*init_iv++);
+        LSCRYPT->IVR2 = __builtin_bswap32(*init_iv++);
+        LSCRYPT->IVR1 = __builtin_bswap32(*init_iv++);
+        LSCRYPT->IVR0 = __builtin_bswap32(*init_iv++);
+
+        while (input < (uint32_t*)end_addr)
+        {
+            aes_gcm_calc(input, output);
+            input+=4;
+            output+=4;
+        }
+        c += WC_AES_BLOCK_SIZE * blocks;
+    }
+#else
 #if defined(HAVE_AES_ECB) && !defined(WOLFSSL_PIC32MZ_CRYPT)
     /* some hardware acceleration can gain performance from doing AES encryption
      * of the whole buffer at once */
@@ -9394,15 +9479,50 @@ int WARN_UNUSED_RESULT AES_GCM_decrypt_C(
             c += WC_AES_BLOCK_SIZE;
         }
     }
+#endif
 
     if (partial != 0) {
+    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+        uint32_t temp_buf[WC_AES_BLOCK_SIZE/sizeof(uint32_t)];
+        uint32_t temp_buf_out[WC_AES_BLOCK_SIZE/sizeof(uint32_t)];
+        uint32_t *input = temp_buf;
+        uint32_t *output = temp_buf_out;
+        XMEMCPY(temp_buf, c, partial);
+        if(blocks > 0)
+        {
+            aes_gcm_calc(input, output);
+            XMEMCPY(out + sz - partial, temp_buf_out, partial);
+        }else{
+            IncrementGcmCounter(counter);
+            uint32_t *init_iv = (uint32_t *)counter;
+            uint8_t keysize;
+            uint32_t keylen;
+            ret = wc_AesGetKeySize(aes, &keylen);
+            if(ret != 0)
+                return ret;
+            wc_LockMutex(&aesLock);
+            keysize = aes_setkey((uint32_t *)aes->key, keylen);
+            aes_config(false, true, false, false, false, BYTE_SWAP, CTR, keysize);
+            LSCRYPT->IVR3 = __builtin_bswap32(*init_iv++);
+            LSCRYPT->IVR2 = __builtin_bswap32(*init_iv++);
+            LSCRYPT->IVR1 = __builtin_bswap32(*init_iv++);
+            LSCRYPT->IVR0 = __builtin_bswap32(*init_iv++);
+            aes_gcm_calc(input, output);
+            XMEMCPY(out, temp_buf_out, partial);
+        }
+    #else
         IncrementGcmCounter(counter);
         ret = wc_AesEncrypt(aes, counter, scratch);
         if (ret != 0)
             return ret;
         xorbuf(scratch, c, partial);
         XMEMCPY(p, scratch, partial);
+    #endif
     }
+    #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+        if(blocks || partial)
+            wc_UnLockMutex(&aesLock);
+    #endif
 
 #ifndef WC_AES_GCM_DEC_AUTH_EARLY
     /* ConstantCompare returns the cumulative bitwise or of the bitwise xor of
@@ -12079,57 +12199,21 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
         if ((in == NULL) || (out == NULL) || (aes == NULL))
             return BAD_FUNC_ARG;
 
-        __ASSERT_NO_MSG(sz % AES_BLOCK_SIZE == 0);
+        if(sz % AES_BLOCK_SIZE != 0)
+            return -EINVAL;
 
         const unsigned char * end_addr = in + sz;
         uint32_t *input = (uint32_t *)in;
         uint32_t *output = (uint32_t *)out;
         uint8_t ret = 0;
-        uint8_t keysize = 0;
-        uint32_t keylen = 0;
-        uint32_t *u32_key = (uint32_t *)aes->key;
+        uint8_t keysize;
+        uint32_t keylen;
         ret = wc_AesGetKeySize(aes, &keylen);
         if(ret != 0)
             return ret;
         wc_LockMutex(&aesLock);
-        do{
-            if(keylen == 16)
-            {
-                keysize = AES_KEY_128;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-            if(keylen == 24)
-            {
-                keysize = AES_KEY_192;
-                LSCRYPT->KEY5 = *u32_key++;
-                LSCRYPT->KEY4 = *u32_key++;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-            if(keylen == 32)
-            {
-                keysize = AES_KEY_256;
-                LSCRYPT->KEY7 = *u32_key++;
-                LSCRYPT->KEY6 = *u32_key++;
-                LSCRYPT->KEY5 = *u32_key++;
-                LSCRYPT->KEY4 = *u32_key++;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-        }while(0);
-
-        aes_config(false, true, false, false, false, byte_swap, ecb, keysize);
-
+        keysize = aes_setkey((uint32_t *)aes->key, keylen);
+        aes_config(false, true, false, false, false, BYTE_SWAP, ECB, keysize);
         LSCRYPT->DATA3 = *input++;
         LSCRYPT->DATA2 = *input++;
         LSCRYPT->DATA1 = *input++;
@@ -12164,57 +12248,21 @@ int wc_AesEcbDecrypt(Aes* aes, byte* out, const byte* in, word32 sz)
         if ((in == NULL) || (out == NULL) || (aes == NULL))
             return BAD_FUNC_ARG;
 
-        __ASSERT_NO_MSG(sz % AES_BLOCK_SIZE == 0);
+        if(sz % AES_BLOCK_SIZE != 0)
+            return -EINVAL;
 
         const unsigned char * end_addr = in + sz;
         uint32_t *input = (uint32_t *)in;
         uint32_t *output = (uint32_t *)out;
         uint8_t ret = 0;
-        uint8_t keysize = 0;
-        uint32_t keylen = 0;
-        uint32_t *u32_key = (uint32_t *)aes->key;
+        uint8_t keysize;
+        uint32_t keylen;
         ret = wc_AesGetKeySize(aes, &keylen);
         if(ret != 0)
             return ret;
         wc_LockMutex(&aesLock);
-        do{
-            if(keylen == 16)
-            {
-                keysize = AES_KEY_128;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-            if(keylen == 24)
-            {
-                keysize = AES_KEY_192;
-                LSCRYPT->KEY5 = *u32_key++;
-                LSCRYPT->KEY4 = *u32_key++;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-            if(keylen == 32)
-            {
-                keysize = AES_KEY_256;
-                LSCRYPT->KEY7 = *u32_key++;
-                LSCRYPT->KEY6 = *u32_key++;
-                LSCRYPT->KEY5 = *u32_key++;
-                LSCRYPT->KEY4 = *u32_key++;
-                LSCRYPT->KEY3 = *u32_key++;
-                LSCRYPT->KEY2 = *u32_key++;
-                LSCRYPT->KEY1 = *u32_key++;
-                LSCRYPT->KEY0 = *u32_key++;
-                break;
-            }
-        }while(0);
-
-        aes_config(false, false, false, false, false, byte_swap, ecb, keysize);
-
+        keysize = aes_setkey((uint32_t *)aes->key, keylen);
+        aes_config(false, false, false, false, false, BYTE_SWAP, ECB, keysize);
         LSCRYPT->DATA3 = *input++;
         LSCRYPT->DATA2 = *input++;
         LSCRYPT->DATA1 = *input++;

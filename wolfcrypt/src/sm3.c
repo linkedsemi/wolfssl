@@ -38,6 +38,10 @@
     #include <wolfcrypt/src/misc.c>
 #endif
 
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+/* SM3 implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sm3.c */
+#else
+
 #if defined(WOLFSSL_X86_64_BUILD) && defined(USE_INTEL_SPEEDUP)
     #if defined(__GNUC__) && ((__GNUC__ < 4) || \
                               (__GNUC__ == 4 && __GNUC_MINOR__ <= 8))
@@ -1212,6 +1216,8 @@ int wc_Sm3GetFlags(const wc_Sm3* sm3, word32* flags)
     return 0;
 }
 #endif
+
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT */
 
 #endif /* WOLFSSL_SM3 */
 

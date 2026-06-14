@@ -44,6 +44,10 @@
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-otbn-ecc.h>
 #endif
 
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_ENABLE)
+    #include <wolfssl/wolfcrypt/port/linkedsemi/ls-otbn.h>
+#endif
+
 #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
     #include <wolfssl/wolfcrypt/aes.h>
 #endif

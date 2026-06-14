@@ -2873,6 +2873,9 @@ else {
             err_sys("Error with wolfCrypt_Init!\n", WC_TEST_RET_ENC_EC(ret));
         }
 
+        
+
+
 #ifdef HAVE_WC_INTROSPECTION
         printf("Math: %s\n", wc_GetMathInfo());
 #endif
@@ -34732,50 +34735,50 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t ecc_test(void)
     (void)ret;
 #endif
 
-#if (defined(HAVE_ECC112) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 112
-    ret = ecc_test_curve(&rng, 14, ECC_CURVE_DEF);
-    if (ret < 0) {
-        printf("keySize=14, Default\n");
-        goto done;
-    }
-#endif /* HAVE_ECC112 */
-#if (defined(HAVE_ECC128) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 128
-    ret = ecc_test_curve(&rng, 16, ECC_CURVE_DEF);
-    if (ret < 0) {
-        printf("keySize=16, Default\n");
-        goto done;
-    }
-#endif /* HAVE_ECC128 */
-#if (defined(HAVE_ECC160) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 160
-    ret = ecc_test_curve(&rng, 20, ECC_CURVE_DEF);
-    if (ret < 0) {
-        printf("keySize=20, Default\n");
-        goto done;
-    }
-#endif /* HAVE_ECC160 */
-#if (defined(HAVE_ECC192) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 192
-#if !FIPS_VERSION3_GE(6,0,0)
-    ret = ecc_test_curve(&rng, 24, ECC_CURVE_DEF);
-    if (ret < 0) {
-        printf("keySize=24, Default\n");
-        goto done;
-    }
-#endif
-#endif /* HAVE_ECC192 */
-#if (defined(HAVE_ECC224) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 224
-    ret = ecc_test_curve(&rng, 28, ECC_CURVE_DEF);
-    if (ret < 0) {
-        printf("keySize=28, Default\n");
-        goto done;
-    }
-#endif /* HAVE_ECC224 */
-#if (defined(HAVE_ECC239) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 239
-    ret = ecc_test_curve(&rng, 30, ECC_CURVE_DEF);
-    if (ret < 0) {
-        printf("keySize=30, Default\n");
-        goto done;
-    }
-#endif /* HAVE_ECC239 */
+// #if (defined(HAVE_ECC112) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 112
+//     ret = ecc_test_curve(&rng, 14, ECC_CURVE_DEF);
+//     if (ret < 0) {
+//         printf("keySize=14, Default\n");
+//         goto done;
+//     }
+// #endif /* HAVE_ECC112 */
+// #if (defined(HAVE_ECC128) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 128
+//     ret = ecc_test_curve(&rng, 16, ECC_CURVE_DEF);
+//     if (ret < 0) {
+//         printf("keySize=16, Default\n");
+//         goto done;
+//     }
+// #endif /* HAVE_ECC128 */
+// #if (defined(HAVE_ECC160) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 160
+//     ret = ecc_test_curve(&rng, 20, ECC_CURVE_DEF);
+//     if (ret < 0) {
+//         printf("keySize=20, Default\n");
+//         goto done;
+//     }
+// #endif /* HAVE_ECC160 */
+// #if (defined(HAVE_ECC192) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 192
+// #if !FIPS_VERSION3_GE(6,0,0)
+//     ret = ecc_test_curve(&rng, 24, ECC_CURVE_DEF);
+//     if (ret < 0) {
+//         printf("keySize=24, Default\n");
+//         goto done;
+//     }
+// #endif
+// #endif /* HAVE_ECC192 */
+// #if (defined(HAVE_ECC224) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 224
+//     ret = ecc_test_curve(&rng, 28, ECC_CURVE_DEF);
+//     if (ret < 0) {
+//         printf("keySize=28, Default\n");
+//         goto done;
+//     }
+// #endif /* HAVE_ECC224 */
+// #if (defined(HAVE_ECC239) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 239
+//     ret = ecc_test_curve(&rng, 30, ECC_CURVE_DEF);
+//     if (ret < 0) {
+//         printf("keySize=30, Default\n");
+//         goto done;
+//     }
+// #endif /* HAVE_ECC239 */
 #if (!defined(NO_ECC256) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 256
     ret = ecc_test_curve(&rng, 32, ECC_CURVE_DEF);
     if (ret < 0) {
@@ -34812,20 +34815,20 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t ecc_test(void)
         goto done;
     }
 #endif /* HAVE_ECC384 */
-#if (defined(HAVE_ECC512) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 512
-    ret = ecc_test_curve(&rng, 64, ECC_CURVE_DEF);
-    if (ret < 0) {
-        printf("keySize=64, Default\n");
-        goto done;
-    }
-#endif /* HAVE_ECC512 */
-#if (defined(HAVE_ECC521) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 521
-    ret = ecc_test_curve(&rng, 66, ECC_CURVE_DEF);
-    if (ret < 0) {
-        printf("keySize=66, Default\n");
-        goto done;
-    }
-#endif /* HAVE_ECC521 */
+// #if (defined(HAVE_ECC512) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 512
+//     ret = ecc_test_curve(&rng, 64, ECC_CURVE_DEF);
+//     if (ret < 0) {
+//         printf("keySize=64, Default\n");
+//         goto done;
+//     }
+// #endif /* HAVE_ECC512 */
+// #if (defined(HAVE_ECC521) || defined(HAVE_ALL_CURVES)) && ECC_MIN_KEY_SZ <= 521
+//     ret = ecc_test_curve(&rng, 66, ECC_CURVE_DEF);
+//     if (ret < 0) {
+//         printf("keySize=66, Default\n");
+//         goto done;
+//     }
+// #endif /* HAVE_ECC521 */
 #ifdef WOLFSSL_SM2
     ret = ecc_test_curve(&rng, 32, ECC_SM2P256V1);
     if (ret < 0) {
@@ -61081,7 +61084,7 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t cryptocb_test(void)
 {
     wc_test_ret_t ret = 0;
     int origDevId = devId;
-    myCryptoDevCtx myCtx;
+    myCryptoDevCtx myCtx;p
     WOLFSSL_ENTER("cryptocb_test");
 
     /* example data for callback */

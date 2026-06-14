@@ -81,6 +81,10 @@
     #include <wolfssl/wolfcrypt/port/linkedsemi/ls-hash.h>
 #endif
 
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+    #include "otbn_hash.h"
+#endif
+
 #if defined(_MSC_VER)
     #define SHA512_NOINLINE __declspec(noinline)
 #elif defined(__IAR_SYSTEMS_ICC__) || defined(__GNUC__)
@@ -215,6 +219,9 @@ struct wc_Sha512 {
 #endif
 #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
     LS_HASH_Context lsCtx;
+#endif
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+    otbn_hash_ctx_t otbnCtx;
 #endif
 #endif /* WOLFSSL_PSOC6_CRYPTO */
 };

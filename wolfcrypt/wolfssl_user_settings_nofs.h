@@ -212,6 +212,9 @@ extern "C" {
 #define FP_MAX_BITS 16384
 
 #define DEBUG_WOLFSSL
+
+#define GCM_TABLE_4BIT
+
 #ifdef __cplusplus
 }
 #endif

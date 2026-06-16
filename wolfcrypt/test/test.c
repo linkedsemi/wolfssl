@@ -2066,11 +2066,23 @@ else {
 
 #if defined(HAVE_AESGCM) && defined(WOLFSSL_AES_128) && \
    !defined(WOLFSSL_AFALG_XILINX_AES) && !defined(WOLFSSL_XILINX_CRYPT) && \
-   !defined(WOLFSSL_RENESAS_FSPSM_CRYPTONLY) && !defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+   !defined(WOLFSSL_RENESAS_FSPSM_CRYPTONLY)
     if ( (ret = gmac_test()) != 0)
-        TEST_FAIL("GMAC     test failed!\n", ret);
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
+            TEST_FAIL("GMAC LS hardware   test failed!\n", ret);
+        #else
+            TTEST_FAIL("GMAC software    test failed!\n", ret);
+        #endif
+    }    
     else
-        TEST_PASS("GMAC     test passed!\n");
+    {
+        #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
+            TEST_PASS("GMAC LS hardware   test passed!\n");
+        #else
+            TEST_PASS("GMAC software   test passed!\n");
+        #endif
+    }
 #endif
 
 #ifdef WC_RC2

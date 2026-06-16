@@ -2072,7 +2072,7 @@ else {
         #ifdef CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT
             TEST_FAIL("GMAC LS hardware   test failed!\n", ret);
         #else
-            TTEST_FAIL("GMAC software    test failed!\n", ret);
+            TEST_FAIL("GMAC software    test failed!\n", ret);
         #endif
     }    
     else

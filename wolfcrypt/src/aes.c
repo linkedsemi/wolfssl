@@ -9399,25 +9399,25 @@ int WARN_UNUSED_RESULT AES_GCM_decrypt_C(
 #endif
 
 #if defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_AES_ALT)
+    IncrementGcmCounter(counter);
+    uint32_t *init_iv = (uint32_t *)counter;
+    uint8_t keysize;
+    uint32_t keylen;
+    ret = wc_AesGetKeySize(aes, &keylen);
+    if(ret != 0)
+        return ret;
+    wc_LockMutex(&aesLock);
+    keysize = aes_setkey((uint32_t *)aes->key, keylen);
+    aes_config(false, true, false, false, false, BYTE_SWAP, CTR, keysize);
+    LSCRYPT->IVR3 = __builtin_bswap32(*init_iv++);
+    LSCRYPT->IVR2 = __builtin_bswap32(*init_iv++);
+    LSCRYPT->IVR1 = __builtin_bswap32(*init_iv++);
+    LSCRYPT->IVR0 = __builtin_bswap32(*init_iv++);
+
     if (blocks > 0) { /* can not handle inline encryption */
-        IncrementGcmCounter(counter);
-        uint32_t *init_iv = (uint32_t *)counter;
         const unsigned char * end_addr = in + sz - partial;
         uint32_t *input = (uint32_t *)in;
         uint32_t *output = (uint32_t *)out;
-        uint8_t keysize;
-        uint32_t keylen;
-        ret = wc_AesGetKeySize(aes, &keylen);
-        if(ret != 0)
-            return ret;
-        wc_LockMutex(&aesLock);
-        keysize = aes_setkey((uint32_t *)aes->key, keylen);
-        aes_config(false, true, false, false, false, BYTE_SWAP, CTR, keysize);
-        LSCRYPT->IVR3 = __builtin_bswap32(*init_iv++);
-        LSCRYPT->IVR2 = __builtin_bswap32(*init_iv++);
-        LSCRYPT->IVR1 = __builtin_bswap32(*init_iv++);
-        LSCRYPT->IVR0 = __builtin_bswap32(*init_iv++);
-
         while (input < (uint32_t*)end_addr)
         {
             aes_gcm_calc(input, output);
@@ -9468,28 +9468,8 @@ int WARN_UNUSED_RESULT AES_GCM_decrypt_C(
         uint32_t *input = temp_buf;
         uint32_t *output = temp_buf_out;
         XMEMCPY(temp_buf, c, partial);
-        if(blocks > 0)
-        {
-            aes_gcm_calc(input, output);
-            XMEMCPY(out + sz - partial, temp_buf_out, partial);
-        }else{
-            IncrementGcmCounter(counter);
-            uint32_t *init_iv = (uint32_t *)counter;
-            uint8_t keysize;
-            uint32_t keylen;
-            ret = wc_AesGetKeySize(aes, &keylen);
-            if(ret != 0)
-                return ret;
-            wc_LockMutex(&aesLock);
-            keysize = aes_setkey((uint32_t *)aes->key, keylen);
-            aes_config(false, true, false, false, false, BYTE_SWAP, CTR, keysize);
-            LSCRYPT->IVR3 = __builtin_bswap32(*init_iv++);
-            LSCRYPT->IVR2 = __builtin_bswap32(*init_iv++);
-            LSCRYPT->IVR1 = __builtin_bswap32(*init_iv++);
-            LSCRYPT->IVR0 = __builtin_bswap32(*init_iv++);
-            aes_gcm_calc(input, output);
-            XMEMCPY(out, temp_buf_out, partial);
-        }
+        aes_gcm_calc(input, output);
+        XMEMCPY(out + sz - partial, temp_buf_out, partial);
     #else
         IncrementGcmCounter(counter);
         ret = wc_AesEncrypt(aes, counter, scratch);

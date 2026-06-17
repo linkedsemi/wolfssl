@@ -38,7 +38,7 @@
     #include <wolfcrypt/src/misc.c>
 #endif
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SM3_ALT)
 /* SM3 implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sm3.c */
 #else
 
@@ -1217,7 +1217,7 @@ int wc_Sm3GetFlags(const wc_Sm3* sm3, word32* flags)
 }
 #endif
 
-#endif /* CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT */
+#endif /* CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SM3_ALT */
 
 #endif /* WOLFSSL_SM3 */
 

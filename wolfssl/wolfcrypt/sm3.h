@@ -25,7 +25,7 @@
 
 #include <wolfssl/wolfcrypt/types.h>
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SM3_ALT)
     #include "otbn_hash.h"
 #endif
 
@@ -51,7 +51,7 @@ struct wc_Sm3 {
     ALIGN16 word32 v[8];
     /* Buffer holding unprocessed message bytes. */
     ALIGN16 word32 buffer[16];
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SM3_ALT)
     otbn_hash_ctx_t otbnCtx;
 #endif
 #ifdef WOLFSSL_SMALL_STACK

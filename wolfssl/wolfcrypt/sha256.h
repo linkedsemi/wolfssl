@@ -112,7 +112,7 @@
     WOLFSSL_API int wc_Sha256Final_dma(wc_Sha256* sha256, byte* hash);
 #endif
 
-#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#if defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA224_SHA256_ALT)
     #include "otbn_hash.h"
 #endif
 
@@ -198,7 +198,7 @@ struct wc_Sha256 {
     cy_stc_crypto_v2_sha256_buffers_t sha_buffers;
 #elif defined(WOLFSSL_HAVE_PSA) && !defined(WOLFSSL_PSA_NO_HASH)
     psa_hash_operation_t psa_ctx;
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA224_SHA256_ALT)
     otbn_hash_ctx_t otbnCtx;
     word32  digest[WC_SHA256_DIGEST_SIZE / sizeof(word32)];
     ALIGN16 word32  buffer[WC_SHA256_BLOCK_SIZE  / sizeof(word32)];

@@ -272,7 +272,7 @@
         return ret;
     }
 
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
     /* implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sha512.c */
 
 #elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
@@ -894,7 +894,7 @@ int wc_InitSha512_ex(wc_Sha512* sha512, void* heap, int devId)
 
 #if !defined(WOLFSSL_NOSHA512_224) && \
    (!defined(HAVE_FIPS) || FIPS_VERSION_GE(5, 3)) && !defined(HAVE_SELFTEST)
-#if !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#if !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
 int wc_InitSha512_224_ex(wc_Sha512* sha512, void* heap, int devId)
 {
 #if defined(WOLFSSL_USE_ESP32_CRYPT_HASH_HW) && \
@@ -904,12 +904,12 @@ int wc_InitSha512_224_ex(wc_Sha512* sha512, void* heap, int devId)
 #endif
     return InitSha512_Family(sha512, heap, devId, InitSha512_224);
 }
-#endif /* !CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT */
+#endif /* !CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT */
 #endif /* !WOLFSSL_NOSHA512_224 ... */
 
 #if !defined(WOLFSSL_NOSHA512_256) && \
    (!defined(HAVE_FIPS) || FIPS_VERSION_GE(5, 3)) && !defined(HAVE_SELFTEST)
-#if !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#if !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
 int wc_InitSha512_256_ex(wc_Sha512* sha512, void* heap, int devId)
 {
 #if defined(WOLFSSL_USE_ESP32_CRYPT_HASH_HW) && \
@@ -919,7 +919,7 @@ int wc_InitSha512_256_ex(wc_Sha512* sha512, void* heap, int devId)
 #endif
     return InitSha512_Family(sha512, heap, devId, InitSha512_256);
 }
-#endif /* !CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT */
+#endif /* !CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT */
 #endif /* !WOLFSSL_NOSHA512_256 ... */
 
 #endif /* WOLFSSL_SHA512 */
@@ -1289,7 +1289,7 @@ int wc_Sha512Update(wc_Sha512* sha512, const byte* data, word32 len)
 #elif defined(MAX3266X_SHA)
     /* Functions defined in wolfcrypt/src/port/maxim/max3266x.c */
 #elif defined(STM32_HASH_SHA512)
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
     /* implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sha512.c */
 #elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
 #else
@@ -1455,7 +1455,7 @@ static WC_INLINE int Sha512Final(wc_Sha512* sha512)
 #elif defined(MAX3266X_SHA)
     /* Functions defined in wolfcrypt/src/port/maxim/max3266x.c */
 #elif defined(STM32_HASH_SHA512)
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
     /* implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sha512.c */
 #elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
 #else
@@ -1590,7 +1590,7 @@ void wc_Sha512Free(wc_Sha512* sha512)
 
 #if (defined(OPENSSL_EXTRA) || defined(HAVE_CURL)) \
     && !defined(WOLFSSL_KCAPI_HASH) \
-    && !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+    && !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
 /* Apply SHA512 transformation to the data                */
 /* @param sha  a pointer to wc_Sha512 structure           */
 /* @param data data to be applied SHA512 transformation   */
@@ -1768,7 +1768,7 @@ int wc_Sha512Transform(wc_Sha512* sha, const unsigned char* data)
         return ret;
     }
 
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
     /* implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sha512.c */
 
 #elif (defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT))
@@ -2103,7 +2103,7 @@ void wc_Sha384Free(wc_Sha384* sha384)
 #elif defined(MAX3266X_SHA)
     /* Functions defined in wolfcrypt/src/port/maxim/max3266x.c */
 
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
     /* implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sha512.c */
 
 #else
@@ -2318,7 +2318,7 @@ int wc_Sha512_224Update(wc_Sha512* sha, const byte* data, word32 len)
 
 #elif defined(WOLFSSL_SE050) && defined(WOLFSSL_SE050_HASH)
 #elif defined(STM32_HASH_SHA512_224)
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
     /* implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sha512.c */
 #elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
 
@@ -2348,7 +2348,7 @@ void wc_Sha512_224Free(wc_Sha512* sha)
      !defined(NO_WOLFSSL_RENESAS_FSPSM_HASH)
     /* functions defined in wolfcrypt/src/port/Renesas/renesas_fspsm_sha.c */
 
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
     /* implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sha512.c */
 
 #else
@@ -2375,7 +2375,7 @@ int wc_Sha512_224GetFlags(wc_Sha512* sha, word32* flags)
 #endif /* WOLFSSL_HASH_FLAGS */
 
 #if (defined(OPENSSL_EXTRA) || defined(HAVE_CURL)) \
-    && !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+    && !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
 int wc_Sha512_224Transform(wc_Sha512* sha, const unsigned char* data)
 {
     return wc_Sha512Transform(sha, data);
@@ -2464,7 +2464,7 @@ int wc_Sha512_256Update(wc_Sha512* sha, const byte* data, word32 len)
 
 #elif defined(WOLFSSL_SE050) && defined(WOLFSSL_SE050_HASH)
 #elif defined(STM32_HASH_SHA512_256)
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
     /* implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sha512.c */
 #elif defined(CONFIG_WOLFSSL_LINKEDSEMI_HARDWARE_SHA384_SHA512_ALT)
 #else
@@ -2491,7 +2491,7 @@ void wc_Sha512_256Free(wc_Sha512* sha)
      !defined(NO_WOLFSSL_RENESAS_FSPSM_HASH)
     /* functions defined in wolfcrypt/src/port/Renesas/renesas_fspsm_sha.c */
 
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
     /* implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sha512.c */
 
 #else
@@ -2517,7 +2517,7 @@ int wc_Sha512_256GetFlags(wc_Sha512* sha, word32* flags)
 #endif /* WOLFSSL_HASH_FLAGS */
 
 #if (defined(OPENSSL_EXTRA) || defined(HAVE_CURL)) \
-    && !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+    && !defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
 int wc_Sha512_256Transform(wc_Sha512* sha, const unsigned char* data)
 {
     return wc_Sha512Transform(sha, data);
@@ -2539,7 +2539,7 @@ int wc_Sha512_256Transform(wc_Sha512* sha, const unsigned char* data)
 #elif defined(MAX3266X_SHA)
     /* Functions defined in wolfcrypt/src/port/maxim/max3266x.c */
 
-#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT)
+#elif defined(CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT)
     /* implemented in zephyr/soc/linkedsemi/lsqsh/otbn/wolfssl/wc_otbn_sha512.c */
 
 #else

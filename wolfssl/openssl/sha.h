@@ -110,7 +110,7 @@ typedef WOLFSSL_SHA_CTX SHA_CTX;
  * to Sha224, is expected to also be 16 byte aligned addresses.  */
 typedef struct WOLFSSL_SHA224_CTX {
     /* big enough to hold wolfcrypt Sha224, but check on init */
-#ifdef CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA224_SHA256_ALT
     ALIGN16 void* holder[sizeof(wc_Sha224) / sizeof(void*)];
 #else
     ALIGN16 void* holder[(274 + CTX_SHA_HW_ADDER + WC_ASYNC_DEV_SIZE) /
@@ -206,7 +206,7 @@ typedef WOLFSSL_SHA256_CTX SHA256_CTX;
 #ifdef WOLFSSL_SHA384
 typedef struct WOLFSSL_SHA384_CTX {
     /* big enough to hold wolfCrypt Sha384, but check on init */
-#ifdef CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT
     void* holder[sizeof(wc_Sha384) / sizeof(void*)];
 #else
     void* holder[(288 + CTX_SHA_HW_ADDER + WC_ASYNC_DEV_SIZE) / sizeof(void*)];
@@ -245,7 +245,7 @@ typedef WOLFSSL_SHA384_CTX SHA384_CTX;
 #ifdef WOLFSSL_SHA512
 typedef struct WOLFSSL_SHA512_CTX {
     /* big enough to hold wolfCrypt Sha512, but check on init */
-#ifdef CONFIG_WOLFSSL_LINKEDSEMI_OTBN_HASH_ALT
+#ifdef CONFIG_WOLFSSL_LINKEDSEMI_OTBN_SHA384_SHA512_ALT
     void* holder[sizeof(wc_Sha512) / sizeof(void*)];
 #else
     void* holder[(288 + CTX_SHA_HW_ADDER + WC_ASYNC_DEV_SIZE) / sizeof(void*)];
